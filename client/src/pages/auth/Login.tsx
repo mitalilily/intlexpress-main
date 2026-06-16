@@ -1,0 +1,29 @@
+// pages/auth/Login.tsx
+import { Navigate, useLocation } from "react-router-dom";
+import LoginForm from "../../components/auth/LoginForm";
+import { useAuth } from "../../context/auth/AuthContext";
+
+export default function Login() {
+  const { isAuthenticated, user, loading } = useAuth();
+  const location = useLocation();
+  const from = (location.state as any)?.from;
+  const returnTo =
+    from?.pathname && from.pathname !== "/"
+      ? `${from.pathname}${from.search || ""}${from.hash || ""}`
+      : "/home";
+
+  // optional global loader while figuring out status
+  if (loading) return null;
+
+  if (isAuthenticated) {
+    // not finished onboarding → push them to questions
+    if (!user?.onboardingComplete) {
+      return <Navigate to="/onboarding-questions" replace />;
+    }
+    // fully onboarded → straight to dashboard
+    return <Navigate to={returnTo} replace />;
+  }
+
+  // unauthenticated → show the actual login form
+  return <LoginForm />;
+}

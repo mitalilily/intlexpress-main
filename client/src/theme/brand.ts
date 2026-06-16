@@ -1,0 +1,22 @@
+export const brand = {
+  name: 'Intlexpress',
+  tagline: 'Global Courier Solutions',
+  website: 'https://gentle-pudding-26c182.netlify.app',
+  logo: '/brand/intlexpress-logo.png',
+  icon: '/brand/intlexpress-favicon.png',
+  colors: {
+    primary: '#333d81',
+    primaryDark: '#23295d',
+    primaryLight: '#5b66b1',
+    accent: '#ce2826',
+    accentDark: '#a61f1d',
+    accentLight: '#e15a55',
+    ink: '#151c46',
+    slate: '#556188',
+    muted: '#777780',
+    canvas: '#f6f7fb',
+    surface: '#ffffff',
+    surfaceAlt: '#edf0f9',
+    border: '#d8ddeb',
+  },
+} as const
