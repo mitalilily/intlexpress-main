@@ -1,5 +1,5 @@
 import { and, eq, or, sql } from 'drizzle-orm'
-import { razorpay } from '../../utils/razorpay'
+import { isRazorpayConfigured, razorpay } from '../../utils/razorpay'
 import { db } from '../client'
 import { wallets, walletTopups } from '../schema/wallet'
 import { users } from '../schema/users'
@@ -51,6 +51,10 @@ export async function createWalletOrder(
   amount: number,
   details: { name: string; email: string; phone: string },
 ) {
+  if (!isRazorpayConfigured) {
+    throw new Error('Wallet top-ups are temporarily disabled because Razorpay is not configured')
+  }
+
   const wallet = await walletOfUser(userId)
 
   // Generate unique order ID
