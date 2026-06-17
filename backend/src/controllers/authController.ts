@@ -26,7 +26,6 @@ import { db } from '../models/client'
 import { changeAdminPassword, loginAdmin } from '../models/services/adminAuth.service'
 import { employees } from '../schema/schema'
 import { users } from '../models/schema/users'
-import { sendVerificationEmail } from '../utils/emailSender'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
 
 const env = process.env.NODE_ENV || 'development'
@@ -37,7 +36,6 @@ dotenv.config({ path: path.resolve(__dirname, `../.env.${env}`) })
 const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!)
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
-const exposeLoginOtp = process.env.EXPOSE_LOGIN_OTP === 'true' || env !== 'production'
 
 export const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString()
 
@@ -174,9 +172,6 @@ export const requestOtp = async (req: Request, res: Response): Promise<any> => {
   const normalizedEmail = email.trim().toLowerCase()
   const otp = generateOtp()
   const expiry = new Date(Date.now() + OTP_EXPIRY)
-  const canDeliverByEmail = Boolean(process.env.GOOGLE_SMTP_PASSWORD)
-  let responseOtp: string | undefined
-  let deliveryMode: 'console' | 'email' | 'fallback' = 'email'
 
   try {
     // 1. Look up user by email
@@ -214,29 +209,13 @@ export const requestOtp = async (req: Request, res: Response): Promise<any> => {
       }
     }
 
-    // 2. Send OTP via email when configured, but always keep a fallback path so auth never hard-fails.
-    if (exposeLoginOtp || !canDeliverByEmail) {
-      console.log(`[Auth OTP] Console OTP for ${normalizedEmail}: ${otp}`)
-      responseOtp = otp
-      deliveryMode = 'console'
-    } else {
-      try {
-        await sendVerificationEmail(normalizedEmail, otp)
-      } catch (sendErr) {
-        console.error('[Auth OTP] Email delivery failed, falling back to console OTP:', sendErr)
-        console.log(`[Auth OTP] Fallback OTP for ${normalizedEmail}: ${otp}`)
-        responseOtp = otp
-        deliveryMode = 'fallback'
-      }
-    }
+    // Demo mode: always surface the OTP on screen and in server logs.
+    console.log(`[Auth OTP] Demo OTP for ${normalizedEmail}: ${otp}`)
 
     return res.json({
-      message:
-        deliveryMode === 'email'
-          ? 'OTP sent successfully to your email'
-          : 'OTP generated and available in console mode',
-      deliveryMode,
-      otp: responseOtp,
+      message: 'Demo OTP generated and displayed on screen',
+      deliveryMode: 'console',
+      otp,
     })
   } catch (err) {
     console.error('Error in requestOtp:', err)
