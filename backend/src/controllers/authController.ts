@@ -174,6 +174,9 @@ export const requestOtp = async (req: Request, res: Response): Promise<any> => {
   const normalizedEmail = email.trim().toLowerCase()
   const otp = generateOtp()
   const expiry = new Date(Date.now() + OTP_EXPIRY)
+  const canDeliverByEmail = Boolean(process.env.GOOGLE_SMTP_PASSWORD)
+  let responseOtp: string | undefined
+  let deliveryMode: 'console' | 'email' | 'fallback' = 'email'
 
   try {
     // 1. Look up user by email
@@ -211,19 +214,29 @@ export const requestOtp = async (req: Request, res: Response): Promise<any> => {
       }
     }
 
-    // 2. Send OTP via email in production, but expose it on-screen for console/dev sign-in.
-    if (exposeLoginOtp) {
+    // 2. Send OTP via email when configured, but always keep a fallback path so auth never hard-fails.
+    if (exposeLoginOtp || !canDeliverByEmail) {
       console.log(`[Auth OTP] Console OTP for ${normalizedEmail}: ${otp}`)
+      responseOtp = otp
+      deliveryMode = 'console'
     } else {
-      await sendVerificationEmail(normalizedEmail, otp)
+      try {
+        await sendVerificationEmail(normalizedEmail, otp)
+      } catch (sendErr) {
+        console.error('[Auth OTP] Email delivery failed, falling back to console OTP:', sendErr)
+        console.log(`[Auth OTP] Fallback OTP for ${normalizedEmail}: ${otp}`)
+        responseOtp = otp
+        deliveryMode = 'fallback'
+      }
     }
 
     return res.json({
-      message: exposeLoginOtp
-        ? 'OTP generated and exposed in console mode'
-        : 'OTP sent successfully to your email',
-      deliveryMode: exposeLoginOtp ? 'console' : 'email',
-      otp: exposeLoginOtp ? otp : undefined,
+      message:
+        deliveryMode === 'email'
+          ? 'OTP sent successfully to your email'
+          : 'OTP generated and available in console mode',
+      deliveryMode,
+      otp: responseOtp,
     })
   } catch (err) {
     console.error('Error in requestOtp:', err)
