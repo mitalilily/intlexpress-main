@@ -987,9 +987,9 @@ export const generateInvoicePDF = async (invoice: InvoiceData): Promise<Buffer> 
     try {
       const pdfDoc = printer.createPdfKitDocument(docDefinition)
       const chunks: Buffer[] = []
-      pdfDoc.on('data', (chunk) => chunks.push(chunk))
+      pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk))
       pdfDoc.on('end', () => resolve(Buffer.concat(chunks)))
-      pdfDoc.on('error', (err) => {
+      pdfDoc.on('error', (err: unknown) => {
         console.error('❌ PDF generation error:', err)
         // Provide more helpful error message
         if (err && typeof err === 'object' && 'message' in err) {

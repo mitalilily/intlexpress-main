@@ -854,9 +854,9 @@ export async function generateLabelForOrder(order: any, userId: string, tx: any 
     const pdfDoc = printer.createPdfKitDocument(docDefinition)
     const chunks: Buffer[] = []
     const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
-      pdfDoc.on('data', (chunk) => chunks.push(chunk))
+      pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk))
       pdfDoc.on('end', () => resolve(Buffer.concat(chunks)))
-      pdfDoc.on('error', (err) => reject(err))
+      pdfDoc.on('error', (err: unknown) => reject(err))
       pdfDoc.end()
     })
 

@@ -5,6 +5,8 @@ import { db } from '../../models/client'
 import { codRemittances } from '../../models/schema/codRemittance'
 import { markCodRemittanceSettled } from '../../models/services/codRemittance.service'
 
+type CodRemittanceRow = typeof codRemittances.$inferSelect
+
 /**
  * CSV Field Mappings for Different Couriers
  * Each courier has different column names in their settlement CSV
@@ -76,7 +78,7 @@ export const previewCourierSettlementCsv = async (req: any, res: Response): Prom
       return res.status(400).json({
         success: false,
         message: 'Failed to parse CSV file',
-        errors: errors.map((e: any) => e.message),
+        errors: errors.map((e: { message: string }) => e.message),
       })
     }
 
@@ -421,14 +423,14 @@ AWB123457,ORD002,2000,1910,2025-01-15,NEFT12345`
 export const debugCodRemittances = async (req: any, res: Response): Promise<any> => {
   try {
     // Get sample of pending COD remittances
-    const sampleRemittances = await db
+    const sampleRemittances: CodRemittanceRow[] = await db
       .select()
       .from(codRemittances)
       .where(eq(codRemittances.status, 'pending'))
       .limit(10)
 
     // Get total counts
-    const allRemittances = await db.select().from(codRemittances).limit(100)
+    const allRemittances: CodRemittanceRow[] = await db.select().from(codRemittances).limit(100)
 
     const stats = {
       total: allRemittances.length,

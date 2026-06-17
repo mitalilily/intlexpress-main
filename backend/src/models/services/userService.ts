@@ -4,7 +4,6 @@ import { users } from '../schema/users'
 // utils/verifyGoogleToken.ts
 import * as bcrypt from 'bcryptjs'
 import { and, asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
-import { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { OAuth2Client } from 'google-auth-library'
 
 import * as schema from '../../schema/schema'
@@ -27,8 +26,8 @@ export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 
 // Typed User rows
-// A connection can be either the global DB or a scoped PgTransaction
-export type Tx = NodePgDatabase<typeof schema> // global pool client
+// A connection can be either the global DB or a scoped transaction.
+export type Tx = any
 
 type UserUpdate = Partial<Omit<User, 'id'>> // We typically don't allow changing id or phone
 
@@ -68,11 +67,8 @@ const DEFAULT_PROFILE: Omit<typeof schema.userProfiles.$inferInsert, 'userId' | 
 
 export const findUserByPhone = async (phone: string) => {
   try {
-    const user = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.phone, phone),
-    })
-
-    return user
+    const [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1)
+    return user ?? null
   } catch (error) {
     console.error('Database query error:', error)
     return null
@@ -102,9 +98,8 @@ export const findUserById = async (id: string) => {
 }
 
 export const findUserByEmail = async (email: string, tx: Tx = db) => {
-  return await tx.query.users.findFirst({
-    where: (users, { eq }) => eq(users.email, email),
-  })
+  const [user] = await tx.select().from(users).where(eq(users.email, email)).limit(1)
+  return user ?? null
 }
 
 export const createUser = async (data: NewUser, tx: Tx = db) => {

@@ -962,7 +962,7 @@ export const generateInvoiceForUser = async (
     pdfDoc.pipe(stream)
     pdfDoc.end()
     stream.on('finish', () => resolve())
-    stream.on('error', (err) => reject(err))
+    stream.on('error', (err: unknown) => reject(err))
   })
 
   // Upload to R2
