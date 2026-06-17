@@ -25,6 +25,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '../models/client'
 import { changeAdminPassword, loginAdmin } from '../models/services/adminAuth.service'
 import { employees } from '../schema/schema'
+import { users } from '../models/schema/users'
 import { sendVerificationEmail } from '../utils/emailSender'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
 
@@ -196,13 +197,18 @@ export const requestOtp = async (req: Request, res: Response): Promise<any> => {
     if (user) {
       await updateUserOtpByEmail(normalizedEmail, otp, expiry)
     } else {
-      await createUserWithWallet({
-        email: normalizedEmail,
-        otp,
-        otpExpiresAt: expiry,
-        onboardingStep: 0,
-        emailVerified: false,
-      })
+      try {
+        await db.insert(users).values({
+          email: normalizedEmail,
+          otp,
+          otpExpiresAt: expiry,
+          emailVerified: false,
+          role: 'customer',
+        })
+      } catch (insertErr) {
+        console.warn('[Auth OTP] Minimal user bootstrap failed, retrying OTP update:', insertErr)
+        await updateUserOtpByEmail(normalizedEmail, otp, expiry)
+      }
     }
 
     // 2. Send OTP via email in production, but expose it on-screen for console/dev sign-in.

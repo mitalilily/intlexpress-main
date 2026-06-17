@@ -1,5 +1,6 @@
-import { Box, Typography } from '@mui/material'
-import { useState } from 'react'
+import { Box, Chip, Divider, Stack, Typography } from '@mui/material'
+import { Fragment } from 'react'
+import { FiArrowRight, FiClock, FiMapPin, FiPackage, FiShield, FiTruck } from 'react-icons/fi'
 import BrandMark from '../brand/BrandMark'
 import { brand } from '../../theme/brand'
 import PhoneForm from './PhoneForm'
@@ -7,218 +8,334 @@ import PhoneForm from './PhoneForm'
 const BRAND_BLUE = brand.colors.primary
 
 export default function LoginForm() {
-  const [isHovering, setIsHovering] = useState(false)
-
   return (
     <Box
-        sx={{
-          minHeight: '100vh',
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background:
-            'radial-gradient(circle at 12% 20%, rgba(51, 61, 129, 0.10) 0%, transparent 26%), radial-gradient(circle at 88% 14%, rgba(206, 40, 38, 0.08) 0%, transparent 22%), linear-gradient(135deg, #f8fbff 0%, #eef2fb 100%)',
-          px: { xs: 2, sm: 3 },
-          py: { xs: 3, sm: 4 },
-        }}
+      sx={{
+        minHeight: '100vh',
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        background:
+          'radial-gradient(circle at 14% 18%, rgba(206, 40, 38, 0.18) 0%, transparent 22%), radial-gradient(circle at 82% 22%, rgba(91, 102, 177, 0.16) 0%, transparent 24%), linear-gradient(135deg, #08111f 0%, #0f1730 45%, #f5f7fb 45%, #eef2f9 100%)',
+        px: { xs: 2, sm: 3 },
+        py: { xs: 3, sm: 4 },
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          inset: 0,
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)',
+          backgroundSize: '42px 42px',
+          maskImage: 'linear-gradient(180deg, rgba(0,0,0,0.65), transparent 90%)',
+          pointerEvents: 'none',
+        },
+      }}
     >
-      {/* Main Card Container */}
       <Box
         sx={{
           width: '100%',
           maxWidth: 1100,
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-          gap: { xs: 0, md: 4 },
-          background: '#ffffff',
-          borderRadius: { xs: '24px', md: '32px' },
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.08)',
-          overflow: { xs: 'hidden', md: 'visible' },
+          gridTemplateColumns: { xs: '1fr', md: '1.05fr 0.95fr' },
+          gap: { xs: 0, md: 0 },
+          background: 'rgba(255,255,255,0.88)',
+          border: '1px solid rgba(255,255,255,0.45)',
+          borderRadius: { xs: '28px', md: '36px' },
+          boxShadow: '0 30px 90px rgba(4, 10, 29, 0.25)',
+          overflow: 'hidden',
+          backdropFilter: 'blur(14px)',
         }}
       >
-        {/* LEFT PANEL - LOGIN FORM */}
         <Box
           sx={{
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
-            px: { xs: 2.5, sm: 4, md: 5 },
-            py: { xs: 4, md: 6 },
+            px: { xs: 2.5, sm: 4, md: 5.5 },
+            py: { xs: 4.5, md: 6.5 },
+            background:
+              'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,255,0.96) 100%)',
           }}
         >
-          {/* Logo & Header */}
-          <Box sx={{ mb: 4 }}>
-            <BrandMark width={220} sx={{ mb: 2.5, maxWidth: '100%' }} />
+          <Stack spacing={2.5}>
+            <Box>
+              <BrandMark width={210} sx={{ mb: 2.25, maxWidth: '100%' }} />
 
-            <Typography
-              sx={{
-                fontSize: '0.65rem',
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                color: BRAND_BLUE,
-                fontWeight: 900,
-                mb: 1,
-              }}
-            >
-              Global Courier Solutions
-            </Typography>
+              <Chip
+                label="Courier control tower"
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(51,61,129,0.08)',
+                  color: BRAND_BLUE,
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  mb: 1.6,
+                }}
+              />
 
-            <Typography
-              sx={{
-                color: '#0f172a',
-                fontWeight: 700,
-                fontSize: { xs: '1.6rem', sm: '1.9rem' },
-                letterSpacing: '-0.01em',
-                lineHeight: 1.2,
-                mb: 0.5,
-              }}
-            >
-              Welcome Back
-            </Typography>
+              <Typography
+                sx={{
+                  color: '#0f172a',
+                  fontWeight: 800,
+                  fontSize: { xs: '1.8rem', sm: '2.15rem' },
+                  letterSpacing: '-0.03em',
+                  lineHeight: 1.08,
+                  mb: 1,
+                }}
+              >
+                One secure sign-in for every shipment moving through Intlexpress.
+              </Typography>
 
-            <Typography
-              sx={{
-                color: '#64748b',
-                fontSize: '0.95rem',
-                fontWeight: 400,
-                lineHeight: 1.6,
-              }}
-            >
-              Sign in to manage shipping, tracking, and billing from one Intlexpress workspace.
-            </Typography>
-          </Box>
+              <Typography
+                sx={{
+                  color: '#5c6781',
+                  fontSize: '0.97rem',
+                  lineHeight: 1.7,
+                  maxWidth: 520,
+                }}
+              >
+                Track parcels, manage billing, and keep dispatch moving from a dashboard built for
+                courier teams.
+              </Typography>
+            </Box>
 
-          {/* Login Form */}
-          <Box sx={{ mb: 3 }}>
             <PhoneForm />
-          </Box>
-
-          {/* Footer Text */}
-          <Typography
-            sx={{
-              fontSize: '0.8rem',
-              color: '#94a3b8',
-              textAlign: 'center',
-              mt: 2,
-            }}
-          >
-            Secure merchant access with one premium logistics dashboard
-          </Typography>
+          </Stack>
         </Box>
 
-        {/* RIGHT PANEL - HERO IMAGE WITH BLOB SHAPE */}
         <Box
           sx={{
-            display: { xs: 'none', md: 'flex' },
-            alignItems: 'center',
-            justifyContent: 'center',
             position: 'relative',
-            minHeight: 500,
-            px: { md: 3 },
-            py: { md: 6 },
             overflow: 'hidden',
+            minHeight: { xs: 390, md: 700 },
+            background:
+              'linear-gradient(160deg, #0b1224 0%, #101b3a 52%, #18264f 100%)',
           }}
         >
-          {/* Blob-shaped image container with organic asymmetrical shape */}
           <Box
-            onMouseEnter={() => setIsHovering(true)}
-            onMouseLeave={() => setIsHovering(false)}
             sx={{
               position: 'relative',
-              width: '100%',
-              maxWidth: 380,
-              aspectRatio: '1',
-              cursor: 'pointer',
-              transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              transform: isHovering ? 'scale(1.05)' : 'scale(1)',
-              filter: isHovering ? 'drop-shadow(0 30px 60px rgba(217, 4, 22, 0.15))' : 'drop-shadow(0 15px 40px rgba(0, 0, 0, 0.1))',
+              height: '100%',
+              p: { xs: 3, sm: 4, md: 5 },
+              color: '#f8fbff',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: 2.5,
               '&::before': {
                 content: '""',
                 position: 'absolute',
                 inset: 0,
-                background: 'url(/images/login.jpg)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%',
-                opacity: 1,
-                transition: 'border-radius 0.6s ease-in-out',
+                background:
+                  'radial-gradient(circle at 20% 15%, rgba(206,40,38,0.35) 0%, transparent 20%), radial-gradient(circle at 80% 20%, rgba(91,102,177,0.22) 0%, transparent 22%), radial-gradient(circle at 70% 78%, rgba(255,255,255,0.08) 0%, transparent 22%)',
+                pointerEvents: 'none',
+              },
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                inset: 18,
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 4,
+                pointerEvents: 'none',
+              },
+            }}
+          >
+            <Stack spacing={1.4} sx={{ position: 'relative', zIndex: 1 }}>
+              <Typography
+                sx={{
+                  fontSize: '0.72rem',
+                  letterSpacing: '0.22em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.7)',
+                  fontWeight: 800,
+                }}
+              >
+                Dispatch Network
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: { xs: '1.9rem', sm: '2.45rem' },
+                  fontWeight: 800,
+                  lineHeight: 1.05,
+                  letterSpacing: '-0.04em',
+                  maxWidth: 460,
+                }}
+              >
+                Keep parcels moving. Keep merchants in control.
+              </Typography>
+              <Typography
+                sx={{
+                  color: 'rgba(255,255,255,0.72)',
+                  lineHeight: 1.8,
+                  maxWidth: 500,
+                }}
+              >
+                The login experience now mirrors the work you do every day: live hubs, fast lanes,
+                route visibility, and a secure control panel for the people running the network.
+              </Typography>
+            </Stack>
+
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1.2}
+              sx={{ position: 'relative', zIndex: 1, flexWrap: 'wrap' }}
+            >
+              {[
+                { icon: FiTruck, label: 'Live dispatch' },
+                { icon: FiPackage, label: 'Shipment tracking' },
+                { icon: FiShield, label: 'Secure access' },
+              ].map(({ icon: Icon, label }) => (
+                <Chip
+                  key={label}
+                  icon={<Icon size={14} />}
+                  label={label}
+                  sx={{
+                    bgcolor: 'rgba(255,255,255,0.08)',
+                    color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    px: 0.5,
+                    py: 2.2,
+                    '& .MuiChip-icon': { color: '#fff' },
+                  }}
+                />
+              ))}
+            </Stack>
+
+            <Box
+              sx={{
+                position: 'relative',
                 zIndex: 1,
-              },
-              '&:hover::before': {
-                borderRadius: '30% 60% 70% 40% / 50% 60% 30% 60%',
-              },
-            }}
-          />
+                display: 'grid',
+                gap: 1.4,
+              }}
+            >
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr auto 1fr auto 1fr',
+                  alignItems: 'center',
+                  gap: 1,
+                  color: '#fff',
+                }}
+              >
+                {[
+                  {
+                    title: 'Pickup scan',
+                    text: 'Manifest accepted in 12 sec',
+                    icon: FiMapPin,
+                  },
+                  {
+                    title: 'Hub transfer',
+                    text: 'Route matched to fastest lane',
+                    icon: FiArrowRight,
+                  },
+                  {
+                    title: 'Last mile',
+                    text: 'ETA updated in real time',
+                    icon: FiClock,
+                  },
+                ].map((item, index) => {
+                  const Icon = item.icon
+                  return (
+                    <Fragment key={item.title}>
+                      <Box
+                        sx={{
+                          p: 2,
+                          borderRadius: 3,
+                          background:
+                            index === 1
+                              ? 'linear-gradient(180deg, rgba(206,40,38,0.22), rgba(206,40,38,0.08))'
+                              : 'rgba(255,255,255,0.06)',
+                          border: '1px solid rgba(255,255,255,0.12)',
+                          minHeight: 104,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: '50%',
+                            display: 'grid',
+                            placeItems: 'center',
+                            background: 'rgba(255,255,255,0.12)',
+                            mb: 1.1,
+                          }}
+                        >
+                          <Icon size={16} />
+                        </Box>
+                        <Typography sx={{ fontWeight: 800, mb: 0.4 }}>{item.title}</Typography>
+                        <Typography sx={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.9rem' }}>
+                          {item.text}
+                        </Typography>
+                      </Box>
+                      {index < 2 && (
+                        <Box
+                          sx={{
+                            height: 2,
+                            width: 26,
+                            borderRadius: 999,
+                            bgcolor: 'rgba(255,255,255,0.25)',
+                          }}
+                        />
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </Box>
 
-          {/* Animated gradient overlay for depth */}
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              background: 'radial-gradient(circle at 30% 30%, rgba(217, 4, 22, 0.1) 0%, transparent 60%)',
-              pointerEvents: 'none',
-              borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%',
-            }}
-          />
+              <Divider sx={{ borderColor: 'rgba(255,255,255,0.12)' }} />
 
-          {/* Animated background elements */}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: -50,
-              right: -50,
-              width: 200,
-              height: 200,
-              background: 'radial-gradient(circle, rgba(217, 4, 22, 0.05) 0%, transparent 70%)',
-              borderRadius: '50%',
-              animation: 'float 6s ease-in-out infinite',
-              '@keyframes float': {
-                '0%, 100%': { transform: 'translateY(0px)' },
-                '50%': { transform: 'translateY(-20px)' },
-              },
-            }}
-          />
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+                  gap: 1.2,
+                }}
+              >
+                {[
+                  ['24/7', 'dispatch monitoring'],
+                  ['150+', 'routes mapped'],
+                  ['99.9%', 'shipment visibility'],
+                ].map(([value, label]) => (
+                  <Box
+                    key={label}
+                    sx={{
+                      p: 2,
+                      borderRadius: 3,
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                    }}
+                  >
+                    <Typography sx={{ fontSize: '1.35rem', fontWeight: 900, lineHeight: 1 }}>
+                      {value}
+                    </Typography>
+                    <Typography sx={{ color: 'rgba(255,255,255,0.68)', mt: 0.5, fontSize: '0.92rem' }}>
+                      {label}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
 
-          <Box
-            sx={{
-              position: 'absolute',
-              bottom: -30,
-              left: -30,
-              width: 150,
-              height: 150,
-              background: 'radial-gradient(circle, rgba(100, 116, 139, 0.05) 0%, transparent 70%)',
-              borderRadius: '50%',
-              animation: 'float 8s ease-in-out infinite',
-              '@keyframes float': {
-                '0%, 100%': { transform: 'translateY(0px)' },
-                '50%': { transform: 'translateY(20px)' },
-              },
-            }}
-          />
+            <Typography
+              sx={{
+                position: 'relative',
+                zIndex: 1,
+                fontSize: '0.78rem',
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.55)',
+              }}
+            >
+              Built for dispatch teams, merch ops, and logistics control rooms.
+            </Typography>
+          </Box>
         </Box>
       </Box>
-
-      {/* Add global styles for blob animation */}
-      <style>{`
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-20px);
-          }
-        }
-
-        @keyframes blobRotate {
-          0%, 100% {
-            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-          }
-          50% {
-            border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
-          }
-        }
-      `}</style>
     </Box>
   )
 }
