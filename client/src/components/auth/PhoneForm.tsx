@@ -198,17 +198,29 @@ export default function PhoneForm() {
           setStep(0)
         }}
       />
-    )
+  )
 
   return (
     <Stack spacing={2.2} alignItems="stretch">
-      <Stack spacing={1.2}>
+      <Stack spacing={1.2} alignItems="center">
+        <Box
+          component="img"
+          src="/brand/intelExpress-logo.png"
+          alt="IntelExpress"
+          sx={{
+            width: { xs: 148, sm: 168 },
+            height: 'auto',
+            mb: 0.4,
+          }}
+        />
+
         <Typography
           sx={{
             fontSize: '1.05rem',
             fontWeight: 800,
             color: '#17171A',
             letterSpacing: '-0.01em',
+            textAlign: 'center',
           }}
         >
           Choose how you want to sign in
