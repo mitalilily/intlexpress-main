@@ -34,11 +34,21 @@ export const isRazorpayConfigured = Boolean(
   CREDENTIALS[MODE].key_id && CREDENTIALS[MODE].key_secret,
 )
 
+const disabledRazorpayClient = {
+  orders: {
+    create: async () => {
+      throw new Error('Razorpay is not configured')
+    },
+  },
+}
+
 /** A single, shared Razorpay instance you can import anywhere in your app. */
-export const razorpay = new Razorpay({
-  key_id: CREDENTIALS[MODE].key_id ?? '',
-  key_secret: CREDENTIALS[MODE].key_secret ?? '',
-})
+export const razorpay = isRazorpayConfigured
+  ? new Razorpay({
+      key_id: CREDENTIALS[MODE].key_id!,
+      key_secret: CREDENTIALS[MODE].key_secret!,
+    })
+  : disabledRazorpayClient
 
 if (isRazorpayConfigured) {
   console.info(
