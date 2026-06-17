@@ -1,4 +1,5 @@
 import { and, eq, ne, sql } from 'drizzle-orm'
+import { PgTransaction } from 'drizzle-orm/pg-core'
 import { generateOtp } from '../../controllers/authController'
 import { CompanyInfo, IUserProfileDB } from '../../types/profileBlocks.types'
 import { HttpError } from '../../utils/classes'
@@ -18,6 +19,39 @@ import { plans } from '../schema/plans'
 import { userProfiles } from '../schema/userProfile'
 import { userPlans } from '../schema/userPlans'
 import { users } from '../schema/users'
+
+const EMPTY_COMPANY: CompanyInfo = {
+  businessName: '',
+  brandName: '',
+  city: '',
+  companyContactNumber: '',
+  pincode: '',
+  state: '',
+  profilePicture: '',
+  POCEmailVerified: false,
+  POCPhoneVerified: false,
+  companyAddress: '',
+  contactPerson: '',
+  contactNumber: '',
+  contactEmail: '',
+  companyEmail: '',
+  companyLogoUrl: '',
+  website: '',
+}
+
+const DEFAULT_PROFILE: Omit<typeof userProfiles.$inferInsert, 'userId' | 'id'> = {
+  onboardingStep: 0,
+  monthlyOrderCount: '0-100',
+  companyInfo: EMPTY_COMPANY,
+  domesticKyc: { status: 'pending', updatedAt: null },
+  bankDetails: null,
+  gstDetails: null,
+  businessType: [],
+  approved: false,
+  onboardingComplete: false,
+  salesChannels: {},
+  profileComplete: false,
+}
 
 /**
  * Fetch the profile for a specific userId (returns null if none exists)
@@ -68,6 +102,23 @@ export const upsertUserProfile = async (userId: string, input: IUserProfileDB) =
   const payload: any = Object.fromEntries(
     Object.entries(input).filter(([, v]) => v !== undefined),
   ) as IUserProfileDB
+
+  if (!existing) {
+    const [inserted] = await db
+      .insert(userProfiles)
+      .values({
+        ...DEFAULT_PROFILE,
+        ...payload,
+        userId,
+        companyInfo: {
+          ...DEFAULT_PROFILE.companyInfo,
+          ...(payload.companyInfo ?? {}),
+        },
+      })
+      .returning()
+
+    return inserted
+  }
 
   // Merge JSONB blocks (keeps untouched keys intact)
   const merged = {
@@ -187,7 +238,7 @@ export const updateUserProfileService = async (userId: string, data: Record<stri
   scalarPatch.updatedAt = new Date()
 
   /* 5. transaction (same body as before) */
-  await db.transaction(async (tx) => {
+  await db.transaction(async (tx: PgTransaction<any, any, any>) => {
     if (Object.keys(scalarPatch).length) {
       await tx.update(userProfiles).set(scalarPatch).where(eq(userProfiles.userId, userId))
     }
@@ -365,7 +416,7 @@ export const verifyProfileEmailOTP = async (
 )`
 
   /* 4️⃣ Transaction: update BOTH tables atomically */
-  await db.transaction(async (tx) => {
+  await db.transaction(async (tx: PgTransaction<any, any, any>) => {
     /* user_profiles */
     await tx
       .update(userProfiles)
@@ -426,7 +477,7 @@ export const verifyProfilePhoneOTP = async (
 )`
 
   // 3️⃣ Transaction to update both tables atomically
-  await db.transaction(async (tx) => {
+  await db.transaction(async (tx: PgTransaction<any, any, any>) => {
     // Update user_profiles
     await tx
       .update(userProfiles)

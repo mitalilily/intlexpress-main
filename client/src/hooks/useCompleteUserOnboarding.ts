@@ -19,8 +19,11 @@ export const useCompleteUserOnboarding = () => {
     onSuccess: (data) => {
       if (data)
         queryClient.invalidateQueries({
-          queryKey: ["userInfo"],
+          queryKey: ["userProfile"],
         });
+      queryClient.invalidateQueries({
+        queryKey: ["userInfo"],
+      });
       return data;
     },
 

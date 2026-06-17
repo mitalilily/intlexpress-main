@@ -57,6 +57,7 @@ const steps = [
 ]
 
 export default function UserOnboarding() {
+  const draftStorageKey = 'intlexpress:onboarding-draft:v1'
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const queryClient = useQueryClient()
@@ -68,6 +69,8 @@ export default function UserOnboarding() {
   const [step, setStep] = useState<number>(1)
   const [formData, setFormData] = useState<UserInfoData>({ ...initialFormData })
   const [formErrors, setFormErrors] = useState<FormErrors>({ ...initialFormData })
+  const [draftHydrated, setDraftHydrated] = useState(false)
+  const [hasDraft, setHasDraft] = useState(false)
 
   const progressPercent = useMemo(() => Math.round((step / steps.length) * 100), [step])
   const currentStepMeta = steps[step - 1]
@@ -119,6 +122,9 @@ export default function UserOnboarding() {
 
     try {
       await completeOnboarding({ step, data: formData })
+      window.localStorage.removeItem(draftStorageKey)
+      window.localStorage.removeItem(`${draftStorageKey}:step`)
+      setHasDraft(false)
       await refetchUser()
 
       if (step < steps.length) {
@@ -137,20 +143,66 @@ export default function UserOnboarding() {
   }
 
   useEffect(() => {
-    if (!userData) return
+    try {
+      const savedDraft = window.localStorage.getItem(draftStorageKey)
+      const savedStep = window.localStorage.getItem(`${draftStorageKey}:step`)
+
+      if (savedDraft) {
+        setHasDraft(true)
+        const parsedDraft = JSON.parse(savedDraft) as Partial<UserInfoData>
+        setFormData((prev) => ({
+          ...prev,
+          ...parsedDraft,
+          basicInfo: {
+            ...prev.basicInfo,
+            ...(parsedDraft.basicInfo ?? {}),
+          },
+          businessLegal: {
+            ...prev.businessLegal,
+            ...(parsedDraft.businessLegal ?? {}),
+          },
+          platformIntegration: {
+            ...prev.platformIntegration,
+            ...(parsedDraft.platformIntegration ?? {}),
+          },
+        }))
+      }
+
+      if (savedStep) {
+        const parsedStep = Number(savedStep)
+        if (Number.isFinite(parsedStep) && parsedStep >= 1 && parsedStep <= steps.length) {
+          setStep(parsedStep)
+        }
+      }
+    } catch (error) {
+      console.warn('Unable to restore onboarding draft:', error)
+    } finally {
+      setDraftHydrated(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!draftHydrated || !userData?.id) return
 
     if (userData.onboardingComplete) {
+      window.localStorage.removeItem(draftStorageKey)
+      window.localStorage.removeItem(`${draftStorageKey}:step`)
+      setHasDraft(false)
       navigate('/home')
       return
     }
 
+    if (hasDraft) return
+
     const resumeStep = (userData.onboardingStep ?? 0) + 1
     const clamped = Math.min(Math.max(resumeStep, 1), steps.length)
     setStep(clamped)
-  }, [userData, navigate])
+  }, [userData, navigate, draftHydrated, hasDraft])
 
   useEffect(() => {
-    if (!userData || !Object.keys(userData).length) return
+    if (!draftHydrated || !userData?.id) return
+
+    if (hasDraft) return
 
     setFormData({
       basicInfo: {
@@ -171,7 +223,18 @@ export default function UserOnboarding() {
       },
       platformIntegration: { ...(userData?.salesChannels ?? {}) },
     })
-  }, [userData])
+  }, [userData, draftHydrated, hasDraft])
+
+  useEffect(() => {
+    if (!draftHydrated) return
+
+    try {
+      window.localStorage.setItem(draftStorageKey, JSON.stringify(formData))
+      window.localStorage.setItem(`${draftStorageKey}:step`, String(step))
+    } catch (error) {
+      console.warn('Unable to persist onboarding draft:', error)
+    }
+  }, [draftHydrated, formData, step])
 
   return (
     <Box
