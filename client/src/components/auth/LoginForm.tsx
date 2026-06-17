@@ -26,7 +26,8 @@ export default function LoginForm() {
       >
         <Box
           sx={{
-            minHeight: { xs: 340, md: 560, lg: 'calc(100vh - 24px)' },
+            display: { xs: 'none', lg: 'block' },
+            minHeight: { lg: 'calc(100vh - 24px)' },
             backgroundImage: 'url(/images/login-reference.jpeg)',
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'left center',
@@ -43,19 +44,21 @@ export default function LoginForm() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            gridColumn: { xs: '1', lg: 'auto' },
           }}
         >
           <Box
             sx={{
               width: '100%',
+              maxWidth: { xs: 720, lg: 'none' },
               height: '100%',
               background: '#ffffff',
-              borderRadius: '26px',
+              borderRadius: { xs: '20px', sm: '24px', lg: '26px' },
               boxShadow: '0 18px 45px rgba(21, 30, 55, 0.08)',
               border: '1px solid rgba(20, 31, 60, 0.06)',
               overflow: 'hidden',
-              px: { xs: 2, sm: 3.5, lg: 4 },
-              py: { xs: 2.4, sm: 3.3, lg: 3.8 },
+              px: { xs: 1.5, sm: 3.5, lg: 4 },
+              py: { xs: 1.5, sm: 3.3, lg: 3.8 },
               display: 'flex',
               alignItems: 'stretch',
             }}
