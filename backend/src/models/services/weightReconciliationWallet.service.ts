@@ -11,6 +11,7 @@ import {
 import { weight_discrepancies } from '../../schema/schema'
 import { db } from '../client'
 import { wallets } from '../schema/wallet'
+import { users } from '../schema/users'
 import { createWalletTransaction } from './wallet.service'
 
 const env = process.env.NODE_ENV || 'development'
@@ -134,9 +135,7 @@ export async function applyWeightDiscrepancyCharge(
       .where(eq(weight_discrepancies.id, discrepancyId))
 
     // Send email notification
-    const user = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, userId),
-    })
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1)
 
     if (user?.email) {
       const newBalance = currentBalance - additionalCharge
@@ -233,9 +232,7 @@ export async function refundWeightDiscrepancyCharge(
       .where(eq(weight_discrepancies.id, discrepancyId))
 
     // Send email notification
-    const user = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, userId),
-    })
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1)
 
     if (user?.email) {
       const newBalance = Number(wallet.balance) + refundAmount
