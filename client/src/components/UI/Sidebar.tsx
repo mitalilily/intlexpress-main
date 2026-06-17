@@ -244,7 +244,7 @@ const navItems: NavItem[] = [
         icon: <TbTicket size={ICON_SIZE_TB} />,
       },
       {
-        text: 'About Intlexpress',
+        text: 'About IntelExpress',
         path: '/support/about_us',
         icon: <BiInfoCircle size={ICON_SIZE_BI} />,
       },
@@ -343,7 +343,7 @@ export default function Sidebar({
         {shouldShowExpanded && (
           <Box sx={{ flex: 1, minWidth: 0, ml: 1 }}>
             <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: BRAND_INK }}>
-              Intlexpress
+              IntelExpress
             </Typography>
           </Box>
         )}

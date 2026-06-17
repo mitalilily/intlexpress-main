@@ -481,7 +481,7 @@ export default function TrackingPage() {
         <Box
           component="img"
           src="/logo/despatch-logo.jpeg"
-          alt="Intlexpress Logo"
+          alt="IntelExpress Logo"
           sx={{ width: 72, height: 'auto', mb: 0.5, borderRadius: 1.5 }}
         />
         <Typography
@@ -494,7 +494,7 @@ export default function TrackingPage() {
             letterSpacing: 0.5,
           }}
         >
-          Powered by Intlexpress
+          Powered by IntelExpress
         </Typography>
       </Box>
     </Box>

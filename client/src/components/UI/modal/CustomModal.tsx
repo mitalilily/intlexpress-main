@@ -75,7 +75,7 @@ const CustomDialog: React.FC<CustomDialogProps> = ({
                 mb: 0.6,
               }}
             >
-              Intlexpress
+              IntelExpress
             </Typography>
             <Typography component="div" sx={{ fontSize: { xs: '1rem', sm: '1.08rem' }, fontWeight: 800, color: BRAND_INK }}>
               {title}

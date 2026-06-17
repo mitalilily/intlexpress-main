@@ -30,7 +30,7 @@ export default function LoginForm() {
             minHeight: { lg: 'calc(100vh - 24px)' },
             backgroundImage: 'url(/images/login-reference.jpeg)',
             backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'left center',
+            backgroundPosition: 'center center',
             backgroundSize: 'cover',
             borderRadius: 0,
             overflow: 'hidden',

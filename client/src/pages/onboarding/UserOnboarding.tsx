@@ -57,7 +57,7 @@ const steps = [
 ]
 
 export default function UserOnboarding() {
-  const draftStorageKey = 'intlexpress:onboarding-draft:v1'
+  const draftStorageKey = 'intelExpress:onboarding-draft:v1'
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const queryClient = useQueryClient()
@@ -284,8 +284,8 @@ export default function UserOnboarding() {
             >
               <Box
                 component="img"
-                src="/brand/intlexpress-logo.png"
-                alt="Intlexpress"
+                src="/brand/intelExpress-logo.png"
+                alt="IntelExpress"
                 sx={{ width: { xs: 150, md: 176 }, height: 'auto', mb: 2.2 }}
               />
 

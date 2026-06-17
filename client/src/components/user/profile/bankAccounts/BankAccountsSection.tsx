@@ -99,7 +99,7 @@ export const BankAccountsSection: React.FC = () => {
             Banking details for payouts and COD remittance
           </Typography>
           <Typography sx={{ fontSize: '0.92rem', color: '#4B5563' }}>
-            Control where Intlexpress settles funds and which account remains primary for operations.
+            Control where IntelExpress settles funds and which account remains primary for operations.
           </Typography>
         </Stack>
         {accounts && accounts.length > 0 && (
