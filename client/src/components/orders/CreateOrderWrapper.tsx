@@ -1,8 +1,9 @@
 import { Box, Container, Tab, Tabs, Typography } from '@mui/material'
-import { useEffect, useState, type SyntheticEvent } from 'react'
+import { lazy, Suspense, useEffect, useState, type SyntheticEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import B2BOrderForm from './b2b/B2BOrderForm'
-import B2COrderFormSteps from './b2c/B2COrderForm'
+
+const B2BOrderForm = lazy(() => import('./b2b/B2BOrderForm'))
+const B2COrderFormSteps = lazy(() => import('./b2c/B2COrderForm'))
 
 const getRequestedOrderType = (value: string | null): 'b2c' | 'b2b' =>
   value === 'b2b' ? 'b2b' : 'b2c'
@@ -85,7 +86,9 @@ const CreateOrderWrapper = () => {
           </Box>
 
           <Box sx={{ height: { md: 'calc(100% - 36px)' }, minHeight: 0 }}>
-            {activeTab === 'b2c' ? <B2COrderFormSteps /> : <B2BOrderForm />}
+            <Suspense fallback={<Box sx={{ minHeight: 320 }} />}>
+              {activeTab === 'b2c' ? <B2COrderFormSteps /> : <B2BOrderForm />}
+            </Suspense>
           </Box>
         </Box>
     </Container>
