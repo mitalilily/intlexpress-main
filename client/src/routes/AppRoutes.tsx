@@ -1,18 +1,18 @@
 // AppRoutes.tsx
 import { lazy, Suspense } from 'react'
-import { Box } from '@mui/material'
+import { Box, Stack, Typography } from '@mui/material'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { useAuth } from '../context/auth/AuthContext'
 import FullScreenLoader from '../components/UI/loader/FullScreenLoader'
 import { normalizeAwb } from '../utils/awb'
 import GlobalRedirectHandler from './WalletRedirectHandler'
+import RequireAuth from '../components/auth/wrapper/RequireAuth'
+import RequireOnboard from '../components/auth/wrapper/RequireOnboard'
+import Login from '../pages/auth/Login'
 
 /* ---------- Lazy-loaded components ---------- */
-const RequireAuth = lazy(() => import('../components/auth/wrapper/RequireAuth'))
-const RequireOnboard = lazy(() => import('../components/auth/wrapper/RequireOnboard'))
 const Layout = lazy(() => import('../components/UI/Layout'))
 const CreateOrderWrapper = lazy(() => import('../components/orders/CreateOrderWrapper'))
-const Login = lazy(() => import('../pages/auth/Login'))
 
 // Onboarding & Dashboard
 const UserOnboarding = lazy(() => import('../pages/onboarding/UserOnboarding'))
@@ -123,7 +123,32 @@ export default function AppRoutes() {
   return (
     <BrowserRouter>
       <GlobalRedirectHandler />
-      <Suspense fallback={<FullScreenLoader />}>
+      <Suspense
+        fallback={
+          <Box sx={{ minHeight: '100vh', bgcolor: '#f6f7fb' }}>
+            <FullScreenLoader />
+            <Stack
+              spacing={1}
+              sx={{
+                position: 'fixed',
+                left: '50%',
+                bottom: 48,
+                transform: 'translateX(-50%)',
+                textAlign: 'center',
+                zIndex: 10000,
+                px: 2,
+              }}
+            >
+              <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#151c46' }}>
+                Loading IntleExpress
+              </Typography>
+              <Typography sx={{ fontSize: '0.8rem', color: '#556188' }}>
+                Preparing your workspace...
+              </Typography>
+            </Stack>
+          </Box>
+        }
+      >
         <Routes>
           {/* public */}
           <Route path="/" element={<Login />} />
