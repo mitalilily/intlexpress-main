@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react'
 import { Box } from '@mui/material'
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { useAuth } from '../context/auth/AuthContext'
+import FullScreenLoader from '../components/UI/loader/FullScreenLoader'
 import { normalizeAwb } from '../utils/awb'
 import GlobalRedirectHandler from './WalletRedirectHandler'
 
@@ -122,7 +123,7 @@ export default function AppRoutes() {
   return (
     <BrowserRouter>
       <GlobalRedirectHandler />
-      <Suspense fallback={<Box />}>
+      <Suspense fallback={<FullScreenLoader />}>
         <Routes>
           {/* public */}
           <Route path="/" element={<Login />} />

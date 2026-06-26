@@ -14,6 +14,17 @@ import ErrorBoundary from "./components/UI/ErrorBoundary.tsx";
 const clientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID;
 const CHUNK_RELOAD_KEY = "__chunk_reload_attempted__";
 
+function AppProviders({ children }: { children: React.ReactNode }) {
+  if (!clientId) {
+    console.warn(
+      "VITE_GOOGLE_OAUTH_CLIENT_ID is not configured. Continuing without Google OAuth provider.",
+    );
+    return <>{children}</>;
+  }
+
+  return <GoogleOAuthProvider clientId={clientId}>{children}</GoogleOAuthProvider>;
+}
+
 const isChunkLoadError = (message?: string) => {
   if (!message) return false;
   return (
@@ -57,7 +68,7 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
-      <GoogleOAuthProvider clientId={clientId}>
+      <AppProviders>
         <ThemeProvider theme={darkTheme}>
           <CssBaseline />
           <ToastProvider />
@@ -67,7 +78,7 @@ createRoot(document.getElementById("root")!).render(
             </AuthProvider>
           </QueryClientProvider>
         </ThemeProvider>
-      </GoogleOAuthProvider>
+      </AppProviders>
     </ErrorBoundary>
   </StrictMode>
 );
