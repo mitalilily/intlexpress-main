@@ -2,9 +2,8 @@ services:
   - type: web
     name: intlexpress-client
     runtime: static
-    rootDir: client
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: ./client/dist
     buildFilter:
       paths:
         - client/**
@@ -16,9 +15,8 @@ services:
   - type: web
     name: intlexpress-admin
     runtime: static
-    rootDir: admin-dashboard
-    buildCommand: npm install --package-lock=false && npm run build
-    staticPublishPath: build
+    buildCommand: cd admin-dashboard && npm install --package-lock=false && npm run build
+    staticPublishPath: ./admin-dashboard/build
     buildFilter:
       paths:
         - admin-dashboard/**
