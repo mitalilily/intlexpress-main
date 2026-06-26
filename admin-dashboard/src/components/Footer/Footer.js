@@ -21,18 +21,14 @@ export default function Footer() {
         fontSize="sm"
       >
         &copy; {new Date().getFullYear()}{" "}
-        <Text as="span">
-          {document.documentElement.dir === "rtl"
-            ? "كل الحقوق محفوظة لـ"
-            : "All rights reserved – "}
-        </Text>
+        <Text as="span">All rights reserved - </Text>
         <Link
           color={linkColor}
-          href="https://www.shiplifi.com"
+          href="https://intlexpress-client.onrender.com"
           target="_blank"
           fontWeight="semibold"
         >
-          Shiplifi Admin
+          IntleExpress Admin
         </Link>
       </Text>
       <Link

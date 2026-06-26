@@ -155,7 +155,7 @@ export default function Layout() {
                   textTransform: 'uppercase',
                 }}
               >
-                IntelExpress - Global Courier Solutions
+                IntleExpress - Global Courier Solutions
               </Box>
             </Box>
           </Box>

@@ -18,6 +18,7 @@ import {
   useColorModeValue,
   useToast,
 } from '@chakra-ui/react'
+import BrandLockup from '../../components/Brand/BrandLockup'
 import { jwtDecode } from 'jwt-decode'
 import { useEffect, useState } from 'react'
 import { FiCheckCircle } from 'react-icons/fi'
@@ -127,31 +128,18 @@ function SignIn() {
         <GridItem bg={leftBg} borderRight={{ base: 'none', lg: '1px solid' }} borderColor={leftBorder}>
           <VStack align="stretch" spacing={0} h="100%" p={{ base: 6, md: 8, lg: 10 }}>
             <HStack spacing={4} mb={{ base: 8, md: 10 }}>
-              <Box
-                as="img"
-                src="/logo/shiplifi-logo.png"
-                alt="Shiplifi"
-                h="54px"
-                w="54px"
-                objectFit="contain"
-                borderRadius="10px"
-                bg="white"
-                p="1"
-                border="1px solid rgba(17,17,19,0.08)"
+              <BrandLockup
+                iconSize={56}
+                nameColor="white"
+                taglineColor="rgba(255,255,255,0.52)"
+                nameSize={{ base: '2xl', md: '3xl' }}
+                tagline="Admin Control Center"
               />
-              <VStack align="start" spacing={0.5}>
-                <Text fontSize="xs" fontWeight="800" letterSpacing="0.18em" textTransform="uppercase" color="rgba(255,255,255,0.52)">
-                  Shiplifi
-                </Text>
-                <Text fontSize="sm" fontWeight="700" color="white">
-                  Admin Control Center
-                </Text>
-              </VStack>
             </HStack>
 
             <VStack align="start" spacing={5} maxW="560px">
               <Heading fontSize={{ base: '3xl', md: '4xl' }} lineHeight="1.02" letterSpacing="-0.04em" color="white">
-                Run Shiplifi operations from one sharper admin command layer.
+                Run IntleExpress operations from one sharper admin command layer.
               </Heading>
               <Text color="rgba(255,255,255,0.72)" fontSize="md" lineHeight="1.9">
                 Oversee pricing, users, serviceability, support, billing, and logistics execution
@@ -210,10 +198,10 @@ function SignIn() {
                     Secure Access
                   </Text>
                   <Heading fontSize={{ base: '2xl', md: '3xl' }} fontWeight="800" color={textPrimary} lineHeight="1.08" letterSpacing="-0.03em">
-                    Sign in to Shiplifi Admin
+                    Sign in to IntleExpress Admin
                   </Heading>
                   <Text mt={2} color={textSecondary} fontSize="sm" lineHeight="1.8">
-                    Enter your administrator credentials to continue to the Shiplifi control center.
+                    Enter your administrator credentials to continue to the IntleExpress control center.
                   </Text>
                 </Box>
 
@@ -225,7 +213,7 @@ function SignIn() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@shiplifi.com"
+                    placeholder="admin@intlexpress.com"
                     h="50px"
                     borderRadius="10px"
                     bg={inputBg}

@@ -6,6 +6,7 @@ import {
   SimpleGrid,
   useColorModeValue,
 } from "@chakra-ui/react";
+import BrandLockup from "components/Brand/BrandLockup";
 // assets
 import peopleImage from "assets/img/people-image.png";
 import BarChart from "components/Charts/BarChart";
@@ -67,16 +68,17 @@ export default function Dashboard() {
         gap='24px'>
         <BuiltByDevelopers
           title={"تم تطويرها للإدارة"}
-          name={"لوحة تحكم Shiplifi"}
+          name={"لوحة تحكم IntleExpress"}
           description={
             "تجربة إدارة احترافية لمتابعة الشحنات والدعم والتسعير والعمليات من مكان واحد."
           }
           image={
-            <Image
-              src="/logo/shiplifi-logo.png"
-              alt='Shiplifi'
-              minWidth={{ md: "300px", lg: "auto" }}
-              borderRadius="20px"
+            <BrandLockup
+              iconSize={64}
+              nameColor="white"
+              taglineColor="whiteAlpha.700"
+              nameSize={{ base: '2xl', md: '3xl' }}
+              tagline="Admin Control Center"
             />
           }
         />

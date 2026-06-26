@@ -7,6 +7,7 @@ import {
   Link,
   useColorModeValue,
 } from '@chakra-ui/react'
+import BrandLockup from 'components/Brand/BrandLockup'
 import PropTypes from 'prop-types'
 import { useEffect, useState } from 'react'
 import AdminNavbarLinks from './AdminNavbarLinks'
@@ -89,18 +90,9 @@ export default function AdminNavbar(props) {
     >
       <Flex w="100%" flexDirection={{ sm: 'column', md: 'row' }} alignItems={{ xl: 'center' }} gap={{ sm: 2, md: 0 }}>
         <Box mb={{ sm: '4px', md: '0px' }} display="flex" alignItems="center" gap="14px">
-          <Box
-            as="img"
-            src="/logo/shiplifi-logo.png"
-            alt="Shiplifi"
-            h="36px"
-            w="36px"
-            objectFit="contain"
-            display={{ base: 'none', md: 'block' }}
-            borderRadius="8px"
-            p="3px"
-            bg={useColorModeValue('rgba(217, 4, 22, 0.08)', 'rgba(255, 255, 255, 0.08)')}
-          />
+          <Box display={{ base: 'none', md: 'block' }}>
+            <BrandLockup compact iconSize={36} />
+          </Box>
 
           <Box>
             <Breadcrumb separator="/" spacing="8px" mb="3px">

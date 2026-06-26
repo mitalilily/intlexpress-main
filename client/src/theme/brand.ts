@@ -1,7 +1,10 @@
 export const brand = {
-  name: 'IntelExpress',
+  name: 'IntleExpress',
   tagline: 'Global Courier Solutions',
-  website: 'https://gentle-pudding-26c182.netlify.app',
+  website: 'https://intlexpress-client.onrender.com',
+  supportEmail: 'info@intlexpress.com',
+  apiBaseUrl: 'https://intlexpress-main-pgvy.onrender.com/api',
+  socketUrl: 'https://intlexpress-main-pgvy.onrender.com',
   logo: '/brand/intelExpress-logo.png',
   icon: '/brand/intelExpress-favicon.png',
   colors: {

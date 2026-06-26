@@ -80,7 +80,7 @@ const AllChannelOptions = ({ fromChannelList = false }: IAllChannelOptions) => {
           Store connections
         </Typography>
         <Typography color="text.secondary" fontSize="0.9rem">
-          Connect storefronts and marketplaces into the IntelExpress admin workflow.
+          Connect storefronts and marketplaces into the IntleExpress admin workflow.
         </Typography>
       </Stack>
       <Grid container spacing={2}>

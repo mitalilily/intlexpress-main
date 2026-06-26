@@ -53,7 +53,7 @@ const PrivacyPolicy = () => {
               <>
                 Your Privacy Rights: You may review, update, or correct your details, or withdraw
                 consent by contacting us at{' '}
-                <Link href="mailto:info@shiplifi.com">info@shiplifi.com</Link>.
+                <Link href="mailto:info@intlexpress.com">info@intlexpress.com</Link>.
               </>
             }
           />
@@ -73,10 +73,10 @@ const PrivacyPolicy = () => {
               <>
                 Grievance Officer: If you have queries or complaints, reach out to us at{' '}
                 <a
-                  href="mailto:info@shiplifi.com"
+                  href="mailto:info@intlexpress.com"
                   style={{ color: '#fccf5e', textDecoration: 'none' }}
                 >
-                  info@shiplifi.com
+                  info@intlexpress.com
                 </a>
                 .
               </>

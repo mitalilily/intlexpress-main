@@ -1,5 +1,6 @@
 import { ChevronDownIcon } from '@chakra-ui/icons'
 import { Box, Button, Collapse, Flex, Stack, Text, useColorModeValue } from '@chakra-ui/react'
+import BrandLockup from 'components/Brand/BrandLockup'
 import React, { useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 
@@ -214,7 +215,6 @@ const SidebarContent = ({ logoText, routes, sidebarWidth }) => {
           <Flex
             align="center"
             justify="center"
-            gap="10px"
             px="12px"
             py="10px"
             borderRadius="14px"
@@ -222,29 +222,18 @@ const SidebarContent = ({ logoText, routes, sidebarWidth }) => {
             border="1px solid"
             borderColor={brandCardBorder}
           >
-            <Box as="img" src="/logo/shiplifi-logo.png" alt="Shiplifi" h="40px" w="40px" objectFit="contain" borderRadius="10px" />
-            <Box textAlign="left">
-              <Text fontWeight="800" fontSize="15px" color={brandText}>
-                {logoText}
-              </Text>
-              <Text fontSize="10px" fontWeight="700" letterSpacing="1px" textTransform="uppercase" color="rgba(255,255,255,0.56)">
-                Admin Console
-              </Text>
-            </Box>
+            <BrandLockup
+              iconSize={42}
+              nameColor={brandText}
+              taglineColor="rgba(255,255,255,0.56)"
+              nameSize="20px"
+              tagline="Admin Console"
+            />
           </Flex>
         ) : (
-          <Box
-            as="img"
-            src="/logo/shiplifi-logo.png"
-            alt="Shiplifi"
-            h="38px"
-            w="38px"
-            mx="auto"
-            objectFit="contain"
-            p="2px"
-            borderRadius="10px"
-            bg={collapsedLogoBg}
-          />
+          <Box mx="auto" p="2px" borderRadius="10px" bg={collapsedLogoBg} display="inline-flex">
+            <BrandLockup compact iconSize={38} />
+          </Box>
         )}
       </Box>
 

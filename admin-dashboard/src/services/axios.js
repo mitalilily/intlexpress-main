@@ -1,11 +1,12 @@
 import axios from 'axios'
+import brand from '../branding/brand'
 
 const getDefaultApiBaseUrl = () => {
-  if (typeof window !== 'undefined' && window.location.hostname === 'admin.shiplifi.com') {
-    return 'https://api.shiplifi.com/api'
+  if (typeof window !== 'undefined' && window.location.hostname === 'intlexpress-admin.onrender.com') {
+    return brand.apiBaseUrl
   }
 
-  return 'http://localhost:5003/api'
+  return brand.apiBaseUrl
 }
 
 const apiBaseURL = (process.env.REACT_APP_API_BASE_URL || getDefaultApiBaseUrl()).replace(/\/+$/, '')

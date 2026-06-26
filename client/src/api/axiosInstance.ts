@@ -2,7 +2,7 @@
 import axios from 'axios'
 import { clearAuthTokens, getAuthTokens, setAuthTokens } from './tokenVault'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.shiplifi.com/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://intlexpress-main-pgvy.onrender.com/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,

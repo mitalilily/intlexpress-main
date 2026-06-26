@@ -34,7 +34,7 @@ export const ViewWebhookSecretModal = ({
       '-',
     )}-${timestamp.split('T')[0]}.txt`
     const fileContent = `
-IntelExpress Webhook Secret
+IntleExpress Webhook Secret
 Generated: ${timestamp}
 Webhook Name: ${webhook.name || 'Unnamed'}
 Webhook URL: ${webhook.url}

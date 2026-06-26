@@ -81,7 +81,7 @@ export default function MerchantDashboard() {
                 letterSpacing: '-0.5px',
               }}
             >
-              ⬡ IntelExpress
+              ⬡ IntleExpress
             </Box>
           </Box>
 

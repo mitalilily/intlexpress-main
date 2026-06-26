@@ -620,7 +620,7 @@ const ApiIntegration = () => {
                 </Text>
                 <Text fontSize="sm" color="gray.600" mb={4}>
                   Manual Admin API token connection is disabled. Start OAuth for a target merchant or ask
-                  the merchant to connect Shopify from the Shiplifi customer panel.
+                  the merchant to connect Shopify from the IntleExpress customer panel.
                 </Text>
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                   <FormControl isRequired>

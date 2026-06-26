@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { io } from 'socket.io-client'
 import { useAuthStore } from 'store/useAuthStore'
 import { useNotificationsStore } from 'store/useNotificationsStore'
+import brand from '../branding/brand'
 
 export const useSocket = () => {
   const { userId } = useAuthStore()
@@ -10,7 +11,7 @@ export const useSocket = () => {
   useEffect(() => {
     if (!userId) return
 
-    const socket = io(process.env.REACT_APP_SOCKET_URL || 'https://api.shiplifi.com')
+    const socket = io(process.env.REACT_APP_SOCKET_URL || brand.socketUrl)
 
     socket.emit('register', userId)
 

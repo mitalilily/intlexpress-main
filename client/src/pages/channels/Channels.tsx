@@ -41,7 +41,7 @@ const Channels = () => {
     <AdminPageShell
       title="Channel connection workspace"
       badge="Integrations"
-      description="Connect sales channels, review live store links, and keep inbound order sources organized under one IntelExpress admin surface."
+      description="Connect sales channels, review live store links, and keep inbound order sources organized under one IntleExpress admin surface."
       metrics={[
         { label: 'Primary channels', value: 'Shopify + WooCommerce', hint: 'Live connections currently supported' },
         { label: 'Connection model', value: 'Centralized', hint: 'Stores managed in one workspace' },

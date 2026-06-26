@@ -13,6 +13,7 @@ import {
   Text,
   useColorModeValue,
 } from '@chakra-ui/react'
+import BrandLockup from '../../components/Brand/BrandLockup'
 import React from 'react'
 import { NavLink } from 'react-router-dom'
 
@@ -62,25 +63,13 @@ function SignUp() {
         <GridItem bg={panelBg} borderRightWidth={{ base: '0', lg: '1px' }} borderColor={shellBorder}>
           <Flex h="100%" direction="column" p={{ base: 6, md: 8, lg: 10 }}>
             <Flex align="center" gap={4} mb={8}>
-              <Box
-                as="img"
-                src="/logo/shiplifi-logo.png"
-                alt="Shiplifi"
-                h="56px"
-                w="56px"
-                objectFit="contain"
-                borderRadius="10px"
-                bg="white"
-                p="1"
+              <BrandLockup
+                iconSize={56}
+                nameColor={titleColor}
+                taglineColor="brand.500"
+                nameSize={{ base: '2xl', md: '3xl' }}
+                tagline="Admin Onboarding"
               />
-              <Box>
-                <Text fontSize="xs" fontWeight="800" letterSpacing="0.16em" textTransform="uppercase" color="brand.500">
-                  Shiplifi
-                </Text>
-                <Text fontSize="sm" fontWeight="700" color={titleColor}>
-                  Admin onboarding
-                </Text>
-              </Box>
             </Flex>
 
             <Stack spacing={5} maxW="520px">
@@ -89,7 +78,7 @@ function SignUp() {
               </Heading>
               <Text color={textColor} lineHeight="1.9">
                 Set up administrator access for pricing, support, shipping operations and internal
-                platform control inside Shiplifi.
+                platform control inside IntleExpress.
               </Text>
             </Stack>
 
@@ -118,7 +107,7 @@ function SignUp() {
                     Create account
                   </Text>
                   <Heading fontSize={{ base: '2xl', md: '3xl' }} color={titleColor} letterSpacing="-0.03em">
-                    Register a Shiplifi admin
+                    Register an IntleExpress admin
                   </Heading>
                   <Text mt={2} fontSize="sm" color={textColor} lineHeight="1.8">
                     The form is intentionally minimal and professional. Connect it to your live
@@ -137,7 +126,7 @@ function SignUp() {
                   <FormLabel fontSize="sm" fontWeight="700" color={titleColor}>
                     Work email
                   </FormLabel>
-                  <Input placeholder="admin@shiplifi.com" type="email" h="50px" borderRadius="10px" bg={inputBg} borderColor={inputBorder} />
+                  <Input placeholder="admin@intlexpress.com" type="email" h="50px" borderRadius="10px" bg={inputBg} borderColor={inputBorder} />
                 </FormControl>
 
                 <FormControl>

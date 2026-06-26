@@ -20,6 +20,7 @@ import {
   FaStore,
   FaTruck,
 } from 'react-icons/fa'
+import BrandMark from '../../components/brand/BrandMark'
 import { useTracking } from '../../hooks/Orders/useTracking'
 
 const stages = [
@@ -478,12 +479,7 @@ export default function TrackingPage() {
           border: '1px solid #E0E6ED',
         }}
       >
-        <Box
-          component="img"
-          src="/logo/despatch-logo.jpeg"
-          alt="IntelExpress Logo"
-          sx={{ width: 72, height: 'auto', mb: 0.5, borderRadius: 1.5 }}
-        />
+        <BrandMark variant="full" width={168} sx={{ mb: 0.5 }} />
         <Typography
           variant="caption"
           sx={{
@@ -494,7 +490,7 @@ export default function TrackingPage() {
             letterSpacing: 0.5,
           }}
         >
-          Powered by IntelExpress
+          Powered by IntleExpress
         </Typography>
       </Box>
     </Box>

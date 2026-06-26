@@ -41,7 +41,7 @@ function Sidebar(props) {
           <SidebarContent
             sidebarWidth={sidebarWidth}
             routes={routes}
-            logoText={logoText || 'Shiplifi'}
+            logoText={logoText || 'IntleExpress'}
             sidebarVariant={sidebarVariant}
           />
         </Box>

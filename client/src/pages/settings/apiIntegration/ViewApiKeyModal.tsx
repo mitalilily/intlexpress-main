@@ -25,7 +25,7 @@ export const ViewApiKeyModal = ({
   if (!apiKey) return null
 
   const handleDownloadCredentials = () => {
-    const content = `IntelExpress API Credentials
+    const content = `IntleExpress API Credentials
 Generated: ${new Date().toISOString()}
 Key Name: ${apiKey.key_name}
 

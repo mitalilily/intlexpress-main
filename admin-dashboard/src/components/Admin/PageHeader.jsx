@@ -1,7 +1,7 @@
 import { Badge, Box, Flex, HStack, Stack, Text, useColorModeValue } from '@chakra-ui/react'
 
 export default function PageHeader({
-  eyebrow = 'Shiplifi Admin',
+  eyebrow = 'IntleExpress Admin',
   title,
   description,
   actions = null,

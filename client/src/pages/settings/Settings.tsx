@@ -81,7 +81,7 @@ const allSettings: SettingItem[] = [
   // Connections & routing
   {
     title: 'Connected channels',
-    description: 'Review store connections and manage how order sources flow into IntelExpress.',
+    description: 'Review store connections and manage how order sources flow into IntleExpress.',
     key: '/channels/connected',
     icon: <FaLink />,
   },

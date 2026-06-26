@@ -105,7 +105,7 @@ const ShopifyConnectionModal = ({
               How Shopify connection works
             </Typography>
             <Typography variant="body2" color="text.secondary" mb={2}>
-              Connect with Shopify OAuth. IntelExpress sends you to Shopify, Shopify asks for permission,
+              Connect with Shopify OAuth. IntleExpress sends you to Shopify, Shopify asks for permission,
               and then returns you here after the store is connected.
             </Typography>
 
@@ -118,7 +118,7 @@ const ShopifyConnectionModal = ({
                 {
                   primary: '2. Continue to Shopify',
                   secondary:
-                    'Shopify will show the exact permissions requested by IntelExpress before you approve.',
+                    'Shopify will show the exact permissions requested by IntleExpress before you approve.',
                 },
                 {
                   primary: '3. Approve protected customer data access if prompted',
@@ -126,7 +126,7 @@ const ShopifyConnectionModal = ({
                     'Order names, phone numbers, emails, and addresses are needed for shipping labels.',
                 },
                 {
-                  primary: '4. Return to IntelExpress',
+                  primary: '4. Return to IntleExpress',
                   secondary:
                     'After approval, orders and webhooks are connected automatically.',
                 },
@@ -172,7 +172,7 @@ const ShopifyConnectionModal = ({
               <Typography variant="body2" color="text.secondary">
                 {isEditing && !forOnboarding
                   ? 'Authentication is managed by Shopify OAuth. No access token or webhook secret is shown or required.'
-                  : 'You will approve permissions on Shopify. IntelExpress never asks you to copy an Admin API token.'}
+                  : 'You will approve permissions on Shopify. IntleExpress never asks you to copy an Admin API token.'}
               </Typography>
             </Stack>
           </Card>
@@ -305,7 +305,7 @@ const ShopifyConnectionModal = ({
                       },
                     }))
                   }
-                  helperText="Automatically update order statuses in Shopify when they change in IntelExpress."
+                  helperText="Automatically update order statuses in Shopify when they change in IntleExpress."
                 />
 
                 {/* Auto cancel orders */}
@@ -321,7 +321,7 @@ const ShopifyConnectionModal = ({
                       },
                     }))
                   }
-                  helperText="Automatically cancel the order in Shopify when it’s marked as cancelled in IntelExpress."
+                  helperText="Automatically cancel the order in Shopify when it’s marked as cancelled in IntleExpress."
                 />
 
                 {/* Mark COD Orders Paid */}

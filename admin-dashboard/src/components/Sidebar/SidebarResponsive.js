@@ -14,6 +14,7 @@ import {
   useColorModeValue,
   useDisclosure,
 } from '@chakra-ui/react'
+import BrandLockup from 'components/Brand/BrandLockup'
 import IconBox from 'components/Icons/IconBox'
 import React from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
@@ -96,11 +97,14 @@ function SidebarResponsive(props) {
 
   const brand = (
     <Box pt="24px" mb="10px">
-      <Flex align="center" justify="center" gap="10px" mb="16px" fontWeight="bold">
-        <Box as="img" src="/logo/shiplifi-logo.png" alt="Shiplifi" h="32px" w="32px" objectFit="contain" borderRadius="10px" />
-        <Text fontSize="sm" color={textColor} fontWeight="700">
-          {logoText}
-        </Text>
+      <Flex align="center" justify="center" mb="16px" fontWeight="bold">
+        <BrandLockup
+          iconSize={34}
+          nameColor={textColor}
+          taglineColor={iconColor}
+          nameSize="18px"
+          tagline="Admin Console"
+        />
       </Flex>
       <Box h="1px" bg={dividerColor} mx="4px" mb="12px" />
     </Box>
