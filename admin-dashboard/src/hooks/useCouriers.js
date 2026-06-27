@@ -11,11 +11,6 @@ import {
   fetchServiceProviders,
   fetchShippingRates,
   updateDelhiveryCredentials,
-  updateEkartCredentials,
-  updateAmazonCredentials,
-  updateShadowfaxCredentials,
-  updateXpressbeesAwbRange,
-  updateXpressbeesCredentials,
   updateCourierStatus,
   updateServiceProviderStatus,
   updateShippingRate,
@@ -123,61 +118,6 @@ export const useUpdateDelhiveryCredentials = () => {
 
   return useMutation({
     mutationFn: updateDelhiveryCredentials,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['courierCredentials'])
-    },
-  })
-}
-
-export const useUpdateEkartCredentials = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: updateEkartCredentials,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['courierCredentials'])
-    },
-  })
-}
-
-export const useUpdateXpressbeesCredentials = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: updateXpressbeesCredentials,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['courierCredentials'])
-    },
-  })
-}
-
-export const useUpdateXpressbeesAwbRange = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: updateXpressbeesAwbRange,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['courierCredentials'])
-    },
-  })
-}
-
-export const useUpdateShadowfaxCredentials = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: updateShadowfaxCredentials,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['courierCredentials'])
-    },
-  })
-}
-
-export const useUpdateAmazonCredentials = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: updateAmazonCredentials,
     onSuccess: () => {
       queryClient.invalidateQueries(['courierCredentials'])
     },
