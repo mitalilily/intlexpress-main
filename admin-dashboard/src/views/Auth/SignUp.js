@@ -64,6 +64,7 @@ function SignUp() {
           <Flex h="100%" direction="column" p={{ base: 6, md: 8, lg: 10 }}>
             <Flex align="center" gap={4} mb={8}>
               <BrandLockup
+                name="Intlexpress"
                 iconSize={56}
                 nameColor={titleColor}
                 taglineColor="brand.500"
@@ -78,7 +79,7 @@ function SignUp() {
               </Heading>
               <Text color={textColor} lineHeight="1.9">
                 Set up administrator access for pricing, support, shipping operations and internal
-                platform control inside IntleExpress.
+                platform control inside Intlexpress.
               </Text>
             </Stack>
 
@@ -107,7 +108,7 @@ function SignUp() {
                     Create account
                   </Text>
                   <Heading fontSize={{ base: '2xl', md: '3xl' }} color={titleColor} letterSpacing="-0.03em">
-                    Register an IntleExpress admin
+                    Register an Intlexpress admin
                   </Heading>
                   <Text mt={2} fontSize="sm" color={textColor} lineHeight="1.8">
                     The form is intentionally minimal and professional. Connect it to your live

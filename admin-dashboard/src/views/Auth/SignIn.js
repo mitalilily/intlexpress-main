@@ -124,6 +124,7 @@ function SignIn() {
             <VStack align="stretch" spacing={0} h="100%" p={{ md: 8, lg: 10 }} position="relative" zIndex="1">
               <HStack spacing={4} mb={10}>
                 <BrandLockup
+                  name="Intlexpress"
                   iconSize={56}
                   nameColor="white"
                   taglineColor="rgba(255,255,255,0.66)"
@@ -134,7 +135,7 @@ function SignIn() {
 
               <VStack align="start" spacing={5} maxW="560px">
                 <Heading fontSize={{ base: '3xl', md: '4xl' }} lineHeight="1.02" letterSpacing="-0.04em" color="white">
-                  Run IntleExpress operations from one focused admin command layer.
+                  Run Intlexpress operations from one focused admin command layer.
                 </Heading>
                 <Text color="rgba(255,255,255,0.72)" fontSize="md" lineHeight="1.9">
                   Oversee pricing, users, serviceability, support, billing, and logistics execution
@@ -209,10 +210,10 @@ function SignIn() {
                     Secure Access
                   </Text>
                   <Heading fontSize={{ base: '2xl', md: '3xl' }} fontWeight="800" color={textPrimary} lineHeight="1.08" letterSpacing="-0.03em">
-                    Sign in to IntleExpress Admin
+                    Sign in to Intlexpress Admin
                   </Heading>
                   <Text mt={2} color={textSecondary} fontSize="sm" lineHeight="1.8">
-                    Enter your administrator credentials to continue to the IntleExpress control center.
+                    Enter your administrator credentials to continue to the Intlexpress control center.
                   </Text>
                 </Box>
 

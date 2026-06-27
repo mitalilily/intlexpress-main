@@ -4,6 +4,7 @@ import brand from '../../branding/brand'
 export default function BrandLockup({
   compact = false,
   iconSize = 42,
+  name = brand.name,
   nameColor,
   taglineColor,
   nameSize,
@@ -21,7 +22,7 @@ export default function BrandLockup({
       <Box
         as="img"
         src={brand.logoIcon}
-        alt={`${brand.name} logo mark`}
+        alt={`${name} logo mark`}
         h={`${iconSize}px`}
         w={`${iconSize}px`}
         objectFit="contain"
@@ -35,7 +36,7 @@ export default function BrandLockup({
       <Box
         as="img"
         src={brand.logoIcon}
-        alt={`${brand.name} logo`}
+        alt={`${name} logo`}
         h={`${iconSize}px`}
         w={`${iconSize}px`}
         objectFit="contain"
@@ -51,7 +52,7 @@ export default function BrandLockup({
           letterSpacing="-0.03em"
           whiteSpace="nowrap"
         >
-          {brand.name}
+          {name}
         </Text>
         {withTagline ? (
           <Text
