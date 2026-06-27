@@ -14,6 +14,7 @@
     "check:woocommerce-apis": "node -r ts-node/register src/scripts/checkWooCommerceApis.ts",
     "check:xpressbees-apis": "node -r ts-node/register src/scripts/checkXpressbeesApis.ts",
     "check:shadowfax-apis": "node -r ts-node/register src/scripts/checkShadowfaxApis.ts",
+    "check:delhivery-apis": "tsx src/scripts/checkDelhiveryApis.ts",
     "check:booking-wallet-gst": "tsx src/scripts/checkBookingWalletGstDebit.ts",
     "check:wallet-awb-link": "tsx src/scripts/checkWalletTransactionAwbLink.ts",
     "check:order-csv-actions": "tsx src/scripts/checkOrderCsvAndActions.ts",
