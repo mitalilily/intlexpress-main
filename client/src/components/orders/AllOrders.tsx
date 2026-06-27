@@ -74,6 +74,7 @@ import {
   getDefaultPickupDateInput,
   getDefaultPickupTimeInput,
 } from '../../utils/pickupSchedule'
+import { getDelhiveryBookedAccount } from '../../utils/delhiveryAccount'
 import {
   BULK_MANIFEST_LIMIT,
   downloadFile,
@@ -1409,7 +1410,24 @@ const AllOrders = () => {
       id: 'courier_partner',
       label: 'Courier',
       minWidth: 170,
-      render: (_value, row) => getCourierDisplayName(row),
+      render: (_value, row) => {
+        const bookedAccount = getDelhiveryBookedAccount(row)
+
+        return (
+          <Stack spacing={0.5}>
+            <Typography variant="body2">{getCourierDisplayName(row)}</Typography>
+            {bookedAccount && (
+              <Chip
+                size="small"
+                variant="outlined"
+                color="primary"
+                label={bookedAccount.label}
+                sx={{ width: 'fit-content' }}
+              />
+            )}
+          </Stack>
+        )
+      },
     },
     {
       label: 'Status',

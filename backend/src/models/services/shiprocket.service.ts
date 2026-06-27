@@ -1199,7 +1199,7 @@ const retryDelhiveryPickupRequestForOrder = async (order: {
       ? `${pickupTimeRaw}:00`
       : getDefaultPickupTime()
 
-  const delhivery = new DelhiveryService()
+  const delhivery = new DelhiveryService({ order })
   await delhivery.createPickupRequest({
     pickup_date: pickupDate,
     pickup_time: pickupTime,
@@ -3893,7 +3893,9 @@ export const fetchAvailableCouriersWithRates = async (
     const delhiveryRequiresCOD = normalizedPaymentType === 'cod'
 
     if (shouldRunLiveServiceability && enabledProviders.has('delhivery')) {
-      const delhivery = new DelhiveryService()
+      const delhivery = new DelhiveryService({
+        pickupLocationId: String(params.pickupId || (params as any).pickup_id || '').trim() || null,
+      })
       const originPincode = normalizePincode(params.origin ?? params.source_pincode)?.toString()
       const destinationPincode = normalizePincode(
         params.destination ?? params.destination_pincode,
@@ -7213,6 +7215,9 @@ export const createB2CShipmentService = async (
     amazon_shipment_id?: string | null
     amazon_package_client_reference_id?: string | null
     amazon_label?: string | null
+    delhivery_account_code?: string
+    delhivery_account_label?: string
+    delhivery_account?: Record<string, any>
   } = {}
 
   const rollbackActions: Array<() => Promise<void>> = []
@@ -7287,7 +7292,12 @@ export const createB2CShipmentService = async (
           ? '→ Using Delhivery Reverse Shipment API...'
           : '→ Creating Delhivery shipment now; pickup request will be scheduled after booking...',
       )
-      const delhivery = new DelhiveryService()
+      const delhivery = new DelhiveryService({
+        pickupLocationId: String(params.pickup_location_id || '').trim() || null,
+        pickupLocationName: String(
+          params.pickup?.warehouse_name || params.pickup_location_alias || params.pickup_location_id || '',
+        ).trim(),
+      })
       delhiveryService = delhivery
 
       if (isReverseShipment) {
@@ -7363,6 +7373,8 @@ export const createB2CShipmentService = async (
         shipmentData?.packages?.[0]?.sort_code ??
         null
 
+      const resolvedDelhiveryAccount = await delhivery.getResolvedAccount()
+
       shipmentMeta = {
         shipment_id: shipmentData.upload_wbn ?? shipmentData.shipment_id ?? undefined,
         awb_number: shipmentSuccessPackage?.waybill ?? shipmentData.awb_number ?? undefined,
@@ -7373,6 +7385,16 @@ export const createB2CShipmentService = async (
         courier_cost: providerCourierCost,
         sort_code: providerSortCode,
         provider_reference: shipmentData.upload_wbn ?? shipmentData.shipment_id ?? undefined,
+        delhivery_account_code: resolvedDelhiveryAccount?.accountCode,
+        delhivery_account_label: resolvedDelhiveryAccount?.accountLabel,
+        delhivery_account: resolvedDelhiveryAccount
+          ? {
+              accountCode: resolvedDelhiveryAccount.accountCode,
+              accountLabel: resolvedDelhiveryAccount.accountLabel,
+              pickupLocationIds: resolvedDelhiveryAccount.pickupLocationIds,
+              pickupLocationNames: resolvedDelhiveryAccount.pickupLocationNames,
+            }
+          : undefined,
       }
     } else if (integrationType === 'ekart') {
       console.log('→ Using Ekart API...')
@@ -8715,7 +8737,6 @@ export const createB2CShipmentService = async (
       )
 
       if (pickupLocationName) {
-        const delhivery = delhiveryService ?? new DelhiveryService()
         const [freshOrder] = await db
           .select({
             pickup_details: b2c_orders.pickup_details,
@@ -8724,6 +8745,16 @@ export const createB2CShipmentService = async (
           .from(b2c_orders)
           .where(eq(b2c_orders.id, result.order.id))
           .limit(1)
+        const delhivery =
+          delhiveryService ??
+          new DelhiveryService({
+            order: {
+              pickup_location_id: params.pickup_location_id || null,
+              pickup_details: freshOrder?.pickup_details,
+              provider_meta: freshOrder?.provider_meta,
+            },
+            pickupLocationName,
+          })
         const existingPickupDetails = normalizePickupDetails(freshOrder?.pickup_details) || {}
         const updatedPickupDetails = {
           ...existingPickupDetails,
@@ -10333,7 +10364,7 @@ export const generateManifestService = async (params: {
       fetchedOrdersForLogging = fetchedOrders
       manifestFailureOrderIds = fetchedOrders.map((order) => order.id)
       const manifestStartedAt = Date.now()
-      const delhivery = new DelhiveryService()
+      const delhivery = new DelhiveryService({ order: fetchedOrders[0] })
 
       const normalizeDetails = (value: any) => {
         if (!value) return {}
@@ -10890,7 +10921,7 @@ export const generateManifestService = async (params: {
               )
             }
 
-            void new DelhiveryService()
+            void new DelhiveryService({ order })
               .generateLabel(currentAwb, {
                 format: 'pdf',
               })
@@ -12441,7 +12472,7 @@ export const generateManifestService = async (params: {
           manifestFailureOrderIds = fetchedOrders.map((order) => order.id)
           const manifestStartedAt = Date.now()
 
-          const delhivery = new DelhiveryService()
+          const delhivery = new DelhiveryService({ order: fetchedOrders[0] })
           const normalizeDetails = (value: any) => {
             if (!value) return {}
             if (typeof value === 'string') {
@@ -12987,7 +13018,7 @@ export const generateManifestService = async (params: {
                 // Fetch Delhivery packing_slip JSON (pdf=false) to enrich our custom label
                 let enrichedOrder: any = freshOrder
                 try {
-                  const delhivery = new DelhiveryService()
+                  const delhivery = new DelhiveryService({ order: freshOrder })
                   const labelResp: any = await delhivery.generateLabel(currentAwb)
 
                   const pkg = Array.isArray(labelResp?.packages)
@@ -13032,7 +13063,7 @@ export const generateManifestService = async (params: {
 
                 // Best-effort: trigger Delhivery packing slip PDF generation as well.
                 // This keeps provider-side label state in sync even when we print custom labels.
-                void new DelhiveryService()
+                void new DelhiveryService({ order: freshOrder })
                   .generateLabel(currentAwb, {
                     format: 'pdf',
                   })
@@ -15207,7 +15238,7 @@ export const trackByAwbService = async (awb: string): Promise<TrackingServiceRes
 
   try {
     if (providerKey === 'delhivery') {
-      const delhiveryService = new DelhiveryService()
+      const delhiveryService = new DelhiveryService({ order })
       const raw = await delhiveryService.trackShipment(awb)
       providerData = mapDelhiveryTracking(raw, order)
     } else if (providerKey === 'shadowfax') {

@@ -11,6 +11,7 @@ import {
 } from 'react-icons/md'
 import useEmployeePermissions from '../../hooks/User/useEmployeePermissions'
 import { usePresignedDownloadMutation } from '../../hooks/Uploads/usePresignedDownloadUrls'
+import { getDelhiveryBookedAccount } from '../../utils/delhiveryAccount'
 import AWBLink from '../UI/AWBLink'
 import { toast } from '../UI/Toast'
 
@@ -24,6 +25,7 @@ export const OrderExpandedRow = ({ row, type = 'b2c' }: OrderExpandedRowProps) =
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null)
   const ACCENT = '#333d81'
   const sortCodeValue = String(row?.sort_code || '').trim()
+  const delhiveryAccount = getDelhiveryBookedAccount(row)
   const { canExportOrders, canViewCustomerDetails } = useEmployeePermissions()
 
   const { mutateAsync, isPending } = usePresignedDownloadMutation()
@@ -274,9 +276,19 @@ export const OrderExpandedRow = ({ row, type = 'b2c' }: OrderExpandedRowProps) =
         </Stack>
         <Stack direction="row" spacing={1} alignItems="center">
           <MdLocalShipping size={20} />
-          <Typography>
-            <strong>Courier:</strong> {row.courier_partner}
-          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography>
+              <strong>Courier:</strong> {row.courier_partner}
+            </Typography>
+            {delhiveryAccount && (
+              <Chip
+                size="small"
+                color="primary"
+                variant="outlined"
+                label={`Booked via ${delhiveryAccount.label}`}
+              />
+            )}
+          </Stack>
         </Stack>
       </Stack>
 

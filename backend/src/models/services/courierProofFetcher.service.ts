@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getDelhiveryCredentials } from './delhiveryCredentials.service'
+import { getDelhiveryAccounts } from './delhiveryCredentials.service'
 import { ShadowfaxService } from './couriers/shadowfax.service'
 
 interface WeightProof {
@@ -10,6 +10,8 @@ interface WeightProof {
     location?: string
     operator?: string
     source?: string
+    delhivery_account_code?: string
+    delhivery_account_label?: string
   }
 }
 
@@ -176,63 +178,72 @@ export async function fetchWeightProofFromCourier(
  */
 async function fetchDelhiveryProof(awb: string): Promise<WeightProof | null> {
   try {
-    const credentials = await getDelhiveryCredentials()
-    const apiKey = credentials.apiKey
-    const apiUrl = credentials.apiBase
+    const accounts = await getDelhiveryAccounts()
+    const configuredAccounts = accounts.filter((account) => account.isActive && account.isConfigured)
 
-    if (!apiKey) {
+    if (!configuredAccounts.length) {
       console.warn('Delhivery API key not configured in courier_credentials table')
       return null
     }
 
-    // Get tracking data from Delhivery
-    const response = await axios.get(`${apiUrl}/api/v1/packages/json/`, {
-      params: {
-        waybill: awb,
-        verbose: 3,
-      },
-      headers: {
-        Authorization: `Token ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: 10000,
-    })
+    for (const account of configuredAccounts) {
+      try {
+        const response = await axios.get(`${account.apiBase}/api/v1/packages/json/`, {
+          params: {
+            waybill: awb,
+            verbose: 3,
+          },
+          headers: {
+            Authorization: `Token ${account.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        })
 
-    if (!response.data || !response.data.ShipmentData) {
-      console.log('Delhivery tracking data not available for AWB:', awb)
-      return null
-    }
-
-    const proofImages: string[] = []
-    const shipmentData = response.data.ShipmentData[0]
-
-    // Delhivery provides POD images in ShipmentData
-    if (shipmentData?.PODDocument) {
-      proofImages.push(shipmentData.PODDocument)
-    }
-
-    // Check scans for any document URLs
-    if (Array.isArray(shipmentData?.Scans)) {
-      shipmentData.Scans.forEach((scan: any) => {
-        if (scan.ScanDetail?.document_url) {
-          proofImages.push(scan.ScanDetail.document_url)
+        if (!response.data || !response.data.ShipmentData) {
+          continue
         }
-      })
+
+        const proofImages: string[] = []
+        const shipmentData = response.data.ShipmentData[0]
+
+        if (shipmentData?.PODDocument) {
+          proofImages.push(shipmentData.PODDocument)
+        }
+
+        if (Array.isArray(shipmentData?.Scans)) {
+          shipmentData.Scans.forEach((scan: any) => {
+            if (scan.ScanDetail?.document_url) {
+              proofImages.push(scan.ScanDetail.document_url)
+            }
+          })
+        }
+
+        if (!proofImages.length) {
+          continue
+        }
+
+        return {
+          proofImages,
+          metadata: {
+            timestamp: shipmentData?.ScanDetail?.ScanDateTime,
+            location: shipmentData?.ScanDetail?.ScannedLocation,
+            source: 'delhivery_tracking',
+            delhivery_account_code: account.accountCode,
+            delhivery_account_label: account.accountLabel,
+          },
+        }
+      } catch (accountError: any) {
+        console.warn('Delhivery proof fetch failed for account:', {
+          awb,
+          accountCode: account.accountCode,
+          message: accountError?.message || accountError,
+        })
+      }
     }
 
-    if (proofImages.length === 0) {
-      console.log('No proof images found in Delhivery tracking data')
-      return null
-    }
-
-    return {
-      proofImages,
-      metadata: {
-        timestamp: shipmentData?.ScanDetail?.ScanDateTime,
-        location: shipmentData?.ScanDetail?.ScannedLocation,
-        source: 'delhivery_tracking',
-      },
-    }
+    console.log('No proof images found in Delhivery tracking data')
+    return null
   } catch (error: any) {
     console.error('Delhivery proof fetch error:', error.message)
     return null

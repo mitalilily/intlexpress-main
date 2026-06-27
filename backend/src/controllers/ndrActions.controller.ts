@@ -180,7 +180,7 @@ export const ndrReattemptController = async (req: Request, res: Response) => {
     // Branch by provider
 
     if (provider === 'delhivery' || provider === 'delhivyery') {
-      const delhivery = new DelhiveryService()
+      const delhivery = new DelhiveryService({ order })
       const wb = awb || order.awb_number
       if (!wb) return res.status(400).json({ success: false, message: 'AWB is required' })
       const resp = await delhivery.submitNdrAction([
@@ -360,7 +360,7 @@ export const ndrChangeAddressController = async (req: Request, res: Response) =>
     // Branch by provider
 
     if (provider === 'delhivery' || provider === 'delhivyery') {
-      const delhivery = new DelhiveryService()
+      const delhivery = new DelhiveryService({ order })
       const wb = awb || order.awb_number
       if (!wb) return res.status(400).json({ success: false, message: 'AWB is required' })
 
@@ -585,7 +585,7 @@ export const ndrChangePhoneController = async (req: Request, res: Response) => {
     // Branch by provider
 
     if (provider === 'delhivery') {
-      const delhivery = new DelhiveryService()
+      const delhivery = new DelhiveryService({ order })
       const wb = awb || order.awb_number
       if (!wb) return res.status(400).json({ success: false, message: 'AWB is required' })
 

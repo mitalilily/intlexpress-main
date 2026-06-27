@@ -484,7 +484,7 @@ export const requestPickupController = async (req: any, res: Response) => {
     const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
     const defaultPickupTime = oneHourLater.toTimeString().split(' ')[0]
 
-    const delhivery = new DelhiveryService()
+    const delhivery = new DelhiveryService({ order: orders[0] })
     const delhiveryResponse = await delhivery.createPickupRequest({
       pickup_date: String(pickup_date || defaultPickupDate),
       pickup_time: String(pickup_time || defaultPickupTime),

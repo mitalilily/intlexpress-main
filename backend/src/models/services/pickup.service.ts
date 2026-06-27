@@ -344,7 +344,7 @@ export async function cancelOrderShipment(orderId: string) {
       message: 'Order has no provider AWB yet; cancelled locally before courier booking.',
     }
   } else if (integration === 'delhivery') {
-    const svc = new DelhiveryService()
+    const svc = new DelhiveryService({ order })
     cancellationResult = await svc.cancelShipment(awbNumber)
   } else if (integration === 'ekart') {
     const svc = new EkartService()

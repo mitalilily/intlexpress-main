@@ -38,6 +38,14 @@ import {
   normalizeAmazonCredentialValue,
   parseAmazonSandboxFlag,
 } from '../../models/services/amazonShippingCredentials.service'
+import {
+  DEFAULT_DELHIVERY_API_BASE,
+  DELHIVERY_ACCOUNT_CODES,
+  getDelhiveryAccounts,
+  maskDelhiveryApiKey,
+  serializeDelhiveryAccountsForMetadata,
+  type DelhiveryAccountConfig,
+} from '../../models/services/delhiveryCredentials.service'
 
 export interface ShippingRateFilters {
   courier_name?: string[]
@@ -432,8 +440,97 @@ const buildDelhiveryWebhookConfig = () => ({
   ],
 })
 
+const normalizeDelimitedStrings = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => String(entry || '').trim())
+      .filter(Boolean)
+      .filter((entry, index, source) => source.indexOf(entry) === index)
+  }
+
+  const normalized = String(value || '').trim()
+  if (!normalized) return []
+
+  return normalized
+    .split(/[\n,]+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .filter((entry, index, source) => source.indexOf(entry) === index)
+}
+
+const buildDelhiveryCredentialResponse = (accounts: DelhiveryAccountConfig[]) => ({
+  provider: 'delhivery',
+  webhookConfig: buildDelhiveryWebhookConfig(),
+  accounts: accounts.map((account) => ({
+    accountCode: account.accountCode,
+    accountLabel: account.accountLabel,
+    apiBase: account.apiBase || DEFAULT_DELHIVERY_API_BASE,
+    clientName: account.clientName || '',
+    hasApiKey: Boolean((account.apiKey || '').trim()),
+    apiKeyMasked: maskDelhiveryApiKey(account.apiKey || ''),
+    isActive: account.isActive === true,
+    isDefault: account.isDefault === true,
+    pickupLocationIds: account.pickupLocationIds || [],
+    pickupLocationNames: account.pickupLocationNames || [],
+  })),
+})
+
+const sanitizeDelhiveryAccountsPayload = (
+  payloadAccounts: unknown,
+  existingAccounts: DelhiveryAccountConfig[],
+) => {
+  const rawAccounts = Array.isArray(payloadAccounts) ? payloadAccounts : []
+
+  const accounts = DELHIVERY_ACCOUNT_CODES.map((accountCode, index) => {
+    const existing = existingAccounts[index]
+    const raw = rawAccounts[index] && typeof rawAccounts[index] === 'object' ? rawAccounts[index] : {}
+    const record = raw as Record<string, any>
+    const nextApiKey = String(record.apiKey || '').trim()
+
+    return {
+      accountCode,
+      accountLabel:
+        String(record.accountLabel || '').trim() || existing?.accountLabel || `Delhivery Account ${index + 1}`,
+      apiBase:
+        String(record.apiBase || '').trim() ||
+        existing?.apiBase ||
+        DEFAULT_DELHIVERY_API_BASE,
+      clientName: String(record.clientName || '').trim() || existing?.clientName || '',
+      apiKey: nextApiKey || existing?.apiKey || '',
+      isActive:
+        typeof record.isActive === 'boolean' ? record.isActive : existing?.isActive ?? index === 0,
+      isDefault: record.isDefault === true,
+      pickupLocationIds: normalizeDelimitedStrings(
+        record.pickupLocationIds ?? record.pickup_location_ids ?? existing?.pickupLocationIds,
+      ),
+      pickupLocationNames: normalizeDelimitedStrings(
+        record.pickupLocationNames ??
+          record.pickup_location_names ??
+          existing?.pickupLocationNames,
+      ),
+      isConfigured: Boolean(nextApiKey || existing?.apiKey || ''),
+    } as DelhiveryAccountConfig
+  })
+
+  let defaultIndex = accounts.findIndex(
+    (account) => account.isDefault && account.isActive && account.isConfigured,
+  )
+  if (defaultIndex < 0) {
+    defaultIndex = accounts.findIndex((account) => account.isActive && account.isConfigured)
+  }
+  if (defaultIndex < 0) {
+    defaultIndex = 0
+  }
+
+  return accounts.map((account, index) => ({
+    ...account,
+    isDefault: index === defaultIndex,
+  }))
+}
+
 export const getCourierCredentialsController = async (req: Request, res: Response) => {
   try {
+    const delhiveryAccounts = await getDelhiveryAccounts()
     const xpressbeesManualAwb = await getXpressbeesManualAwbSummary().catch((err: any) => {
       console.warn('Failed to load Xpressbees manual AWB summary:', err?.message || err)
       return {
@@ -468,14 +565,7 @@ export const getCourierCredentialsController = async (req: Request, res: Respons
       )
 
     const defaults = {
-      delhivery: {
-        provider: 'delhivery',
-        apiBase: 'https://track.delhivery.com',
-        clientName: '',
-        hasApiKey: false,
-        apiKeyMasked: '',
-        webhookConfig: buildDelhiveryWebhookConfig(),
-      },
+      delhivery: buildDelhiveryCredentialResponse(delhiveryAccounts),
       ekart: {
         provider: 'ekart',
         apiBase: 'https://api.ekartlogistics.com',
@@ -525,17 +615,7 @@ export const getCourierCredentialsController = async (req: Request, res: Respons
       const provider = (row.provider || '').toLowerCase()
       if (!provider) return acc
       if (provider === 'delhivery') {
-        const apiKey = row.apiKey || ''
-        acc.delhivery = {
-          provider: 'delhivery',
-          apiBase: row.apiBase || 'https://track.delhivery.com',
-          clientName: row.clientName || '',
-          hasApiKey: Boolean(apiKey.trim()),
-          apiKeyMasked: apiKey
-            ? `${apiKey.slice(0, 4)}${'*'.repeat(Math.max(apiKey.length - 8, 0))}${apiKey.slice(-4)}`
-            : '',
-          webhookConfig: buildDelhiveryWebhookConfig(),
-        }
+        acc.delhivery = buildDelhiveryCredentialResponse(delhiveryAccounts)
       } else if (provider === 'ekart') {
         const hasPassword = Boolean((row.password || '').trim())
         const hasWebhookSecret = Boolean((row.webhookSecret || '').trim())
@@ -649,32 +729,60 @@ export const updateXpressbeesAwbRangeController = async (req: any, res: Response
 }
 
 export const updateDelhiveryCredentialsController = async (req: Request, res: Response) => {
-  const { apiBase, clientName, apiKey } = req.body || {}
+  const { apiBase, clientName, apiKey, accounts } = req.body || {}
 
   try {
-    const nextApiBase = typeof apiBase === 'string' ? apiBase.trim() : undefined
-    const nextClientName = typeof clientName === 'string' ? clientName.trim() : undefined
-    const nextApiKey = typeof apiKey === 'string' ? apiKey.trim() : undefined
-    const hasNewApiKey = typeof nextApiKey === 'string' && nextApiKey.length > 0
-
-    const [existing] = await db
-      .select({ id: courier_credentials.id })
+    const [existingRow] = await db
+      .select({
+        id: courier_credentials.id,
+        apiBase: courier_credentials.apiBase,
+        clientName: courier_credentials.clientName,
+        apiKey: courier_credentials.apiKey,
+        metadata: courier_credentials.metadata,
+      })
       .from(courier_credentials)
       .where(eq(courier_credentials.provider, 'delhivery'))
       .limit(1)
 
-    if (existing) {
+    const existingAccounts = await getDelhiveryAccounts()
+    const nextAccounts = Array.isArray(accounts)
+      ? sanitizeDelhiveryAccountsPayload(accounts, existingAccounts)
+      : sanitizeDelhiveryAccountsPayload(
+          [
+            {
+              accountLabel: existingAccounts[0]?.accountLabel || 'Delhivery Account 1',
+              apiBase,
+              clientName,
+              apiKey,
+              isActive: existingAccounts[0]?.isActive ?? true,
+              isDefault: true,
+              pickupLocationIds: existingAccounts[0]?.pickupLocationIds || [],
+              pickupLocationNames: existingAccounts[0]?.pickupLocationNames || [],
+            },
+            existingAccounts[1],
+            existingAccounts[2],
+          ],
+          existingAccounts,
+        )
+
+    const primaryAccount =
+      nextAccounts.find((account) => account.isDefault) ||
+      nextAccounts.find((account) => account.isActive && account.isConfigured) ||
+      nextAccounts[0]
+
+    const nextMetadata = {
+      ...(existingRow?.metadata && typeof existingRow.metadata === 'object' ? existingRow.metadata : {}),
+      delhiveryAccounts: serializeDelhiveryAccountsForMetadata(nextAccounts),
+      delhiveryAccountsVersion: 2,
+    }
+
+    if (existingRow) {
       const updatePayload: Record<string, any> = {
+        apiBase: primaryAccount?.apiBase || DEFAULT_DELHIVERY_API_BASE,
+        clientName: primaryAccount?.clientName || '',
+        apiKey: primaryAccount?.apiKey || '',
+        metadata: nextMetadata,
         updatedAt: new Date(),
-      }
-      if (nextApiBase !== undefined) {
-        updatePayload.apiBase = nextApiBase || 'https://track.delhivery.com'
-      }
-      if (nextClientName !== undefined) {
-        updatePayload.clientName = nextClientName
-      }
-      if (hasNewApiKey) {
-        updatePayload.apiKey = nextApiKey
       }
 
       await db
@@ -684,32 +792,17 @@ export const updateDelhiveryCredentialsController = async (req: Request, res: Re
     } else {
       await db.insert(courier_credentials).values({
         provider: 'delhivery',
-        apiBase: nextApiBase || 'https://track.delhivery.com',
-        clientName: nextClientName || '',
-        apiKey: hasNewApiKey ? nextApiKey : '',
+        apiBase: primaryAccount?.apiBase || DEFAULT_DELHIVERY_API_BASE,
+        clientName: primaryAccount?.clientName || '',
+        apiKey: primaryAccount?.apiKey || '',
+        metadata: nextMetadata,
       })
     }
-
-    const [saved] = await db
-      .select({
-        apiBase: courier_credentials.apiBase,
-        clientName: courier_credentials.clientName,
-        apiKey: courier_credentials.apiKey,
-      })
-      .from(courier_credentials)
-      .where(eq(courier_credentials.provider, 'delhivery'))
-      .limit(1)
 
     res.json({
       success: true,
       message: 'Delhivery credentials updated successfully',
-      data: {
-        provider: 'delhivery',
-        apiBase: saved?.apiBase || 'https://track.delhivery.com',
-        clientName: saved?.clientName || '',
-        hasApiKey: Boolean((saved?.apiKey || '').trim()),
-        webhookConfig: buildDelhiveryWebhookConfig(),
-      },
+      data: buildDelhiveryCredentialResponse(nextAccounts),
     })
   } catch (err) {
     console.error(err)

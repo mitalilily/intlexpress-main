@@ -400,7 +400,7 @@ export const cancelOrderController = async (req: any, res: Response) => {
 
     try {
       if (provider === 'delhivery') {
-        const delhivery = new DelhiveryService()
+        const delhivery = new DelhiveryService({ order })
         cancellationResult = await delhivery.cancelShipment(order.awb_number)
       } else if (provider === 'ekart') {
         const ekart = new EkartService()

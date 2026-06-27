@@ -4,6 +4,7 @@ import {
   Avatar,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Divider,
   ListItemIcon,
@@ -82,6 +83,7 @@ import {
   getDefaultPickupDateInput,
   getDefaultPickupTimeInput,
 } from '../../../utils/pickupSchedule'
+import { getDelhiveryBookedAccount } from '../../../utils/delhiveryAccount'
 import { SupportTicketForm } from '../../support/SupportTicketForm'
 import {
   BULK_MANIFEST_LIMIT,
@@ -1297,6 +1299,7 @@ const B2COrdersList = () => {
           Object.entries(courierLogos).find(([key]) =>
             courierName.toLowerCase().includes(key.toLowerCase()),
           )?.[1] ?? defaultLogo
+        const bookedAccount = getDelhiveryBookedAccount(row)
         return (
           <Stack direction="row" alignItems="center" spacing={1}>
             <Avatar
@@ -1305,6 +1308,14 @@ const B2COrdersList = () => {
               sx={{ width: 20, height: 20, borderRadius: '4px' }}
             />
             <Typography variant="body2">{courierName || '—'}</Typography>
+            {bookedAccount && (
+              <Chip
+                size="small"
+                variant="outlined"
+                color="primary"
+                label={bookedAccount.label}
+              />
+            )}
           </Stack>
         )
       },

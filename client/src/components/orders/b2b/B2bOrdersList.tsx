@@ -1,9 +1,10 @@
-import { Button, Link, Stack, Typography } from '@mui/material'
+import { Button, Chip, Link, Stack, Typography } from '@mui/material'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import moment from 'moment'
 import { useB2BOrdersByUser, useGenerateManifest } from '../../../hooks/Orders/useOrders'
 import type { B2BOrder } from '../../../types/generic.types'
+import { getDelhiveryBookedAccount } from '../../../utils/delhiveryAccount'
 import StatusChip from '../../UI/chip/StatusChip'
 import DataTable, { type Column } from '../../UI/table/DataTable'
 import TableSkeleton from '../../UI/table/TableSkeleton'
@@ -81,7 +82,24 @@ const B2BOrdersList = ({
       label: 'Courier',
       id: 'courier_partner',
       minWidth: 170,
-      render: (_value, row) => getCourierDisplayName(row),
+      render: (_value, row) => {
+        const bookedAccount = getDelhiveryBookedAccount(row as Record<string, any>)
+
+        return (
+          <Stack spacing={0.5}>
+            <Typography variant="body2">{getCourierDisplayName(row)}</Typography>
+            {bookedAccount && (
+              <Chip
+                size="small"
+                color="primary"
+                variant="outlined"
+                label={bookedAccount.label}
+                sx={{ width: 'fit-content' }}
+              />
+            )}
+          </Stack>
+        )
+      },
     },
     {
       label: 'Source',

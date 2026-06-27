@@ -5,7 +5,10 @@ import {
   normalizeCourierId,
   resolveDelhiveryShippingMode,
 } from '../../../utils/delhiveryCourier'
-import { getDelhiveryCredentials } from '../delhiveryCredentials.service'
+import {
+  type DelhiveryAccountConfig,
+  resolveDelhiveryCredentials,
+} from '../delhiveryCredentials.service'
 import { ShipmentParams } from '../shiprocket.service'
 
 const parseTimeout = (value: string | undefined, fallbackMs: number) => {
@@ -157,14 +160,38 @@ export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''
   private clientName = ''
+  private resolvedAccount: DelhiveryAccountConfig | null = null
   private readonly requestTimeoutMs = parseTimeout(process.env.DELHIVERY_REQUEST_TIMEOUT_MS, 30000)
   private readonly labelTimeoutMs = parseTimeout(process.env.DELHIVERY_LABEL_TIMEOUT_MS, 15000)
+  private readonly resolutionContext: {
+    preferredAccountCode?: string | null
+    pickupLocationId?: string | null
+    pickupLocationName?: string | null
+    order?: Record<string, any> | null
+  }
+
+  constructor(
+    resolutionContext: {
+      preferredAccountCode?: string | null
+      pickupLocationId?: string | null
+      pickupLocationName?: string | null
+      order?: Record<string, any> | null
+    } = {},
+  ) {
+    this.resolutionContext = resolutionContext
+  }
 
   private async ensureCredentials() {
-    const credentials = await getDelhiveryCredentials()
+    const credentials = await resolveDelhiveryCredentials(this.resolutionContext)
     this.apiBase = credentials.apiBase
     this.token = credentials.apiKey
     this.clientName = credentials.clientName
+    this.resolvedAccount = credentials
+  }
+
+  async getResolvedAccount() {
+    await this.ensureCredentials()
+    return this.resolvedAccount
   }
 
   private get headers() {
