@@ -8,17 +8,71 @@ import { findUserByEmail, findUserById, saveRefreshToken } from "./userService";
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-export const loginAdmin = async (email: string, password: string) => {
-  const user = await findUserByEmail(email);
+const normalizeAdminEmail = (email: string) => String(email || "").trim().toLowerCase();
 
-  if (!user || user.role !== "admin") {
+const getAdminEmailCandidates = (email: string) => {
+  const normalized = normalizeAdminEmail(email);
+  const candidates = [normalized];
+
+  if (normalized.startsWith("admin@intlexpress.")) {
+    candidates.push(normalized.replace("admin@intlexpress.", "admin@shiplifi."));
+  }
+
+  if (normalized.startsWith("admin@shiplifi.")) {
+    candidates.push(normalized.replace("admin@shiplifi.", "admin@intlexpress."));
+  }
+
+  return [...new Set(candidates.filter(Boolean))];
+};
+
+const resolveAdminUserByEmail = async (email: string) => {
+  const requestedEmail = normalizeAdminEmail(email);
+
+  for (const candidate of getAdminEmailCandidates(requestedEmail)) {
+    const user = await findUserByEmail(candidate);
+    if (user?.role === "admin") {
+      return { user, requestedEmail, matchedEmail: candidate };
+    }
+  }
+
+  return { user: null, requestedEmail, matchedEmail: null };
+};
+
+const migrateAdminEmailIfNeeded = async (user: any, requestedEmail: string, matchedEmail: string) => {
+  if (!user || !requestedEmail || requestedEmail === matchedEmail) {
+    return user;
+  }
+
+  const alreadyRequested = await findUserByEmail(requestedEmail);
+  if (alreadyRequested && alreadyRequested.id !== user.id) {
+    return user;
+  }
+
+  const [updatedUser] = await db
+    .update(users)
+    .set({
+      email: requestedEmail,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id))
+    .returning();
+
+  return updatedUser ?? user;
+};
+
+export const loginAdmin = async (email: string, password: string) => {
+  const { user: existingUser, requestedEmail, matchedEmail } = await resolveAdminUserByEmail(email);
+
+  if (!existingUser || existingUser.role !== "admin") {
     throw new Error("Unauthorized");
   }
 
-  const isMatch = await bcrypt.compare(password, user.passwordHash!);
+  const isMatch = await bcrypt.compare(password, existingUser.passwordHash!);
   if (!isMatch) {
     throw new Error("Invalid credentials");
   }
+
+  const user = await migrateAdminEmailIfNeeded(existingUser, requestedEmail, matchedEmail!);
 
   const accessToken = signAccessToken(user.id, "admin");
   const { token: refreshToken } = signRefreshToken(user.id, "admin");
