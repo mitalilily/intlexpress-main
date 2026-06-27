@@ -7,6 +7,7 @@ import {
   MdTrendingUp,
 } from 'react-icons/md'
 import { useNavigate } from 'react-router-dom'
+import { brand } from '../../theme/brand'
 
 interface QuickStatsCardsProps {
   todayOps: {
@@ -24,7 +25,9 @@ interface QuickStatsCardsProps {
   formatCurrency: (amount: number) => string
 }
 
-const BRAND_PRIMARY = '#333d81'
+const BRAND_PRIMARY = brand.colors.primary
+const BRAND_PRIMARY_LIGHT = brand.colors.primaryLight
+const BRAND_PRIMARY_DARK = brand.colors.primaryDark
 
 export default function QuickStatsCards({
   todayOps,
@@ -48,7 +51,7 @@ export default function QuickStatsCards({
       value: todayOps.inTransit?.toLocaleString() || '0',
       subtitle: `${todayOps.pending || 0} pending`,
       icon: <MdLocalShipping size={20} />,
-      color: '#6A1E25',
+      color: BRAND_PRIMARY_LIGHT,
       onClick: () => navigate('/orders/list'),
     },
     {
@@ -56,7 +59,7 @@ export default function QuickStatsCards({
       value: formatCurrency(financial.codRemittanceDue || 0),
       subtitle: 'Pending remittance',
       icon: <MdAccountBalance size={20} />,
-      color: '#3A3A40',
+      color: BRAND_PRIMARY_DARK,
       onClick: () => navigate('/cod-remittance'),
     },
   ]
@@ -68,11 +71,11 @@ export default function QuickStatsCards({
           <Card
             onClick={stat.onClick}
             sx={{
-              borderRadius: 4,
-              border: `1px solid ${alpha('#111113', 0.08)}`,
+              borderRadius: 1,
+              border: `1px solid ${alpha(BRAND_PRIMARY, 0.1)}`,
               background:
-                'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,242,239,0.98) 100%)',
-              boxShadow: '0 18px 34px rgba(17, 17, 19, 0.06)',
+                'linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(237,240,249,0.98) 100%)',
+              boxShadow: '0 18px 34px rgba(35, 41, 93, 0.08)',
               cursor: 'pointer',
               transition: 'all .2s ease',
               '&:hover': {
@@ -92,7 +95,7 @@ export default function QuickStatsCards({
                     sx={{
                       width: 32,
                       height: 32,
-                      borderRadius: 1.6,
+                      borderRadius: 1,
                       display: 'grid',
                       placeItems: 'center',
                       color: stat.color,

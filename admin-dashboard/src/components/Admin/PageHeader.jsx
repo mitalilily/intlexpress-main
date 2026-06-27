@@ -11,14 +11,14 @@ export default function PageHeader({
   const borderColor = useColorModeValue('rgba(17, 17, 19, 0.08)', 'rgba(255, 255, 255, 0.08)')
   const titleColor = useColorModeValue('gray.800', 'white')
   const textColor = useColorModeValue('gray.600', 'gray.300')
-  const metaBg = useColorModeValue('rgba(217, 4, 22, 0.05)', 'rgba(255, 255, 255, 0.04)')
+  const metaBg = useColorModeValue('rgba(51, 61, 129, 0.05)', 'rgba(255, 255, 255, 0.04)')
 
   return (
     <Box
       bg={panelBg}
       borderWidth="1px"
       borderColor={borderColor}
-      borderRadius="14px"
+      borderRadius="8px"
       px={{ base: 5, md: 6 }}
       py={{ base: 5, md: 6 }}
       boxShadow={useColorModeValue('0 18px 50px rgba(17, 17, 19, 0.08)', '0 22px 60px rgba(2, 6, 23, 0.42)')}
@@ -61,7 +61,7 @@ export default function PageHeader({
                   key={item.label}
                   px={4}
                   py={3}
-                  borderRadius="10px"
+                  borderRadius="8px"
                   bg={metaBg}
                   borderWidth="1px"
                   borderColor={borderColor}

@@ -1,6 +1,31 @@
 import axiosInstance from './axiosInstance'
 
 export interface CreateShipmentParams {
+  qc_type?: 'param' | string
+  custom_qc?: Array<{
+    item?: string
+    description: string
+    images: string[] | string
+    return_reason?: string
+    quantity?: number | string
+    brand?: string
+    product_category?: string
+    questions: Array<{
+      questions_id?: string
+      question_id?: string
+      client_question_id?: string
+      required: boolean | string | number
+      type: string
+      options?: Array<{
+        value: string[] | string
+      }>
+      value?: string[] | string
+      ques_images?: string[] | string
+    }>
+  }>
+  qc_details?: {
+    custom_qc?: CreateShipmentParams['custom_qc']
+  } | CreateShipmentParams['custom_qc']
   order_number: string
   payment_type: 'cod' | 'prepaid' | 'reverse'
   package_weight?: number
@@ -19,6 +44,28 @@ export interface CreateShipmentParams {
   courier_cost?: number // Estimated courier cost from serviceability (what platform pays courier - can be updated via webhook)
   cod_charges?: number
   discount?: number
+  waybill?: string
+  mps?: boolean
+  boxes?: Array<{
+    box_name?: string
+    name?: string
+    length?: number
+    lengthCm?: number
+    breadth?: number
+    breadthCm?: number
+    width?: number
+    widthCm?: number
+    height?: number
+    heightCm?: number
+    weight?: number
+    weightKg?: number
+    quantity?: number | string
+    qty?: number | string
+    waybill?: string
+    awb?: string
+    awb_number?: string
+    tracking_number?: string
+  }>
   order_date: string
   order_amount: number
   consignee: {

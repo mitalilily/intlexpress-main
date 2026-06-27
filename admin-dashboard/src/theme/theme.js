@@ -74,7 +74,7 @@ const componentOverrides = {
     Modal: {
       baseStyle: {
         dialog: {
-          borderRadius: '12px',
+          borderRadius: '8px',
           borderWidth: '1px',
           borderColor: 'gray.200',
           boxShadow: '0 24px 52px rgba(17, 17, 19, 0.18)',
@@ -87,7 +87,7 @@ const componentOverrides = {
     },
     Badge: {
       baseStyle: {
-        borderRadius: '8px',
+        borderRadius: '6px',
         textTransform: 'none',
         px: '2.5',
         py: '1',
@@ -96,7 +96,7 @@ const componentOverrides = {
     },
     Tooltip: {
       baseStyle: {
-        borderRadius: '8px',
+        borderRadius: '6px',
       },
     },
   },

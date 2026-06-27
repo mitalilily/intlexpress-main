@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, or } from 'drizzle-orm'
 import { Response } from 'express'
 import { db } from '../../models/client'
 import { DelhiveryService } from '../../models/services/couriers/delhivery.service'
@@ -22,6 +22,18 @@ import { presignDownload } from '../../models/services/upload.service'
 import { applyCancellationRefundOnce } from '../../models/services/webhookProcessor'
 import { b2c_orders } from '../../schema/schema'
 import { sendWebhookEvent } from '../../services/webhookDelivery.service'
+import { validateDelhiveryCancellationEligibility } from '../../utils/delhiveryShipmentCancellation'
+import {
+  buildDelhiveryEwaybillUpdateProviderMeta,
+  isDelhiveryEwaybillUpdateAccepted,
+  isDelhiveryEwaybillUpdateRequest,
+  validateAndNormalizeDelhiveryEwaybillUpdate,
+} from '../../utils/delhiveryEwaybillUpdate'
+import {
+  buildDelhiveryShipmentUpdateProviderMeta,
+  isDelhiveryShipmentUpdateAccepted,
+  validateAndNormalizeDelhiveryShipmentUpdate,
+} from '../../utils/delhiveryShipmentUpdate'
 import { getOpaqueProviderCode } from '../../utils/externalApiHelpers'
 import { getMerchantSafeOperationalError } from '../../utils/merchantErrorMessages'
 import { getOrderLabelReference, isExternalLabelReference } from '../../utils/orderLabels'
@@ -65,6 +77,20 @@ const resolveExternalOrder = async (userId: string, orderId: string) => {
         o.provider_request_id === orderId,
     ) || null
   )
+}
+
+const parseCsvQueryValues = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((entry) => String(entry ?? '').split(','))
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+  }
+
+  return String(value ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
 }
 
 /**
@@ -270,14 +296,65 @@ export const retryFailedManifestController = async (req: any, res: Response) => 
 }
 
 /**
- * Track order by AWB or order number
+ * Track order by AWB, Delhivery waybill/ref_ids, or order number
  * GET /api/v1/orders/track
  */
 export const trackOrderController = async (req: any, res: Response) => {
   try {
-    const { awb, orderNumber, contact } = req.query
+    const { awb, orderNumber, contact, waybill, ref_ids, refIds } = req.query
+    const waybillList = Array.from(new Set(parseCsvQueryValues(waybill)))
+    const refIdList = Array.from(new Set(parseCsvQueryValues(ref_ids ?? refIds)))
 
-    let awbNumber: string | undefined = awb ? String(awb) : undefined
+    if (waybillList.length > 50) {
+      return res.status(400).json({
+        success: false,
+        error: 'Too many waybills',
+        message: 'Delhivery tracking supports up to 50 comma-separated waybills per request.',
+      })
+    }
+
+    if (refIdList.length > 50) {
+      return res.status(400).json({
+        success: false,
+        error: 'Too many ref_ids',
+        message: 'Delhivery tracking supports up to 50 comma-separated ref_ids per request.',
+      })
+    }
+
+    const isProviderStyleDelhiveryTracking =
+      refIdList.length > 0 || waybillList.length > 1
+
+    if (isProviderStyleDelhiveryTracking) {
+      const resolutionHint = waybillList[0] || refIdList[0] || ''
+      const [contextOrder] = resolutionHint
+        ? await db
+            .select()
+            .from(b2c_orders)
+            .where(
+              or(
+                eq(b2c_orders.awb_number, resolutionHint),
+                eq(b2c_orders.order_number, resolutionHint),
+                eq(b2c_orders.provider_reference, resolutionHint),
+                eq(b2c_orders.provider_request_id, resolutionHint),
+              ),
+            )
+            .limit(1)
+        : [null]
+
+      const delhivery = new DelhiveryService({ order: contextOrder || undefined })
+      const trackingData = await delhivery.trackShipment({
+        ...(waybillList.length ? { waybill: waybillList } : {}),
+        ...(refIdList.length ? { refIds: refIdList } : {}),
+      })
+
+      return res.status(200).json({
+        success: true,
+        data: trackingData,
+      })
+    }
+
+    let awbNumber: string | undefined =
+      waybillList.length === 1 ? waybillList[0] : awb ? String(awb) : undefined
 
     if (!awbNumber && orderNumber && contact) {
       const contactStr = String(contact)
@@ -319,7 +396,8 @@ export const trackOrderController = async (req: any, res: Response) => {
     return res.status(400).json({
       success: false,
       error: 'Missing parameters',
-      message: "Provide either 'awb' or ('orderNumber' with 'contact')",
+      message:
+        "Provide either 'awb', 'waybill', 'ref_ids', or ('orderNumber' with 'contact')",
     })
   } catch (err: any) {
     console.error('Error tracking order via API:', err)
@@ -349,16 +427,6 @@ export const cancelOrderController = async (req: any, res: Response) => {
         success: false,
         error: 'Order not found',
         message: `Order with ID ${orderId} not found`,
-      })
-    }
-
-    // Check if order can be cancelled
-    const cancellableStatuses = ['booked', 'pending', 'confirmed', 'pickup_initiated']
-    if (!cancellableStatuses.includes(order.order_status?.toLowerCase() || '')) {
-      return res.status(400).json({
-        success: false,
-        error: 'Order cannot be cancelled',
-        message: `Order with status "${order.order_status}" cannot be cancelled`,
       })
     }
 
@@ -396,6 +464,34 @@ export const cancelOrderController = async (req: any, res: Response) => {
         error: 'Missing AWB',
         message: 'Cancellation requires an AWB number',
       })
+    }
+
+    if (provider === 'delhivery') {
+      const [freshOrder] = await db
+        .select()
+        .from(b2c_orders)
+        .where(eq(b2c_orders.id, order.id))
+        .limit(1)
+
+      if (!freshOrder) {
+        return res.status(404).json({
+          success: false,
+          error: 'Order not found',
+          message: `Order with ID ${orderId} not found`,
+        })
+      }
+
+      validateDelhiveryCancellationEligibility(freshOrder)
+    } else {
+      // Keep the original local guard for non-Delhivery providers.
+      const cancellableStatuses = ['booked', 'pending', 'confirmed', 'pickup_initiated']
+      if (!cancellableStatuses.includes(order.order_status?.toLowerCase() || '')) {
+        return res.status(400).json({
+          success: false,
+          error: 'Order cannot be cancelled',
+          message: `Order with status "${order.order_status}" cannot be cancelled`,
+        })
+      }
     }
 
     try {
@@ -687,11 +783,106 @@ export const updateOrderProviderController = async (req: any, res: Response) => 
       return res.status(404).json({ success: false, error: 'Order not found', message: 'Order not found' })
     }
 
-    if (String(order.integration_type || '').toLowerCase() !== 'shadowfax') {
+    const provider = String(order.integration_type || '').toLowerCase()
+
+    if (provider === 'delhivery') {
+      const [freshOrder] = await db
+        .select()
+        .from(b2c_orders)
+        .where(eq(b2c_orders.id, order.id))
+        .limit(1)
+      if (!freshOrder) {
+        return res.status(404).json({
+          success: false,
+          error: 'Order not found',
+          message: 'Order not found',
+        })
+      }
+
+      const delhivery = new DelhiveryService({ order: freshOrder })
+      if (isDelhiveryEwaybillUpdateRequest(req.body || {})) {
+        const { awb, providerPayload, localOrderPatch } =
+          validateAndNormalizeDelhiveryEwaybillUpdate({
+            order: freshOrder,
+            payload: req.body || {},
+          })
+        const result = await delhivery.updateEwaybill(awb, providerPayload)
+
+        if (!isDelhiveryEwaybillUpdateAccepted(result)) {
+          return res.status(502).json({
+            success: false,
+            error: 'Courier update rejected',
+            message:
+              result?.message ||
+              result?.error ||
+              'Delhivery did not accept the E-waybill update request.',
+            data: {
+              provider: 'delhivery',
+              awb_number: awb,
+              provider_response: result,
+            },
+          })
+        }
+
+        await db
+          .update(b2c_orders)
+          .set({
+            ...localOrderPatch,
+            provider_meta: buildDelhiveryEwaybillUpdateProviderMeta({
+              existingMeta: freshOrder.provider_meta,
+              requestPayload: providerPayload,
+              response: result,
+            }) as any,
+            updated_at: new Date(),
+          } as any)
+          .where(eq(b2c_orders.id, freshOrder.id))
+
+        return res.status(200).json({ success: true, data: result })
+      }
+
+      const { awb, providerPayload, localOrderPatch } = validateAndNormalizeDelhiveryShipmentUpdate({
+        order: freshOrder,
+        payload: req.body || {},
+      })
+      const result = await delhivery.updateShipment(awb, providerPayload)
+
+      if (!isDelhiveryShipmentUpdateAccepted(result)) {
+        return res.status(502).json({
+          success: false,
+          error: 'Courier update rejected',
+          message:
+            result?.message ||
+            result?.error ||
+            'Delhivery did not accept the shipment update request.',
+          data: {
+            provider: 'delhivery',
+            awb_number: awb,
+            provider_response: result,
+          },
+        })
+      }
+
+      await db
+        .update(b2c_orders)
+        .set({
+          ...localOrderPatch,
+          provider_meta: buildDelhiveryShipmentUpdateProviderMeta({
+            existingMeta: freshOrder.provider_meta,
+            requestPayload: providerPayload,
+            response: result,
+          }) as any,
+          updated_at: new Date(),
+        } as any)
+        .where(eq(b2c_orders.id, freshOrder.id))
+
+      return res.status(200).json({ success: true, data: result })
+    }
+
+    if (provider !== 'shadowfax') {
       return res.status(400).json({
         success: false,
         error: 'Unsupported provider',
-        message: 'Provider update is currently supported for Shadowfax-backed orders only.',
+        message: 'Provider update is currently supported for Delhivery and Shadowfax-backed orders only.',
       })
     }
 
@@ -725,7 +916,13 @@ export const updateOrderProviderController = async (req: any, res: Response) => 
     return res.status(200).json({ success: true, data: result })
   } catch (error: any) {
     console.error('Error updating provider order via API:', error)
-    return res.status(500).json({
+    const statusCode =
+      typeof error?.statusCode === 'number'
+        ? error.statusCode
+        : typeof error?.response?.status === 'number'
+          ? error.response.status
+          : 500
+    return res.status(statusCode).json({
       success: false,
       error: 'Failed to update provider order',
       message: error.message || 'Internal server error',

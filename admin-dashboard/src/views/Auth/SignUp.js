@@ -18,14 +18,14 @@ import React from 'react'
 import { NavLink } from 'react-router-dom'
 
 function SignUp() {
-  const pageBg = useColorModeValue('#F1ECE8', '#111113')
+  const pageBg = useColorModeValue('#F3F6FE', '#09111F')
   const shellBg = useColorModeValue('rgba(255,255,255,0.96)', 'rgba(24, 24, 27, 0.94)')
   const shellBorder = useColorModeValue('rgba(17, 17, 19, 0.12)', 'rgba(148, 163, 184, 0.14)')
-  const panelBg = useColorModeValue('#FAF4F2', '#141417')
-  const titleColor = useColorModeValue('#171414', 'white')
-  const textColor = useColorModeValue('#6E6763', 'rgba(255,255,255,0.72)')
+  const panelBg = useColorModeValue('#EEF2FB', '#141B2F')
+  const titleColor = useColorModeValue('#151C46', 'white')
+  const textColor = useColorModeValue('#556188', 'rgba(255,255,255,0.72)')
   const inputBg = useColorModeValue('white', 'rgba(255,255,255,0.04)')
-  const inputBorder = useColorModeValue('rgba(29,21,46,0.12)', 'rgba(255,255,255,0.12)')
+  const inputBorder = useColorModeValue('rgba(20,31,60,0.12)', 'rgba(255,255,255,0.12)')
 
   return (
     <Flex
@@ -42,8 +42,8 @@ function SignUp() {
         position="absolute"
         inset="0"
         bgImage={useColorModeValue(
-          'radial-gradient(circle at 12% 10%, rgba(217,4,22,0.08) 0%, transparent 36%), radial-gradient(circle at 90% 14%, rgba(52,52,59,0.08) 0%, transparent 30%)',
-          'radial-gradient(circle at 12% 10%, rgba(217,4,22,0.16) 0%, transparent 36%), radial-gradient(circle at 90% 14%, rgba(255,255,255,0.08) 0%, transparent 30%)',
+          'radial-gradient(circle at 12% 10%, rgba(51,61,129,0.08) 0%, transparent 36%), radial-gradient(circle at 90% 14%, rgba(206,40,38,0.06) 0%, transparent 28%)',
+          'radial-gradient(circle at 12% 10%, rgba(91,102,177,0.2) 0%, transparent 36%), radial-gradient(circle at 90% 14%, rgba(255,255,255,0.08) 0%, transparent 30%)',
         )}
       />
 
@@ -54,7 +54,7 @@ function SignUp() {
         bg={shellBg}
         borderWidth="1px"
         borderColor={shellBorder}
-        borderRadius="20px"
+        borderRadius="8px"
         overflow="hidden"
         boxShadow={useColorModeValue('0 26px 70px rgba(17,17,19,0.1)', '0 28px 64px rgba(2, 8, 23, 0.46)')}
         position="relative"
@@ -88,7 +88,7 @@ function SignUp() {
                 'Keep access limited to internal operators and decision makers.',
                 'Continue to the admin workspace after approval.',
               ].map((item) => (
-                <Box key={item} p={4} borderRadius="10px" bg="white" borderWidth="1px" borderColor={shellBorder}>
+                <Box key={item} p={4} borderRadius="8px" bg="white" borderWidth="1px" borderColor={shellBorder}>
                   <Text color={titleColor} fontWeight="600" lineHeight="1.8">
                     {item}
                   </Text>
@@ -119,24 +119,24 @@ function SignUp() {
                   <FormLabel fontSize="sm" fontWeight="700" color={titleColor}>
                     Full name
                   </FormLabel>
-                  <Input placeholder="Operations administrator" h="50px" borderRadius="10px" bg={inputBg} borderColor={inputBorder} />
+                  <Input placeholder="Operations administrator" h="50px" borderRadius="8px" bg={inputBg} borderColor={inputBorder} />
                 </FormControl>
 
                 <FormControl>
                   <FormLabel fontSize="sm" fontWeight="700" color={titleColor}>
                     Work email
                   </FormLabel>
-                  <Input placeholder="admin@intlexpress.com" type="email" h="50px" borderRadius="10px" bg={inputBg} borderColor={inputBorder} />
+                  <Input placeholder="admin@intlexpress.com" type="email" h="50px" borderRadius="8px" bg={inputBg} borderColor={inputBorder} />
                 </FormControl>
 
                 <FormControl>
                   <FormLabel fontSize="sm" fontWeight="700" color={titleColor}>
                     Password
                   </FormLabel>
-                  <Input placeholder="Create a secure password" type="password" h="50px" borderRadius="10px" bg={inputBg} borderColor={inputBorder} />
+                  <Input placeholder="Create a secure password" type="password" h="50px" borderRadius="8px" bg={inputBg} borderColor={inputBorder} />
                 </FormControl>
 
-                <Button h="50px" borderRadius="10px" bg="brand.500" color="white" _hover={{ bg: 'brand.600' }}>
+                <Button h="50px" borderRadius="8px" bg="brand.500" color="white" _hover={{ bg: 'brand.600' }}>
                   Create Admin Account
                 </Button>
 

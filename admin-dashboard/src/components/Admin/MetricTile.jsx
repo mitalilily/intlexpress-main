@@ -11,10 +11,13 @@ export default function MetricTile({
 }) {
   const bg = useColorModeValue('white', 'rgba(14, 23, 43, 0.9)')
   const borderColor = active
-    ? useColorModeValue('rgba(109, 40, 217, 0.34)', 'rgba(249, 115, 22, 0.36)')
-    : useColorModeValue('rgba(148, 163, 184, 0.24)', 'rgba(148, 163, 184, 0.16)')
+    ? useColorModeValue('rgba(51, 61, 129, 0.34)', 'rgba(111, 132, 239, 0.34)')
+    : useColorModeValue('rgba(51, 61, 129, 0.14)', 'rgba(148, 163, 184, 0.16)')
   const titleColor = useColorModeValue('gray.500', 'gray.400')
   const valueColor = useColorModeValue('gray.800', 'white')
+  const iconBg = useColorModeValue('rgba(51, 61, 129, 0.08)', 'rgba(255,255,255,0.06)')
+  const hoverBorderColor = useColorModeValue('rgba(51, 61, 129, 0.28)', 'rgba(111, 132, 239, 0.28)')
+  const hoverShadow = useColorModeValue('0 18px 40px rgba(35, 41, 93, 0.1)', '0 20px 48px rgba(2, 8, 23, 0.42)')
 
   return (
     <Flex
@@ -22,7 +25,7 @@ export default function MetricTile({
       justify="space-between"
       minH="136px"
       p={4.5}
-      borderRadius="22px"
+      borderRadius="8px"
       borderWidth="1px"
       borderColor={borderColor}
       bg={bg}
@@ -33,8 +36,8 @@ export default function MetricTile({
         onClick
           ? {
               transform: 'translateY(-2px)',
-              borderColor: useColorModeValue('rgba(109, 40, 217, 0.26)', 'rgba(249, 115, 22, 0.28)'),
-              boxShadow: useColorModeValue('0 18px 40px rgba(67, 56, 202, 0.1)', '0 20px 48px rgba(2, 8, 23, 0.42)'),
+              borderColor: hoverBorderColor,
+              boxShadow: hoverShadow,
             }
           : undefined
       }
@@ -49,8 +52,8 @@ export default function MetricTile({
           justify="center"
           w="42px"
           h="42px"
-          borderRadius="16px"
-          bg={useColorModeValue('rgba(109, 40, 217, 0.08)', 'rgba(255,255,255,0.06)')}
+          borderRadius="6px"
+          bg={iconBg}
           color={accent}
         >
           {icon}

@@ -19,7 +19,9 @@ import {
 } from '../controllers/amazonShipping.controller'
 import { ekartWebhookHandler } from '../controllers/webhooks/ekart.webhook'
 import {
+  getDelhiveryNdrStatusController,
   getNdrEventsController,
+  submitDelhiveryNdrActionController,
   getNdrTimelineController,
 } from '../controllers/externalApi/ndr.controller'
 import {
@@ -36,8 +38,10 @@ import {
   updateOrderProviderController,
 } from '../controllers/externalApi/order.controller'
 import {
+  createDelhiveryWarehouseController,
   createPickupAddressController,
   getPickupAddressesController,
+  updateDelhiveryWarehouseController,
   updatePickupAddressController,
   requestPickupController,
 } from '../controllers/externalApi/pickup.controller'
@@ -47,7 +51,11 @@ import {
 } from '../controllers/externalApi/returns.controller'
 import { getRtoEventsController } from '../controllers/externalApi/rto.controller'
 import { checkServiceabilityController } from '../controllers/externalApi/serviceability.controller'
-import { getShippingRatesController } from '../controllers/externalApi/shipping.controller'
+import {
+  getDelhiveryShippingCostController,
+  getDelhiveryShippingLabelController,
+  getShippingRatesController,
+} from '../controllers/externalApi/shipping.controller'
 import {
   createWebhookController,
   deleteWebhookController,
@@ -91,6 +99,10 @@ router.post('/serviceability', requireApiKey, checkServiceabilityController)
 
 // Get shipping rates (pre-order calculation)
 router.post('/shipping/rates', requireApiKey, getShippingRatesController)
+router.get('/shipping/cost', requireApiKey, getDelhiveryShippingCostController)
+router.post('/shipping/cost', requireApiKey, getDelhiveryShippingCostController)
+router.get('/shipping/label', requireApiKey, getDelhiveryShippingLabelController)
+router.post('/shipping/label', requireApiKey, getDelhiveryShippingLabelController)
 router.post('/amazon-shipping/rates', requireApiKey, getAmazonShippingRatesController)
 router.post('/amazon-shipping/shipments', requireApiKey, purchaseAmazonShipmentController)
 router.post('/amazon-shipping/one-click-shipment', requireApiKey, oneClickAmazonShipmentController)
@@ -150,6 +162,9 @@ router.post('/manifest', requireApiKey, generateManifestController)
 // PICKUP MANAGEMENT (Requires API Key)
 // ============================================================================
 router.post('/pickup-addresses', requireApiKey, createPickupAddressController)
+router.post('/pickup-addresses/warehouse', requireApiKey, createDelhiveryWarehouseController)
+router.put('/pickup-addresses/warehouse', requireApiKey, updateDelhiveryWarehouseController)
+router.post('/pickup-addresses/warehouse/edit', requireApiKey, updateDelhiveryWarehouseController)
 router.get('/pickup-addresses', requireApiKey, getPickupAddressesController)
 router.put('/pickup-addresses/:id', requireApiKey, updatePickupAddressController)
 router.post('/pickup-addresses/request-pickup', requireApiKey, requestPickupController)
@@ -158,6 +173,8 @@ router.post('/pickup-addresses/request-pickup', requireApiKey, requestPickupCont
 // NDR MANAGEMENT (Requires API Key)
 // ============================================================================
 router.get('/ndr', requireApiKey, getNdrEventsController)
+router.post('/ndr', requireApiKey, submitDelhiveryNdrActionController)
+router.get('/ndr/status', requireApiKey, getDelhiveryNdrStatusController)
 router.get('/ndr/timeline', requireApiKey, getNdrTimelineController)
 
 // ============================================================================

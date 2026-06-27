@@ -52,7 +52,7 @@ export default function Dashboard() {
   const { data: statsData, isLoading, error, refetch, isRefetching } = useDashboardStats()
 
   const pageBg = useColorModeValue(
-    'linear-gradient(180deg, #F7F5FF 0%, #FFF8F2 42%, #F4F6FB 100%)',
+    'linear-gradient(180deg, #F7F9FF 0%, #EEF2FB 42%, #F4F7FD 100%)',
     'linear-gradient(180deg, #09111F 0%, #0F172A 46%, #111827 100%)',
   )
   const panelBg = useColorModeValue('white', '#101D36')
@@ -220,13 +220,13 @@ export default function Dashboard() {
                   onClick={() => refetch()}
                   bg="brand.500"
                   color="white"
-                  borderRadius="14px"
+                  borderRadius="8px"
                   px={5}
                   _hover={{ bg: 'brand.600' }}
                 >
                   Refresh data
                 </Button>
-                <Button size="sm" variant="outline" borderColor={borderColor} borderRadius="14px" onClick={() => history.push('/admin/orders')}>
+                <Button size="sm" variant="outline" borderColor={borderColor} borderRadius="8px" onClick={() => history.push('/admin/orders')}>
                   View orders
                 </Button>
               </HStack>
@@ -266,7 +266,7 @@ export default function Dashboard() {
         </SimpleGrid>
 
         <Grid templateColumns={{ base: '1fr', xl: '1.45fr 1fr' }} gap={6} mb={6}>
-          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="16px" h="full">
+          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="8px" h="full">
             <CardHeader p={5} pb={2}>
               <Heading size="sm" color={textPrimary}>Orders Trend (7 days)</Heading>
               <Text fontSize="sm" color={textSecondary} mt={1}>Shipment volume by day</Text>
@@ -278,7 +278,7 @@ export default function Dashboard() {
             </CardBody>
           </Card>
 
-          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="16px" h="full">
+          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="8px" h="full">
             <CardHeader p={5} pb={2}>
               <Heading size="sm" color={textPrimary}>Action Queue</Heading>
               <Text fontSize="sm" color={textSecondary} mt={1}>Operational items needing attention</Text>
@@ -302,7 +302,7 @@ export default function Dashboard() {
                         <Flex
                           key={item.title}
                           p={3.5}
-                          borderRadius="12px"
+                          borderRadius="8px"
                           borderWidth="1px"
                           borderColor={`${item.colorScheme}.200`}
                           bg={`${item.colorScheme}.50`}
@@ -320,7 +320,7 @@ export default function Dashboard() {
                               h="30px"
                               align="center"
                               justify="center"
-                              borderRadius="10px"
+                              borderRadius="6px"
                               bg="white"
                               color={`${item.colorScheme}.600`}
                               flexShrink={0}
@@ -350,7 +350,7 @@ export default function Dashboard() {
         </Grid>
 
         <Grid templateColumns={{ base: '1fr', xl: '1fr 1fr' }} gap={6} mb={6}>
-          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="16px" h="full">
+          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="8px" h="full">
             <CardHeader p={5} pb={2}>
               <Heading size="sm" color={textPrimary}>Revenue Trend (7 days)</Heading>
               <Text fontSize="sm" color={textSecondary} mt={1}>Net revenue performance</Text>
@@ -360,13 +360,13 @@ export default function Dashboard() {
                 <RevenueBarChart data={charts.revenueByDate || []} />
               </Box>
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3} mt={4}>
-                <Box p={3.5} borderRadius="12px" borderWidth="1px" borderColor={borderColor} bg={tileBg}>
+                <Box p={3.5} borderRadius="8px" borderWidth="1px" borderColor={borderColor} bg={tileBg}>
                   <Text fontSize="xs" textTransform="uppercase" letterSpacing="0.45px" color={textSecondary} fontWeight="700">
                     COD Outstanding
                   </Text>
                   <Text mt={1} fontWeight="800" color={textPrimary}>{formatCurrency(financial.codRemittanceDue)}</Text>
                 </Box>
-                <Box p={3.5} borderRadius="12px" borderWidth="1px" borderColor={borderColor} bg={tileBg}>
+                <Box p={3.5} borderRadius="8px" borderWidth="1px" borderColor={borderColor} bg={tileBg}>
                   <Text fontSize="xs" textTransform="uppercase" letterSpacing="0.45px" color={textSecondary} fontWeight="700">
                     Total COD Value
                   </Text>
@@ -376,7 +376,7 @@ export default function Dashboard() {
             </CardBody>
           </Card>
 
-          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="16px" h="full">
+          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="8px" h="full">
             <CardHeader p={5} pb={2}>
               <Heading size="sm" color={textPrimary}>Courier Snapshot</Heading>
               <Text fontSize="sm" color={textSecondary} mt={1}>Top couriers by volume</Text>
@@ -387,7 +387,7 @@ export default function Dashboard() {
                   <Text fontSize="sm" color={textSecondary}>No courier data available.</Text>
                 ) : (
                   topCouriers.map((courier, index) => (
-                    <Box key={courier.name} p={3.5} borderRadius="12px" borderWidth="1px" borderColor={borderColor} bg={tileBg}>
+                    <Box key={courier.name} p={3.5} borderRadius="8px" borderWidth="1px" borderColor={borderColor} bg={tileBg}>
                       <HStack justify="space-between" mb={2}>
                         <HStack spacing={2}>
                           <Badge borderRadius="full">{index + 1}</Badge>
@@ -410,7 +410,7 @@ export default function Dashboard() {
         </Grid>
 
         <Grid templateColumns={{ base: '1fr', xl: '1fr 1fr' }} gap={6}>
-          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="16px" h="full">
+          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="8px" h="full">
             <CardHeader p={5} pb={2}>
               <Heading size="sm" color={textPrimary}>Origin Hotspots</Heading>
             </CardHeader>
@@ -420,7 +420,7 @@ export default function Dashboard() {
                   <Text fontSize="sm" color={textSecondary}>No origin city data yet.</Text>
                 ) : (
                   (geographic.topOriginCities || []).slice(0, 5).map((item) => (
-                    <HStack key={`origin-${item.city}`} justify="space-between" p={3} borderRadius="10px" borderWidth="1px" borderColor={borderColor} bg={tileBg}>
+                    <HStack key={`origin-${item.city}`} justify="space-between" p={3} borderRadius="8px" borderWidth="1px" borderColor={borderColor} bg={tileBg}>
                       <HStack spacing={2}>
                         <IconMapPin size={16} color="#1F4FA8" />
                         <Text color={textPrimary} fontSize="sm">{item.city}</Text>
@@ -433,7 +433,7 @@ export default function Dashboard() {
             </CardBody>
           </Card>
 
-          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="16px" h="full">
+          <Card bg={panelBg} borderWidth="1px" borderColor={borderColor} borderRadius="8px" h="full">
             <CardHeader p={5} pb={2}>
               <Heading size="sm" color={textPrimary}>Destination Hotspots</Heading>
             </CardHeader>
@@ -443,7 +443,7 @@ export default function Dashboard() {
                   <Text fontSize="sm" color={textSecondary}>No destination city data yet.</Text>
                 ) : (
                   (geographic.topDestinationCities || []).slice(0, 5).map((item) => (
-                    <HStack key={`dest-${item.city}`} justify="space-between" p={3} borderRadius="10px" borderWidth="1px" borderColor={borderColor} bg={tileBg}>
+                    <HStack key={`dest-${item.city}`} justify="space-between" p={3} borderRadius="8px" borderWidth="1px" borderColor={borderColor} bg={tileBg}>
                       <HStack spacing={2}>
                         <IconMapPin size={16} color="#F57C22" />
                         <Text color={textPrimary} fontSize="sm">{item.city}</Text>

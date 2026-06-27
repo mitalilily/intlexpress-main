@@ -31,16 +31,17 @@ import { RiRefreshLine } from 'react-icons/ri'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/auth/AuthContext'
 import { useMerchantDashboardStats } from '../../hooks/useDashboard'
+import { brand } from '../../theme/brand'
 
-const BRAND_PRIMARY = '#333d81'
-const BRAND_TEXT = '#111827'
-const TEXT_MUTED = '#6B7280'
+const BRAND_PRIMARY = brand.colors.primary
+const BRAND_TEXT = brand.colors.ink
+const TEXT_MUTED = brand.colors.slate
 
 const CARD_STYLE = {
-  borderRadius: 3,
+  borderRadius: 1,
   bgcolor: '#ffffff',
-  border: '1px solid rgba(17, 24, 39, 0.08)',
-  boxShadow: '0 10px 28px rgba(15, 23, 42, 0.05)',
+  border: `1px solid ${alpha(BRAND_PRIMARY, 0.1)}`,
+  boxShadow: '0 10px 28px rgba(35, 41, 93, 0.07)',
 }
 
 const formatCurrency = (value: number) =>
@@ -279,7 +280,7 @@ const Home = () => {
           ...CARD_STYLE,
           p: { xs: 2, md: 2.5 },
           background:
-            'linear-gradient(135deg, rgba(217,4,22,0.05) 0%, rgba(255,255,255,0.94) 45%, rgba(59,130,246,0.05) 100%)',
+            'linear-gradient(135deg, rgba(51,61,129,0.07) 0%, rgba(255,255,255,0.95) 48%, rgba(91,102,177,0.06) 100%)',
         }}
       >
         <Stack
@@ -334,7 +335,7 @@ const Home = () => {
               sx={{
                 textTransform: 'none',
                 fontWeight: 700,
-                boxShadow: '0 12px 24px rgba(217,4,22,0.16)',
+                boxShadow: `0 12px 24px ${alpha(BRAND_PRIMARY, 0.18)}`,
               }}
             >
               Create Shipment
@@ -364,7 +365,7 @@ const Home = () => {
                   <Box
                     sx={{
                       p: 1,
-                      borderRadius: 1.4,
+                      borderRadius: 1,
                       bgcolor: alpha(card.color, 0.1),
                       color: card.color,
                       display: 'flex',
@@ -443,7 +444,7 @@ const Home = () => {
                     sx={{
                       width: 36,
                       height: 36,
-                      borderRadius: 1,
+                      borderRadius: 0.8,
                       bgcolor: alpha(action.color, 0.12),
                       display: 'flex',
                       alignItems: 'center',
@@ -497,7 +498,7 @@ const Home = () => {
                       key={order.id}
                       sx={{
                         p: 1.2,
-                        borderRadius: 1.5,
+                        borderRadius: 1,
                         bgcolor: alpha('#000', 0.018),
                         border: '1px solid rgba(17, 24, 39, 0.06)',
                       }}
@@ -604,7 +605,7 @@ const Home = () => {
               Billing Overview
             </Typography>
             <Stack spacing={1.4}>
-              <Box sx={{ p: 1.4, borderRadius: 2, bgcolor: alpha(BRAND_PRIMARY, 0.05) }}>
+              <Box sx={{ p: 1.4, borderRadius: 1, bgcolor: alpha(BRAND_PRIMARY, 0.05) }}>
                 <Typography
                   sx={{
                     fontSize: '0.74rem',
@@ -677,7 +678,7 @@ const Home = () => {
                     sx={{
                       width: 36,
                       height: 36,
-                      borderRadius: 1.25,
+                      borderRadius: 0.8,
                       bgcolor: alpha(metric.color, 0.1),
                       color: metric.color,
                       display: 'flex',

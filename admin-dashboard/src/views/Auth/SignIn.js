@@ -36,16 +36,18 @@ function isTokenValid(token) {
 }
 
 function SignIn() {
-  const pageBg = useColorModeValue('#F1ECE8', '#111113')
-  const shellBg = useColorModeValue('white', '#18181B')
-  const shellBorder = useColorModeValue('rgba(17,17,19,0.08)', 'rgba(255,255,255,0.08)')
-  const leftBg = useColorModeValue('#141417', '#111113')
-  const leftBorder = useColorModeValue('rgba(17,17,19,0.08)', 'rgba(255,255,255,0.08)')
-  const textPrimary = useColorModeValue('#171414', 'white')
-  const textSecondary = useColorModeValue('#6E6763', 'rgba(255,255,255,0.72)')
-  const inputBg = useColorModeValue('#F8F4F2', 'rgba(255,255,255,0.04)')
-  const inputBorder = useColorModeValue('rgba(17,17,19,0.12)', 'rgba(255,255,255,0.1)')
-  const iconHoverBg = useColorModeValue('rgba(217,4,22,0.08)', 'rgba(255,255,255,0.08)')
+  const pageBg = useColorModeValue('#F3F6FE', '#09111F')
+  const shellBg = useColorModeValue('#FFFFFF', '#101D36')
+  const shellBorder = useColorModeValue('rgba(20,31,60,0.08)', 'rgba(148,163,184,0.14)')
+  const showcaseBg = useColorModeValue(
+    'linear-gradient(160deg, #1C275B 0%, #333D81 52%, #5B66B1 100%)',
+    'linear-gradient(160deg, #0F172A 0%, #182447 48%, #23295D 100%)',
+  )
+  const textPrimary = useColorModeValue('#151C46', 'white')
+  const textSecondary = useColorModeValue('#556188', 'rgba(255,255,255,0.72)')
+  const inputBg = useColorModeValue('#F6F7FB', 'rgba(255,255,255,0.04)')
+  const inputBorder = useColorModeValue('rgba(20,31,60,0.12)', 'rgba(255,255,255,0.1)')
+  const iconHoverBg = useColorModeValue('rgba(51,61,129,0.08)', 'rgba(255,255,255,0.08)')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -94,107 +96,116 @@ function SignIn() {
   }, [history])
 
   return (
-    <Flex
-      minH="100vh"
-      bg={pageBg}
-      align="center"
-      justify="center"
-      px={{ base: 4, md: 6 }}
-      py={{ base: 6, md: 8 }}
-      position="relative"
-      overflow="hidden"
-    >
-      <Box
-        position="absolute"
-        inset="0"
-        bgImage={useColorModeValue(
-          'radial-gradient(circle at 10% 10%, rgba(217,4,22,0.08) 0%, transparent 42%), radial-gradient(circle at 92% 0%, rgba(52,52,59,0.08) 0%, transparent 34%)',
-          'radial-gradient(circle at 10% 10%, rgba(217,4,22,0.16) 0%, transparent 42%), radial-gradient(circle at 92% 0%, rgba(255,255,255,0.06) 0%, transparent 34%)',
-        )}
-      />
-
+    <Flex minH="100vh" bg={pageBg} px={{ base: 3, md: 4 }} py={{ base: 3, md: 4 }}>
       <Grid
-        templateColumns={{ base: '1fr', lg: '1.05fr 0.95fr' }}
+        templateColumns={{ base: '1fr', lg: '1.12fr 0.88fr' }}
         w="100%"
-        maxW="1200px"
-        bg={shellBg}
-        border="1px solid"
-        borderColor={shellBorder}
-        borderRadius={{ base: '16px', lg: '20px' }}
-        boxShadow={useColorModeValue('0 24px 64px rgba(17,17,19,0.1)', '0 24px 60px rgba(5,4,10,0.42)')}
-        overflow="hidden"
-        zIndex="1"
+        maxW="1510px"
+        mx="auto"
+        gap={{ base: 3, lg: 4 }}
+        alignItems="stretch"
       >
-        <GridItem bg={leftBg} borderRight={{ base: 'none', lg: '1px solid' }} borderColor={leftBorder}>
-          <VStack align="stretch" spacing={0} h="100%" p={{ base: 6, md: 8, lg: 10 }}>
-            <HStack spacing={4} mb={{ base: 8, md: 10 }}>
-              <BrandLockup
-                iconSize={56}
-                nameColor="white"
-                taglineColor="rgba(255,255,255,0.52)"
-                nameSize={{ base: '2xl', md: '3xl' }}
-                tagline="Admin Control Center"
-              />
-            </HStack>
+        <GridItem display={{ base: 'none', lg: 'block' }}>
+          <Box
+            minH={{ lg: 'calc(100vh - 32px)' }}
+            bg={showcaseBg}
+            border="1px solid"
+            borderColor={shellBorder}
+            position="relative"
+            overflow="hidden"
+            boxShadow={useColorModeValue('0 18px 45px rgba(21, 30, 55, 0.08)', '0 24px 60px rgba(2, 8, 23, 0.42)')}
+          >
+            <Box
+              position="absolute"
+              inset="0"
+              bgImage="radial-gradient(circle at 18% 18%, rgba(255,255,255,0.22) 0%, transparent 28%), radial-gradient(circle at 82% 14%, rgba(206,40,38,0.18) 0%, transparent 24%), linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0))"
+            />
 
-            <VStack align="start" spacing={5} maxW="560px">
-              <Heading fontSize={{ base: '3xl', md: '4xl' }} lineHeight="1.02" letterSpacing="-0.04em" color="white">
-                Run IntleExpress operations from one sharper admin command layer.
-              </Heading>
-              <Text color="rgba(255,255,255,0.72)" fontSize="md" lineHeight="1.9">
-                Oversee pricing, users, serviceability, support, billing, and logistics execution
-                from a cleaner admin console built for daily operational control.
-              </Text>
-            </VStack>
+            <VStack align="stretch" spacing={0} h="100%" p={{ md: 8, lg: 10 }} position="relative" zIndex="1">
+              <HStack spacing={4} mb={10}>
+                <BrandLockup
+                  iconSize={56}
+                  nameColor="white"
+                  taglineColor="rgba(255,255,255,0.66)"
+                  nameSize={{ base: '2xl', md: '3xl' }}
+                  tagline="Admin Control Center"
+                />
+              </HStack>
 
-            <Grid templateColumns={{ base: '1fr', md: 'repeat(3, 1fr)' }} gap={4} mt={{ base: 8, md: 10 }}>
-              {[
-                { title: 'Pricing', body: 'manage courier logic, plans, and platform commercials' },
-                { title: 'Operations', body: 'review orders, NDR, RTO, and exception workflows' },
-                { title: 'Support', body: 'track users, tickets, notifications, and admin actions' },
-              ].map((item) => (
-                <Box
-                  key={item.title}
-                  p={4}
-                  borderRadius="10px"
-                  bg="rgba(255,255,255,0.06)"
-                  border="1px solid rgba(255,255,255,0.08)"
-                >
-                  <Text fontSize="sm" fontWeight="800" color="white">
-                    {item.title}
-                  </Text>
-                  <Text mt={2} fontSize="sm" lineHeight="1.7" color="rgba(255,255,255,0.68)">
-                    {item.body}
-                  </Text>
-                </Box>
-              ))}
-            </Grid>
+              <VStack align="start" spacing={5} maxW="560px">
+                <Heading fontSize={{ base: '3xl', md: '4xl' }} lineHeight="1.02" letterSpacing="-0.04em" color="white">
+                  Run IntleExpress operations from one focused admin command layer.
+                </Heading>
+                <Text color="rgba(255,255,255,0.72)" fontSize="md" lineHeight="1.9">
+                  Oversee pricing, users, serviceability, support, billing, and logistics execution
+                  from a cleaner admin console built for daily operational control.
+                </Text>
+              </VStack>
 
-            <VStack align="start" spacing={3} mt="auto" pt={{ base: 8, md: 12 }}>
-              {[
-                'Unified workspace for pricing, operations, and support',
-                'Cleaner navigation across all admin routes',
-                'Secure sign-in flow for platform administrators',
-              ].map((item) => (
-                <HStack key={item} spacing={3} align="start">
-                  <Box pt="1">
-                    <FiCheckCircle color="#F86B78" size={15} />
+              <Grid templateColumns="repeat(3, 1fr)" gap={4} mt={10}>
+                {[
+                  { title: 'Pricing', body: 'manage courier logic, plans, and platform commercials' },
+                  { title: 'Operations', body: 'review orders, NDR, RTO, and exception workflows' },
+                  { title: 'Support', body: 'track users, tickets, notifications, and admin actions' },
+                ].map((item) => (
+                  <Box
+                    key={item.title}
+                    p={4}
+                    borderRadius="8px"
+                    bg="rgba(255,255,255,0.08)"
+                    border="1px solid rgba(255,255,255,0.14)"
+                    backdropFilter="blur(12px)"
+                  >
+                    <Text fontSize="sm" fontWeight="800" color="white">
+                      {item.title}
+                    </Text>
+                    <Text mt={2} fontSize="sm" lineHeight="1.7" color="rgba(255,255,255,0.7)">
+                      {item.body}
+                    </Text>
                   </Box>
-                  <Text color="white" fontSize="sm" fontWeight="600">
-                    {item}
-                  </Text>
-                </HStack>
-              ))}
+                ))}
+              </Grid>
+
+              <VStack align="start" spacing={3} mt="auto" pt={12}>
+                {[
+                  'Unified workspace for pricing, operations, and support',
+                  'Cleaner navigation across all admin routes',
+                  'Secure sign-in flow for platform administrators',
+                ].map((item) => (
+                  <HStack key={item} spacing={3} align="start">
+                    <Box pt="1">
+                      <FiCheckCircle color="#C7D2FE" size={15} />
+                    </Box>
+                    <Text color="white" fontSize="sm" fontWeight="600">
+                      {item}
+                    </Text>
+                  </HStack>
+                ))}
+              </VStack>
             </VStack>
-          </VStack>
+          </Box>
         </GridItem>
 
-        <GridItem bg={shellBg}>
-          <Flex h="100%" align="center" justify="center" px={{ base: 5, md: 8 }} py={{ base: 7, md: 9 }}>
-            <Box as="form" onSubmit={handleSubmit} w="100%" maxW="440px">
+        <GridItem display="flex" alignItems="center" justifyContent="center">
+          <Box
+            w="100%"
+            maxW={{ base: 720, lg: 'none' }}
+            minH={{ lg: 'calc(100vh - 32px)' }}
+            bg={shellBg}
+            border="1px solid"
+            borderColor={shellBorder}
+            borderRadius={{ base: '20px', lg: '24px' }}
+            boxShadow={useColorModeValue('0 18px 45px rgba(21, 30, 55, 0.08)', '0 24px 60px rgba(2, 8, 23, 0.42)')}
+            overflow="hidden"
+            display="flex"
+            alignItems="center"
+            px={{ base: 5, sm: 7, lg: 8 }}
+            py={{ base: 6, sm: 8 }}
+          >
+            <Box as="form" onSubmit={handleSubmit} w="100%" maxW="440px" mx="auto">
               <VStack spacing={6} align="stretch">
                 <Box>
-                  <Text fontSize="xs" fontWeight="800" letterSpacing="0.16em" color="brand.500" mb={2}>
+                  <Text fontSize="xs" fontWeight="800" letterSpacing="0.16em" color="brand.500" mb={2} textTransform="uppercase">
                     Secure Access
                   </Text>
                   <Heading fontSize={{ base: '2xl', md: '3xl' }} fontWeight="800" color={textPrimary} lineHeight="1.08" letterSpacing="-0.03em">
@@ -215,13 +226,13 @@ function SignIn() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="admin@intlexpress.com"
                     h="50px"
-                    borderRadius="10px"
+                    borderRadius="8px"
                     bg={inputBg}
                     borderColor={inputBorder}
                     _hover={{ borderColor: 'brand.400' }}
                     _focus={{
                       borderColor: 'brand.500',
-                      boxShadow: '0 0 0 3px rgba(217,4,22,0.12)',
+                      boxShadow: '0 0 0 3px rgba(51,61,129,0.12)',
                     }}
                   />
                 </FormControl>
@@ -237,14 +248,14 @@ function SignIn() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
                       h="50px"
-                      borderRadius="10px"
+                      borderRadius="8px"
                       bg={inputBg}
                       borderColor={inputBorder}
                       pr="48px"
                       _hover={{ borderColor: 'brand.400' }}
                       _focus={{
                         borderColor: 'brand.500',
-                        boxShadow: '0 0 0 3px rgba(217,4,22,0.12)',
+                        boxShadow: '0 0 0 3px rgba(51,61,129,0.12)',
                       }}
                     />
                     <InputRightElement h="50px" pr="8px">
@@ -264,7 +275,7 @@ function SignIn() {
                 <Button
                   type="submit"
                   h="50px"
-                  borderRadius="10px"
+                  borderRadius="8px"
                   bg="brand.500"
                   color="white"
                   fontWeight="700"
@@ -277,7 +288,7 @@ function SignIn() {
                 </Button>
               </VStack>
             </Box>
-          </Flex>
+          </Box>
         </GridItem>
       </Grid>
     </Flex>

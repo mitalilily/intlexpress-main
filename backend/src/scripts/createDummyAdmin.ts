@@ -1,29 +1,28 @@
 import * as dotenv from 'dotenv'
 import path from 'path'
 import bcryptjs from 'bcryptjs'
-import { db } from '../models/client'
-import { users } from '../models/schema/users'
-import { userProfiles } from '../models/schema/userProfile'
 import { eq } from 'drizzle-orm'
+import { db } from '../models/client'
+import { userProfiles } from '../models/schema/userProfile'
+import { users } from '../models/schema/users'
 
 const env = process.env.NODE_ENV || 'development'
 dotenv.config({ path: path.resolve(__dirname, `../../.env.${env}`) })
 
 async function createDummyAdmin() {
   try {
-    console.log('🚀 Creating dummy admin user...')
+    console.log('Creating dummy admin user...')
 
-    const email = 'admin@shiplifi.local'
+    const email = 'admin@intlexpress.local'
     const password = 'Admin@12345'
     const hashedPassword = await bcryptjs.hash(password, 10)
 
-    // Check if user already exists
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, email),
     })
 
     if (existingUser) {
-      console.log('⚠️  Admin user already exists. Updating...')
+      console.log('Admin user already exists. Updating...')
       await db
         .update(users)
         .set({
@@ -34,9 +33,8 @@ async function createDummyAdmin() {
           updatedAt: new Date(),
         })
         .where(eq(users.id, existingUser.id))
-      console.log('✓ Admin password updated')
+      console.log('Admin password updated')
     } else {
-      // Create new admin user
       const newUser = await db
         .insert(users)
         .values({
@@ -49,15 +47,14 @@ async function createDummyAdmin() {
         })
         .returning()
 
-      console.log('✓ Admin user created:', newUser[0].id)
+      console.log('Admin user created:', newUser[0].id)
 
-      // Create user profile with approved and onboarding complete
       await db
         .insert(userProfiles)
         .values({
           userId: newUser[0].id,
           companyInfo: {
-            businessName: 'Test Company',
+            businessName: 'IntleExpress Admin',
             contactPerson: 'Admin User',
             POCEmailVerified: true,
             POCPhoneVerified: true,
@@ -66,11 +63,11 @@ async function createDummyAdmin() {
             state: 'Delhi',
             city: 'New Delhi',
             contactNumber: '+919876543210',
-            contactEmail: 'admin@shiplifi.local',
+            contactEmail: 'admin@intlexpress.local',
             companyContactNumber: '+919876543210',
-            brandName: 'Test Brand',
-            companyEmail: 'admin@shiplifi.local',
-            website: 'https://shiplifi.local',
+            brandName: 'IntleExpress',
+            companyEmail: 'admin@intlexpress.local',
+            website: 'https://intlexpress.local',
           },
           businessType: ['b2c'],
           approved: true,
@@ -80,17 +77,17 @@ async function createDummyAdmin() {
         })
         .returning()
 
-      console.log('✓ User profile created with approved=true, onboardingComplete=true')
+      console.log('User profile created with approved=true, onboardingComplete=true')
     }
 
-    console.log('\n✅ Dummy admin setup complete!')
-    console.log('📧 Email: admin@shiplifi.local')
-    console.log('🔐 Password: Admin@12345')
+    console.log('\nDummy admin setup complete')
+    console.log('Email: admin@intlexpress.local')
+    console.log('Password: Admin@12345')
     console.log('\nYou can now login to the admin panel with these credentials.')
 
     process.exit(0)
   } catch (error) {
-    console.error('❌ Error creating dummy admin:', error)
+    console.error('Error creating dummy admin:', error)
     process.exit(1)
   }
 }

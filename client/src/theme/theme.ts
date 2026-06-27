@@ -49,7 +49,7 @@ const theme = createTheme({
     },
   },
   shape: {
-    borderRadius: 20,
+    borderRadius: 8,
   },
   typography: {
     fontFamily: '"Plus Jakarta Sans", "Segoe UI", sans-serif',
@@ -117,7 +117,7 @@ const theme = createTheme({
         root: {
           position: 'relative',
           overflow: 'hidden',
-          borderRadius: 22,
+          borderRadius: 8,
           backgroundColor: alpha(brand.colors.surface, 0.98),
           border: `1px solid ${brand.colors.border}`,
           boxShadow: '0 24px 70px rgba(35, 41, 93, 0.08)',
@@ -328,7 +328,7 @@ const theme = createTheme({
     MuiDialog: {
       styleOverrides: {
         paper: {
-          borderRadius: 22,
+          borderRadius: 8,
           border: `1px solid ${alpha(brand.colors.ink, 0.08)}`,
           boxShadow: '0 28px 70px rgba(35, 41, 93, 0.14)',
         },
@@ -337,7 +337,7 @@ const theme = createTheme({
     MuiPopover: {
       styleOverrides: {
         paper: {
-          borderRadius: 22,
+          borderRadius: 8,
           border: `1px solid ${alpha(brand.colors.ink, 0.08)}`,
           boxShadow: '0 24px 50px rgba(35, 41, 93, 0.12)',
         },

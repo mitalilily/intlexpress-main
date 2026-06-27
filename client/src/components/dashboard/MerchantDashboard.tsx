@@ -1,4 +1,4 @@
-import { Avatar, Box, Button, Card, Grid, Stack, TextField, Typography } from '@mui/material'
+import { alpha, Avatar, Box, Button, Card, Grid, Stack, TextField, Typography } from '@mui/material'
 import { useState } from 'react'
 import {
   FiBell,
@@ -10,9 +10,10 @@ import {
   FiSettings,
   FiTrendingUp,
 } from 'react-icons/fi'
+import { brand } from '../../theme/brand'
 
-const BRAND_ORANGE = '#333d81'
-const BRAND_DARK = '#0f172a'
+const BRAND_PRIMARY = brand.colors.primary
+const BRAND_DARK = brand.colors.ink
 const BG_LIGHT = '#f8fafc'
 
 interface NavItem {
@@ -43,7 +44,6 @@ export default function MerchantDashboard() {
         justifyContent: 'center',
       }}
     >
-      {/* Main Dashboard Container */}
       <Box
         sx={{
           width: '100%',
@@ -52,12 +52,11 @@ export default function MerchantDashboard() {
           gridTemplateColumns: { xs: '1fr', md: '280px 1fr', lg: '280px 1fr 320px' },
           gap: { xs: 0, md: 3 },
           background: '#ffffff',
-          borderRadius: { xs: '20px', md: '32px' },
-          boxShadow: '0 15px 50px rgba(0, 0, 0, 0.08)',
+          borderRadius: { xs: '12px', md: '16px' },
+          boxShadow: '0 15px 50px rgba(35, 41, 93, 0.08)',
           overflow: 'hidden',
         }}
       >
-        {/* LEFT SIDEBAR */}
         <Box
           sx={{
             display: { xs: 'none', md: 'flex' },
@@ -71,21 +70,19 @@ export default function MerchantDashboard() {
             overflow: 'auto',
           }}
         >
-          {/* Logo */}
           <Box sx={{ mb: 3 }}>
             <Box
               sx={{
                 fontSize: '24px',
                 fontWeight: 900,
-                color: BRAND_ORANGE,
+                color: BRAND_PRIMARY,
                 letterSpacing: '-0.5px',
               }}
             >
-              ⬡ IntleExpress
+              IntleExpress
             </Box>
           </Box>
 
-          {/* Merchant Profile */}
           <Box
             sx={{
               display: 'flex',
@@ -93,7 +90,7 @@ export default function MerchantDashboard() {
               gap: 2,
               p: 2,
               background: '#f1f5f9',
-              borderRadius: '16px',
+              borderRadius: '8px',
               mb: 4,
               cursor: 'pointer',
               transition: 'all 0.3s ease',
@@ -106,7 +103,7 @@ export default function MerchantDashboard() {
               sx={{
                 width: 44,
                 height: 44,
-                background: `linear-gradient(135deg, ${BRAND_ORANGE} 0%, #ff6b6b 100%)`,
+                background: `linear-gradient(135deg, ${BRAND_PRIMARY} 0%, ${brand.colors.primaryLight} 100%)`,
                 fontWeight: 700,
                 fontSize: '18px',
               }}
@@ -123,7 +120,6 @@ export default function MerchantDashboard() {
             </Box>
           </Box>
 
-          {/* Navigation Menu */}
           <Stack spacing={1.5} sx={{ flex: 1 }}>
             {navItems.map((item) => (
               <Box
@@ -134,15 +130,15 @@ export default function MerchantDashboard() {
                   alignItems: 'center',
                   gap: 2.5,
                   p: '12px 16px',
-                  borderRadius: '12px',
+                  borderRadius: '8px',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
-                  background: activeNav === item.id ? BRAND_ORANGE : 'transparent',
+                  background: activeNav === item.id ? BRAND_PRIMARY : 'transparent',
                   color: activeNav === item.id ? '#ffffff' : '#475569',
                   fontWeight: activeNav === item.id ? 600 : 500,
                   fontSize: '0.95rem',
                   '&:hover': {
-                    background: activeNav === item.id ? BRAND_ORANGE : '#f1f5f9',
+                    background: activeNav === item.id ? BRAND_PRIMARY : '#f1f5f9',
                   },
                 }}
               >
@@ -152,33 +148,31 @@ export default function MerchantDashboard() {
             ))}
           </Stack>
 
-          {/* Decorative Blob */}
           <Box
             sx={{
               position: 'relative',
               width: '100%',
               height: '120px',
               margin: '20px -12px -12px',
-              background: `linear-gradient(135deg, ${BRAND_ORANGE}15 0%, #3b82f615 100%)`,
+              background: `linear-gradient(135deg, ${alpha(BRAND_PRIMARY, 0.12)} 0%, ${alpha(brand.colors.primaryLight, 0.12)} 100%)`,
               borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%',
               opacity: 0.6,
             }}
           />
 
-          {/* Logout */}
           <Box
             sx={{
               display: 'flex',
               alignItems: 'center',
               gap: 2,
               p: '12px 16px',
-              borderRadius: '12px',
+              borderRadius: '8px',
               cursor: 'pointer',
               color: '#64748b',
               transition: 'all 0.3s ease',
               '&:hover': {
                 background: '#fee2e2',
-                color: BRAND_ORANGE,
+                color: BRAND_PRIMARY,
               },
             }}
           >
@@ -187,7 +181,6 @@ export default function MerchantDashboard() {
           </Box>
         </Box>
 
-        {/* CENTER MAIN CONTENT */}
         <Box
           sx={{
             p: { xs: 3, md: 4, lg: 5 },
@@ -195,7 +188,6 @@ export default function MerchantDashboard() {
             maxHeight: '100vh',
           }}
         >
-          {/* Header Section */}
           <Box sx={{ mb: 4 }}>
             <Typography
               sx={{
@@ -205,14 +197,13 @@ export default function MerchantDashboard() {
                 mb: 0.5,
               }}
             >
-              Hello, John 👋
+              Hello, John
             </Typography>
             <Typography sx={{ color: '#64748b', fontSize: '0.95rem' }}>
-              Monday, 21 April 2026 • 4:30 PM IST
+              Monday, 21 April 2026 - 4:30 PM IST
             </Typography>
           </Box>
 
-          {/* Search & Action Bar */}
           <Box
             sx={{
               display: 'flex',
@@ -227,11 +218,11 @@ export default function MerchantDashboard() {
               sx={{
                 flex: 1,
                 '& .MuiOutlinedInput-root': {
-                  borderRadius: '12px',
+                  borderRadius: '8px',
                   background: '#f8fafc',
                   border: '1px solid #e2e8f0',
-                  '&:hover': { border: `1px solid ${BRAND_ORANGE}40` },
-                  '&.Mui-focused': { border: `2px solid ${BRAND_ORANGE}` },
+                  '&:hover': { border: `1px solid ${alpha(BRAND_PRIMARY, 0.25)}` },
+                  '&.Mui-focused': { border: `2px solid ${BRAND_PRIMARY}` },
                 },
               }}
               InputProps={{
@@ -243,15 +234,15 @@ export default function MerchantDashboard() {
             <Button
               variant="contained"
               sx={{
-                background: BRAND_ORANGE,
+                background: BRAND_PRIMARY,
                 px: 3,
-                borderRadius: '12px',
+                borderRadius: '8px',
                 fontWeight: 700,
                 textTransform: 'none',
                 fontSize: '0.95rem',
                 '&:hover': {
-                  background: '#b8030d',
-                  boxShadow: `0 10px 25px ${BRAND_ORANGE}30`,
+                  background: brand.colors.primaryDark,
+                  boxShadow: `0 10px 25px ${alpha(BRAND_PRIMARY, 0.2)}`,
                 },
               }}
               startIcon={<FiPlus size={18} />}
@@ -260,7 +251,6 @@ export default function MerchantDashboard() {
             </Button>
           </Box>
 
-          {/* Stats Cards */}
           <Grid container spacing={2} sx={{ mb: 4 }}>
             {[
               { label: 'Active Shipments', value: '24', color: '#3b82f6' },
@@ -272,7 +262,7 @@ export default function MerchantDashboard() {
                 <Card
                   sx={{
                     p: 2.5,
-                    borderRadius: '16px',
+                    borderRadius: '8px',
                     border: '1px solid #e2e8f0',
                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
                     transition: 'all 0.3s ease',
@@ -303,7 +293,6 @@ export default function MerchantDashboard() {
             ))}
           </Grid>
 
-          {/* Recent Shipments */}
           <Box>
             <Typography sx={{ fontSize: '1.2rem', fontWeight: 700, color: BRAND_DARK, mb: 2 }}>
               Recent Shipments
@@ -339,7 +328,7 @@ export default function MerchantDashboard() {
                   onMouseLeave={() => setHoveredCard(null)}
                   sx={{
                     p: 3,
-                    borderRadius: '16px',
+                    borderRadius: '8px',
                     border: '1px solid #e2e8f0',
                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
                     display: 'flex',
@@ -358,7 +347,7 @@ export default function MerchantDashboard() {
                       {shipment.id}
                     </Typography>
                     <Typography sx={{ fontSize: '0.85rem', color: '#64748b' }}>
-                      📍 {shipment.destination}
+                      Destination: {shipment.destination}
                     </Typography>
                   </Box>
 
@@ -370,7 +359,7 @@ export default function MerchantDashboard() {
                         py: 0.75,
                         background: `${shipment.color}15`,
                         color: shipment.color,
-                        borderRadius: '8px',
+                        borderRadius: '6px',
                         fontSize: '0.8rem',
                         fontWeight: 700,
                         mb: 0.5,
@@ -388,7 +377,6 @@ export default function MerchantDashboard() {
           </Box>
         </Box>
 
-        {/* RIGHT UTILITY PANEL */}
         <Box
           sx={{
             display: { xs: 'none', lg: 'flex' },
@@ -402,7 +390,6 @@ export default function MerchantDashboard() {
             overflow: 'auto',
           }}
         >
-          {/* Notifications */}
           <Box sx={{ mb: 4 }}>
             <Box
               sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}
@@ -417,7 +404,7 @@ export default function MerchantDashboard() {
                     right: -4,
                     width: '8px',
                     height: '8px',
-                    background: BRAND_ORANGE,
+                    background: BRAND_PRIMARY,
                     borderRadius: '50%',
                   }}
                 />
@@ -435,11 +422,11 @@ export default function MerchantDashboard() {
                   sx={{
                     p: 2,
                     background: '#f1f5f9',
-                    borderRadius: '12px',
+                    borderRadius: '8px',
                     cursor: 'pointer',
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      background: `${BRAND_ORANGE}15`,
+                      background: alpha(BRAND_PRIMARY, 0.12),
                     },
                   }}
                 >
@@ -457,7 +444,6 @@ export default function MerchantDashboard() {
             </Stack>
           </Box>
 
-          {/* Quick Stats */}
           <Box>
             <Typography sx={{ fontWeight: 700, color: BRAND_DARK, mb: 2 }}>This Month</Typography>
 
@@ -467,7 +453,7 @@ export default function MerchantDashboard() {
                 { label: 'Earnings', value: '₹45,320', change: '+8%' },
                 { label: 'Avg Rating', value: '4.8/5', change: '+0.2' },
               ].map((stat, i) => (
-                <Box key={i} sx={{ p: 2, background: '#f1f5f9', borderRadius: '12px' }}>
+                <Box key={i} sx={{ p: 2, background: '#f1f5f9', borderRadius: '8px' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                     <Typography sx={{ fontSize: '0.85rem', color: '#64748b' }}>
                       {stat.label}

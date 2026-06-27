@@ -11,14 +11,14 @@ const Card = {
   },
   variants: {
     panel: (props) => ({
-      bg: props.colorMode === 'dark' ? '#221C2F' : 'white',
+      bg: props.colorMode === 'dark' ? '#101D36' : 'white',
       width: '100%',
-      border: props.colorMode === 'dark' ? '1px solid rgba(151, 141, 170, 0.18)' : '1px solid rgba(46, 41, 56, 0.08)',
+      border: props.colorMode === 'dark' ? '1px solid rgba(148, 163, 184, 0.18)' : '1px solid rgba(51, 61, 129, 0.1)',
       boxShadow:
         props.colorMode === 'dark'
-          ? '0 18px 40px rgba(5, 4, 10, 0.35)'
-          : '0 16px 36px rgba(29, 21, 46, 0.06)',
-      borderRadius: '22px',
+          ? '0 18px 40px rgba(2, 8, 23, 0.34)'
+          : '0 16px 36px rgba(35, 41, 93, 0.08)',
+      borderRadius: '8px',
       overflow: 'hidden',
     }),
   },

@@ -1179,6 +1179,7 @@ const retryDelhiveryPickupRequestForOrder = async (order: {
   user_id: string
   order_number?: string | null
   awb_number?: string | null
+  provider_meta?: any
   pickup_details?: any
   pickup_error?: string | null
   manifest?: string | null
@@ -1198,13 +1199,38 @@ const retryDelhiveryPickupRequestForOrder = async (order: {
     : /^\d{2}:\d{2}$/.test(pickupTimeRaw)
       ? `${pickupTimeRaw}:00`
       : getDefaultPickupTime()
+  const providerMeta = parseRecordValue(order.provider_meta)
+  const persistedPackages = Array.isArray(providerMeta.packages)
+    ? providerMeta.packages.filter((pkg: any) => pkg && typeof pkg === 'object')
+    : []
+  const requestedBoxes = Array.isArray(providerMeta.requested_boxes)
+    ? providerMeta.requested_boxes.filter((box: any) => box && typeof box === 'object')
+    : []
+  const persistedWaybills = Array.isArray(providerMeta.waybills)
+    ? providerMeta.waybills.filter(Boolean)
+    : []
+  const pickupRequestMeta = parseRecordValue(providerMeta.pickup_request)
+  const explicitPackageCount = Number(
+    pickupRequestMeta.expected_package_count ??
+      providerMeta.package_count ??
+      providerMeta.packages_count ??
+      providerMeta.expected_package_count ??
+      0,
+  )
+  const expectedPackageCount =
+    persistedPackages.length ||
+    requestedBoxes.length ||
+    persistedWaybills.length ||
+    (Number.isFinite(explicitPackageCount) && explicitPackageCount > 0
+      ? Math.max(1, Math.round(explicitPackageCount))
+      : 1)
 
   const delhivery = new DelhiveryService({ order })
   await delhivery.createPickupRequest({
     pickup_date: pickupDate,
     pickup_time: pickupTime,
     pickup_location: pickupLocationName,
-    expected_package_count: 1,
+    expected_package_count: expectedPackageCount,
   })
 
   await db
@@ -1251,6 +1277,126 @@ const getExpectedWalletDebitFromOrder = (order: {
     gstPercent: order.gst_percent ?? WALLET_TRANSACTION_GST_PERCENT,
     gstAmount: order.gst_amount,
   })
+}
+
+const resolveDelhiveryProductType = (params: {
+  product_type?: string | null
+  productType?: string | null
+  order_items?: Array<Record<string, any>> | null
+}) => {
+  const firstItem = Array.isArray(params.order_items) ? params.order_items[0] : null
+  const productType = String(
+    params.product_type ||
+      params.productType ||
+      firstItem?.product_type ||
+      firstItem?.productType ||
+      '',
+  )
+    .trim()
+    .toLowerCase()
+
+  return productType === 'heavy' ? 'Heavy' : null
+}
+
+const resolveDelhiveryTatMode = (shippingMode?: string | null): 'S' | 'E' | 'N' => {
+  const normalized = String(shippingMode || '')
+    .trim()
+    .toLowerCase()
+
+  if (normalized === 'ndd' || normalized === 'next_day_delivery' || normalized === 'next day delivery') {
+    return 'N'
+  }
+
+  if (normalized === 'air' || normalized === 'express' || normalized === 'e') {
+    return 'E'
+  }
+
+  return 'S'
+}
+
+const formatDelhiveryExpectedPickupDate = (dateValue?: string | null, timeValue?: string | null) => {
+  const datePart = String(dateValue || '').trim()
+  if (!datePart) return null
+
+  const timePart = String(timeValue || '').trim()
+  if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}$/.test(datePart)) {
+    return datePart
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    if (/^\d{2}:\d{2}(:\d{2})?$/.test(timePart)) {
+      return `${datePart} ${timePart.slice(0, 5)}`
+    }
+    return `${datePart} 00:00`
+  }
+
+  return datePart
+}
+
+const parseDelhiveryServiceabilityResponse = (response: any) => {
+  const standardPostalCode = response?.delivery_codes?.[0]?.postal_code
+  if (standardPostalCode) {
+    const remark = String(standardPostalCode?.remark || '').trim().toLowerCase()
+    return {
+      mode: 'b2c' as const,
+      pickup: standardPostalCode?.pickup === 'Y',
+      prepaid: standardPostalCode?.pre_paid === 'Y',
+      cod: standardPostalCode?.cod === 'Y',
+      embargoed: remark === 'embargo',
+      raw: standardPostalCode,
+    }
+  }
+
+  const candidate =
+    response?.data?.[0] ||
+    response?.data ||
+    response?.results?.[0] ||
+    response?.results ||
+    response?.delivery_codes?.[0] ||
+    response?.delivery_codes ||
+    response?.serviceability?.[0] ||
+    response?.serviceability ||
+    response
+
+  const normalizedPaymentType = String(
+    candidate?.payment_type ||
+      candidate?.paymentType ||
+      candidate?.payment_mode ||
+      candidate?.paymentMode ||
+      '',
+  )
+    .trim()
+    .toLowerCase()
+  const normalizedStatus = String(
+    candidate?.status || candidate?.serviceable || candidate?.serviceability || candidate?.remark || '',
+  )
+    .trim()
+    .toLowerCase()
+  const rawText = JSON.stringify(candidate || {}).toLowerCase()
+
+  const hasServiceability =
+    candidate?.serviceable === true ||
+    normalizedStatus === 'serviceable' ||
+    normalizedStatus === 'y' ||
+    normalizedStatus === 'yes' ||
+    rawText.includes('"serviceable":true') ||
+    rawText.includes('"status":"serviceable"')
+
+  const paymentMentionsCod = normalizedPaymentType.includes('cod')
+  const paymentMentionsPrepaid =
+    normalizedPaymentType.includes('prepaid') || normalizedPaymentType.includes('pre_paid')
+  const paymentMentionsBoth =
+    normalizedPaymentType.includes('both') ||
+    (paymentMentionsCod && paymentMentionsPrepaid) ||
+    normalizedPaymentType.includes('all')
+
+  return {
+    mode: 'heavy' as const,
+    pickup: hasServiceability,
+    prepaid: hasServiceability && (paymentMentionsBoth || paymentMentionsPrepaid || !normalizedPaymentType),
+    cod: hasServiceability && (paymentMentionsBoth || paymentMentionsCod),
+    embargoed: normalizedStatus.includes('embargo') || rawText.includes('embargo'),
+    raw: candidate,
+  }
 }
 
 const getWalletDebitReasonFromOrder = (orderType: string | null | undefined) => {
@@ -2768,6 +2914,8 @@ interface NimbusServiceabilityParams {
   deliveryState?: string
   shadowfax_forward_mode?: string
   shadowfax_service_mode?: 'regular' | 'surface'
+  product_type?: string
+  productType?: string
   // Hint that this call is coming from a rate calculator UI (we can skip heavy live checks)
   isCalculator?: boolean
 }
@@ -3887,6 +4035,7 @@ export const fetchAvailableCouriersWithRates = async (
     let delhiveryDestinationServiceable = false
     let delhiveryEDD = '3-5 Days'
     let delhiveryResp: any = null
+    const delhiveryProductType = resolveDelhiveryProductType(params)
     const normalizedPaymentType = String(params.payment_type || 'prepaid')
       .trim()
       .toLowerCase()
@@ -3905,50 +4054,61 @@ export const fetchAvailableCouriersWithRates = async (
         mode: isCalculator ? 'calculator' : 'standard',
         origin: originPincode,
         destination: destinationPincode,
+        productType: delhiveryProductType || 'B2C',
       })
 
       if (originPincode && destinationPincode) {
         try {
           const [originResp, destinationResp] = await Promise.all([
-            delhivery.checkServiceability(originPincode),
-            delhivery.checkServiceability(destinationPincode),
+            delhivery.checkServiceability({
+              pincode: originPincode,
+              productType: delhiveryProductType,
+            }),
+            delhivery.checkServiceability({
+              pincode: destinationPincode,
+              productType: delhiveryProductType,
+            }),
           ])
           delhiveryResp = destinationResp
 
-          const originService = originResp?.delivery_codes?.[0]?.postal_code
-          const destinationService = destinationResp?.delivery_codes?.[0]?.postal_code
+          const originService = parseDelhiveryServiceabilityResponse(originResp)
+          const destinationService = parseDelhiveryServiceabilityResponse(destinationResp)
 
-          delhiveryOriginServiceable =
-            Boolean(originResp?.delivery_codes?.length) && originService?.pickup === 'Y'
+          delhiveryOriginServiceable = originService.pickup === true && originService.embargoed !== true
           delhiveryDestinationServiceable =
-            Boolean(destinationResp?.delivery_codes?.length) &&
             (delhiveryRequiresCOD
-              ? destinationService?.cod === 'Y'
-              : destinationService?.pre_paid === 'Y')
+              ? destinationService.cod === true
+              : destinationService.prepaid === true) && destinationService.embargoed !== true
 
           console.log('[Serviceability] Delhivery pincode check result', {
             mode: isCalculator ? 'calculator' : 'standard',
             origin: originPincode,
             destination: destinationPincode,
             paymentType: normalizedPaymentType,
+            productType: delhiveryProductType || 'B2C',
             requiresCOD: delhiveryRequiresCOD,
-            originAvailableRecords: originResp?.delivery_codes?.length ?? 0,
-            destinationAvailableRecords: destinationResp?.delivery_codes?.length ?? 0,
-            originPickup: originService?.pickup,
-            destinationPrePaid: destinationService?.pre_paid,
-            destinationCod: destinationService?.cod,
-            destinationRemark: destinationService?.remark ?? '',
+            originPickup: originService.pickup,
+            originEmbargoed: originService.embargoed,
+            destinationPrePaid: destinationService.prepaid,
+            destinationCod: destinationService.cod,
+            destinationEmbargoed: destinationService.embargoed,
+            originRaw: originService.raw,
+            destinationRaw: destinationService.raw,
           })
 
           delhiveryAvailable = delhiveryOriginServiceable && delhiveryDestinationServiceable
 
           if (delhiveryAvailable) {
-            const tatResp = await delhivery.getExpectedTAT(
-              originPincode,
-              destinationPincode,
-              'S',
-              'B2C',
-            )
+            const tatResp = await delhivery.getExpectedTAT({
+              origin: originPincode,
+              destination: destinationPincode,
+              mot: resolveDelhiveryTatMode(undefined),
+              pdt: 'B2C',
+              expectedPickupDate: formatDelhiveryExpectedPickupDate(
+                String((params as any).pickup_date || '').trim() || null,
+                String((params as any).pickup_time || '').trim() || null,
+              ),
+            })
             if (tatResp && Number.isFinite(Number(tatResp)) && Number(tatResp) > 0) {
               delhiveryEDD = `${Number(tatResp)} Days`
             }
@@ -5523,6 +5683,28 @@ export const fetchAvailableCouriersWithRatesB2B = async (
 // =================== Create Shipment & Update Order ===================
 
 export interface ShipmentParams {
+  qc_type?: 'param' | string
+  custom_qc?: Array<{
+    item?: string
+    description: string
+    images: string[] | string
+    return_reason?: string
+    quantity?: number | string
+    brand?: string
+    product_category?: string
+    questions: Array<{
+      questions_id?: string
+      question_id?: string
+      client_question_id?: string
+      required: boolean | string | number
+      type: string
+      options?: Array<{
+        value: string[] | string
+      }>
+      value?: string[] | string
+      ques_images?: string[] | string
+    }>
+  }>
   order_number: string // corresponds to b2c_orders.id
   payment_type?: 'cod' | 'prepaid' | 'reverse' | 'replacement'
   package_weight?: number
@@ -5539,7 +5721,37 @@ export interface ShipmentParams {
   other_charges?: number // Other charges from courier serviceability API (e.g. fuel surcharge, handling, etc.)
   freight_charges?: number // What platform charges seller (based on rate card)
   courier_cost?: number // Estimated courier cost from serviceability response (can be updated later via webhook)
-  boxes?: any
+  boxes?: Array<{
+    box_name?: string
+    name?: string
+    length?: number
+    lengthCm?: number
+    length_cm?: number
+    breadth?: number
+    breadthCm?: number
+    breadth_cm?: number
+    width?: number
+    widthCm?: number
+    width_cm?: number
+    height?: number
+    heightCm?: number
+    height_cm?: number
+    weight?: number
+    weightKg?: number
+    weight_kg?: number
+    weightInKg?: number
+    package_weight?: number
+    package_length?: number
+    package_breadth?: number
+    package_height?: number
+    dead_weight?: number
+    quantity?: number | string
+    qty?: number | string
+    waybill?: string
+    awb?: string
+    awb_number?: string
+    tracking_number?: string
+  }>
   prepaid_amount?: string
   transaction_fee?: number
   order_date: Date
@@ -5555,6 +5767,8 @@ export interface ShipmentParams {
   amazon_rate_id?: string
   amazon_service_id?: string
   amazon_carrier_id?: string
+  product_type?: string
+  productType?: string
   requestToken?: string
   rateId?: string
 
@@ -5585,6 +5799,7 @@ export interface ShipmentParams {
   plastic_packaging?: boolean | string | number
   quantity?: string | number
   country?: string
+  waybill?: string
   consignee: {
     name: string
     company_name?: string
@@ -6208,35 +6423,43 @@ export const createB2CShipmentService = async (
     originPin,
     destinationPin,
     paymentType,
+    productType,
     orderNumber,
   }: {
     delhivery: DelhiveryService
     originPin: string
     destinationPin: string
     paymentType?: ShipmentParams['payment_type']
+    productType?: string | null
     orderNumber?: string
   }) => {
     const requiresCOD = (paymentType || 'prepaid').toLowerCase() === 'cod'
     try {
       const [originResp, destinationResp] = await Promise.all([
-        delhivery.checkServiceability(originPin),
-        delhivery.checkServiceability(destinationPin),
+        delhivery.checkServiceability({
+          pincode: originPin,
+          productType,
+        }),
+        delhivery.checkServiceability({
+          pincode: destinationPin,
+          productType,
+        }),
       ])
 
-      const originPostalCode = originResp?.delivery_codes?.[0]?.postal_code
-      if (!originPostalCode?.pickup || originPostalCode.pickup !== 'Y') {
+      const originService = parseDelhiveryServiceabilityResponse(originResp)
+      if (originService.pickup !== true || originService.embargoed === true) {
         throw new HttpError(
           400,
           `Delhivery pickup pincode ${originPin} is not serviceable for order ${orderNumber ?? 'unknown'}. Please update the pickup location.`,
         )
       }
 
-      const destinationPostalCode = destinationResp?.delivery_codes?.[0]?.postal_code
+      const destinationService = parseDelhiveryServiceabilityResponse(destinationResp)
       const isDestinationReady =
         requiresCOD === true
-          ? destinationPostalCode?.cod === 'Y'
-          : destinationPostalCode?.pre_paid === 'Y'
-      if (!isDestinationReady) {
+          ? destinationService.cod === true
+          : destinationService.prepaid === true
+      if (!isDestinationReady || destinationService.embargoed === true) {
         throw new HttpError(
           400,
           `Delhivery destination pincode ${destinationPin} is not serviceable for ${
@@ -6249,10 +6472,11 @@ export const createB2CShipmentService = async (
         order_number: orderNumber,
         origin_pin: originPin,
         destination_pin: destinationPin,
+        product_type: productType || 'B2C',
         requires_cod: requiresCOD,
-        origin_pickup_flag: originPostalCode.pickup,
-        destination_cod_flag: destinationPostalCode.cod,
-        destination_prepaid_flag: destinationPostalCode.pre_paid,
+        origin_pickup_flag: originService.pickup,
+        destination_cod_flag: destinationService.cod,
+        destination_prepaid_flag: destinationService.prepaid,
       })
 
       return { originResp, destinationResp }
@@ -7215,6 +7439,12 @@ export const createB2CShipmentService = async (
     amazon_shipment_id?: string | null
     amazon_package_client_reference_id?: string | null
     amazon_label?: string | null
+    packages?: any[]
+    requested_boxes?: ShipmentParams['boxes']
+    waybills?: string[]
+    package_count?: number
+    mps?: boolean
+    master_waybill?: string
     delhivery_account_code?: string
     delhivery_account_label?: string
     delhivery_account?: Record<string, any>
@@ -7314,6 +7544,19 @@ export const createB2CShipmentService = async (
           }
         }
 
+        const reverseOriginPin = normalizePincode(params.consignee?.pincode) || bookingDestinationPincode
+        const reverseDestinationPin =
+          normalizePincode(params.rto?.pincode ?? params.pickup?.pincode) || bookingPickupPincode
+
+        await ensureDelhiveryServiceable({
+          delhivery,
+          originPin: reverseOriginPin,
+          destinationPin: reverseDestinationPin,
+          paymentType: 'prepaid',
+          productType: resolveDelhiveryProductType(params),
+          orderNumber: params.order_number,
+        })
+
         shipmentData = await delhivery.createReverseShipment({
           originalAwb: originalOrder?.awb_number || '',
           originalOrderId: originalOrder?.order_number || params.order_number,
@@ -7326,6 +7569,23 @@ export const createB2CShipmentService = async (
           package_breadth: params.package_breadth,
           package_height: params.package_height,
           order_items: params.order_items,
+          shipping_mode: params.shipping_mode,
+          transport_speed: params.transport_speed,
+          address_type: params.address_type,
+          invoice_number: params.invoice_number,
+          order_date: params.order_date,
+          dangerous_good: params.dangerous_good,
+          fragile_shipment: params.fragile_shipment,
+          plastic_packaging: params.plastic_packaging,
+          quantity: params.quantity,
+          country: params.country,
+          ewbn: params.ewbn,
+          ewb: params.ewb,
+          ewbn_number: params.ewbn_number,
+          ewaybill_number: params.ewaybill_number,
+          qc_type: params.qc_type,
+          custom_qc: params.custom_qc,
+          qc_details: params.qc_details,
         })
       } else {
         const originPin = bookingPickupPincode
@@ -7336,10 +7596,11 @@ export const createB2CShipmentService = async (
           originPin,
           destinationPin,
           paymentType: params.payment_type,
+          productType: resolveDelhiveryProductType(params),
           orderNumber: params.order_number,
         })
 
-        shipmentData = await delhivery.createShipment(params)
+        shipmentData = await delhivery.createShipment(params, params.waybill)
       }
 
       if (isReverseShipment) {
@@ -7374,6 +7635,27 @@ export const createB2CShipmentService = async (
         null
 
       const resolvedDelhiveryAccount = await delhivery.getResolvedAccount()
+      const delhiveryPackages = Array.isArray(shipmentData?.packages)
+        ? shipmentData.packages
+        : shipmentData?.packages
+          ? [shipmentData.packages]
+          : []
+      const requestedBoxes = Array.isArray(params.boxes) ? params.boxes : []
+      const persistedWaybills: string[] = Array.from(
+        new Set(
+          delhiveryPackages
+            .map((pkg: any) => String(pkg?.waybill || '').trim())
+            .filter(Boolean),
+        ),
+      )
+      if (!persistedWaybills.length) {
+        const primaryWaybill = String(
+          shipmentSuccessPackage?.waybill ?? shipmentData?.awb_number ?? params.waybill ?? '',
+        ).trim()
+        if (primaryWaybill) persistedWaybills.push(primaryWaybill)
+      }
+      const persistedPackageCount =
+        delhiveryPackages.length || requestedBoxes.length || persistedWaybills.length || 1
 
       shipmentMeta = {
         shipment_id: shipmentData.upload_wbn ?? shipmentData.shipment_id ?? undefined,
@@ -7385,6 +7667,14 @@ export const createB2CShipmentService = async (
         courier_cost: providerCourierCost,
         sort_code: providerSortCode,
         provider_reference: shipmentData.upload_wbn ?? shipmentData.shipment_id ?? undefined,
+        packages: delhiveryPackages,
+        requested_boxes: requestedBoxes,
+        waybills: persistedWaybills,
+        package_count: persistedPackageCount,
+        mps: persistedPackageCount > 1 || params.mps === true,
+        master_waybill:
+          String(params.waybill || shipmentSuccessPackage?.waybill || shipmentData?.awb_number || '')
+            .trim() || undefined,
         delhivery_account_code: resolvedDelhiveryAccount?.accountCode,
         delhivery_account_label: resolvedDelhiveryAccount?.accountLabel,
         delhivery_account: resolvedDelhiveryAccount
@@ -10600,7 +10890,34 @@ export const generateManifestService = async (params: {
 
       if (expectedPackageCount === 0) {
         expectedPackageCount = fetchedOrders.reduce(
-          (count, order) => count + (order.awb_number ? 1 : 0),
+          (count, order) => {
+            const providerMeta = parseRecordValue(order?.provider_meta)
+            const persistedPackages = Array.isArray(providerMeta.packages)
+              ? providerMeta.packages.filter((pkg: any) => pkg && typeof pkg === 'object')
+              : []
+            const requestedBoxes = Array.isArray(providerMeta.requested_boxes)
+              ? providerMeta.requested_boxes.filter((box: any) => box && typeof box === 'object')
+              : []
+            const persistedWaybills = Array.isArray(providerMeta.waybills)
+              ? providerMeta.waybills.filter(Boolean)
+              : []
+            const packageCountFromMeta = Number(
+              providerMeta.package_count ?? providerMeta.packages_count ?? 0,
+            )
+            const derivedPackageCount =
+              persistedPackages.length ||
+              requestedBoxes.length ||
+              persistedWaybills.length ||
+              (Number.isFinite(packageCountFromMeta) && packageCountFromMeta > 0
+                ? Math.max(1, Math.round(packageCountFromMeta))
+                : 0)
+
+            if (derivedPackageCount > 0) {
+              return count + derivedPackageCount
+            }
+
+            return count + (order.awb_number ? 1 : 0)
+          },
           0,
         )
       }
@@ -13562,6 +13879,7 @@ export const retryFailedManifestService = async (
       pickup_error: b2c_orders.pickup_error,
       pickup_status: b2c_orders.pickup_status,
       pickup_details: b2c_orders.pickup_details,
+      provider_meta: b2c_orders.provider_meta,
       manifest: b2c_orders.manifest,
     })
     .from(b2c_orders)

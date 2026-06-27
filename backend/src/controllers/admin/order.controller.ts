@@ -7,9 +7,21 @@ import {
   updateOrderStatusServiceAdmin,
 } from '../../models/services/adminOrders.service'
 import { db } from '../../models/client'
+import { DelhiveryService } from '../../models/services/couriers/delhivery.service'
 import { ShadowfaxService } from '../../models/services/couriers/shadowfax.service'
 import { b2c_orders } from '../../schema/schema'
 import { buildCsv } from '../../utils/csv'
+import {
+  buildDelhiveryEwaybillUpdateProviderMeta,
+  isDelhiveryEwaybillUpdateAccepted,
+  isDelhiveryEwaybillUpdateRequest,
+  validateAndNormalizeDelhiveryEwaybillUpdate,
+} from '../../utils/delhiveryEwaybillUpdate'
+import {
+  buildDelhiveryShipmentUpdateProviderMeta,
+  isDelhiveryShipmentUpdateAccepted,
+  validateAndNormalizeDelhiveryShipmentUpdate,
+} from '../../utils/delhiveryShipmentUpdate'
 import {
   ADMIN_ORDER_EXPORT_HEADERS,
   toAdminOrderExportRow,
@@ -254,8 +266,90 @@ export const updateProviderOrderControllerAdmin = async (req: any, res: Response
     const orderId = String(req.params.id || '').trim()
     const order = await getAdminB2COrderById(orderId)
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' })
-    if (String(order.integration_type || '').toLowerCase() !== 'shadowfax') {
-      return res.status(400).json({ success: false, message: 'Only Shadowfax provider updates are supported here.' })
+
+    const provider = String(order.integration_type || '').toLowerCase()
+    if (provider === 'delhivery') {
+      const delhivery = new DelhiveryService({ order })
+      if (isDelhiveryEwaybillUpdateRequest(req.body || {})) {
+        const { awb, providerPayload, localOrderPatch } =
+          validateAndNormalizeDelhiveryEwaybillUpdate({
+            order,
+            payload: req.body || {},
+          })
+        const data = await delhivery.updateEwaybill(awb, providerPayload)
+
+        if (!isDelhiveryEwaybillUpdateAccepted(data)) {
+          return res.status(502).json({
+            success: false,
+            message:
+              data?.message ||
+              data?.error ||
+              'Delhivery did not accept the E-waybill update request.',
+            data: {
+              provider: 'delhivery',
+              awb_number: awb,
+              provider_response: data,
+            },
+          })
+        }
+
+        await db
+          .update(b2c_orders)
+          .set({
+            ...localOrderPatch,
+            provider_meta: buildDelhiveryEwaybillUpdateProviderMeta({
+              existingMeta: order.provider_meta,
+              requestPayload: providerPayload,
+              response: data,
+            }) as any,
+            updated_at: new Date(),
+          } as any)
+          .where(eq(b2c_orders.id, order.id))
+
+        return res.status(200).json({ success: true, data })
+      }
+
+      const { awb, providerPayload, localOrderPatch } = validateAndNormalizeDelhiveryShipmentUpdate({
+        order,
+        payload: req.body || {},
+      })
+      const data = await delhivery.updateShipment(awb, providerPayload)
+
+      if (!isDelhiveryShipmentUpdateAccepted(data)) {
+        return res.status(502).json({
+          success: false,
+          message:
+            data?.message ||
+            data?.error ||
+            'Delhivery did not accept the shipment update request.',
+          data: {
+            provider: 'delhivery',
+            awb_number: awb,
+            provider_response: data,
+          },
+        })
+      }
+
+      await db
+        .update(b2c_orders)
+        .set({
+          ...localOrderPatch,
+          provider_meta: buildDelhiveryShipmentUpdateProviderMeta({
+            existingMeta: order.provider_meta,
+            requestPayload: providerPayload,
+            response: data,
+          }) as any,
+          updated_at: new Date(),
+        } as any)
+        .where(eq(b2c_orders.id, order.id))
+
+      return res.status(200).json({ success: true, data })
+    }
+
+    if (provider !== 'shadowfax') {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Only Delhivery and Shadowfax provider updates are supported here.' })
     }
 
     const shadowfax = new ShadowfaxService()
@@ -285,6 +379,12 @@ export const updateProviderOrderControllerAdmin = async (req: any, res: Response
     return res.status(200).json({ success: true, data })
   } catch (error: any) {
     console.error('Error updating provider order:', error)
-    return res.status(500).json({ success: false, message: error?.message || 'Failed to update provider order' })
+    const statusCode =
+      typeof error?.statusCode === 'number'
+        ? error.statusCode
+        : typeof error?.response?.status === 'number'
+          ? error.response.status
+          : 500
+    return res.status(statusCode).json({ success: false, message: error?.message || 'Failed to update provider order' })
   }
 }
