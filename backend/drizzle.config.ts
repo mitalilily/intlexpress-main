@@ -19,5 +19,8 @@ export default defineConfig({
   out: './src/drizzle/migrations',
   dbCredentials: {
     url: process.env.DATABASE_URL!,
+    ssl: {
+      rejectUnauthorized: false,
+    },
   },
 })

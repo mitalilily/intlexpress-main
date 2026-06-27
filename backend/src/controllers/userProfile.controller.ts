@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import {
   changePassword,
+  ensureUserProfileRecord,
   getProfileByUserId,
   requestProfileEmailVerificationOTP,
   requestProfilePhoneVerificationOTP,
@@ -18,10 +19,7 @@ export const getUserProfile = async (
 ): Promise<any> => {
   try {
     const userId = req.user!.sub;
-    const profile = await getProfileByUserId(userId);
-    if (!profile) {
-      return res.status(404).json({ message: "Profile not found" });
-    }
+    const profile = await ensureUserProfileRecord(userId);
     res.json(profile);
   } catch (err) {
     next(err);

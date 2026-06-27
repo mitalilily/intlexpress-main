@@ -12,7 +12,12 @@ import {
 import { users } from './users'
 
 // Enum for invoice status
-export const invoiceStatus = pgEnum('invoice_status', ['paid', 'pending', 'overdue'])
+export const invoiceStatus = pgEnum('invoice_status', [
+  'pending',
+  'paid',
+  'disputed',
+  'overdue',
+])
 
 export const invoiceType = pgEnum('invoice_type', ['b2b', 'b2c'])
 

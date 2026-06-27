@@ -2,11 +2,12 @@
 import fs from 'fs'
 import path from 'path'
 import XLSX from 'xlsx'
+import { sql } from 'drizzle-orm'
 import { db } from '../models/client'
 import { locations } from '../schema/schema'
 
 const DATA_DIR = path.resolve('src/scripts/data')
-const CHUNK_SIZE = 10
+const CHUNK_SIZE = 500
 
 // ---------- Types ----------
 type Row = {
@@ -67,22 +68,24 @@ async function insertBatch(rows: Row[]) {
     created_at: new Date(),
   }))
 
-  for (const zone of values) {
-    console.log('inserting:', zone.pincode, 'tags:', JSON.stringify(zone.tags))
-    await db.insert(locations).values(zone) // Drizzle insert
-  }
+  await db.insert(locations).values(values)
 
   console.log(`✅ Inserted ${rows.length} rows`)
 }
 
 // ---------- Main import ----------
-async function importXlsx(filename: string) {
+async function importXlsx(filename: string, options: { truncate?: boolean } = {}) {
   const fullPath = path.join(DATA_DIR, filename)
   if (!fs.existsSync(fullPath)) {
     console.error('File not found:', fullPath)
     return
   }
   console.log('📂 Reading XLSX:', fullPath)
+
+  if (options.truncate) {
+    console.log('🧹 Clearing existing locations before import...')
+    await db.execute(sql`DELETE FROM ${locations}`)
+  }
 
   const wb = XLSX.readFile(fullPath)
   const sheet = wb.Sheets[wb.SheetNames[0]]
@@ -92,10 +95,14 @@ async function importXlsx(filename: string) {
 
   let batch: Row[] = []
   let processed = 0
+  const seen = new Set<string>()
 
   for (const raw of jsonRows) {
     const mapped = mapRow(raw)
     if (!mapped) continue
+    const dedupeKey = `${mapped.pincode}|${mapped.city}|${mapped.state}|${mapped.country}`
+    if (seen.has(dedupeKey)) continue
+    seen.add(dedupeKey)
 
     batch.push(mapped)
 
@@ -118,13 +125,14 @@ async function importXlsx(filename: string) {
 // ---------- CLI ----------
 ;(async () => {
   const arg = process.argv[2]
+  const shouldTruncate = process.argv.includes('--truncate')
   if (!arg) {
-    console.error('Usage: node dist/scripts/seedLocations.js <file.xlsx>')
+    console.error('Usage: node dist/scripts/seedLocations.js <file.xlsx> [--truncate]')
     process.exit(1)
   }
 
   try {
-    await importXlsx(arg)
+    await importXlsx(arg, { truncate: shouldTruncate })
   } catch (err) {
     console.error('Import failed:', (err as Error).message)
     process.exitCode = 1

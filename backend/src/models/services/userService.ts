@@ -1,4 +1,4 @@
-import { db } from '../client'
+import { db, pool } from '../client'
 import { platforms } from '../schema/platform'
 import { users } from '../schema/users'
 // utils/verifyGoogleToken.ts
@@ -105,6 +105,102 @@ export const findUserByEmail = async (email: string, tx: Tx = db) => {
 export const createUser = async (data: NewUser, tx: Tx = db) => {
   const [user] = await tx.insert(users).values(data).returning()
   return user
+}
+
+type UsersTableColumn = {
+  column_name: string
+  is_nullable: 'YES' | 'NO'
+  column_default: string | null
+}
+
+const createLegacyCompatibleOtpUser = async (
+  email: string,
+  otp: string,
+  otpExpiresAt: Date,
+) => {
+  const now = new Date()
+  const columnsResult = await pool.query<UsersTableColumn>(`
+    SELECT column_name, is_nullable, column_default
+    FROM information_schema.columns
+    WHERE table_schema = current_schema()
+      AND table_name = 'users'
+  `)
+
+  const columns = columnsResult.rows ?? []
+  const columnMap = new Map(columns.map((column) => [column.column_name, column]))
+  const hasColumn = (name: string) => columnMap.has(name)
+
+  const placeholderPhone = `otp_${Date.now().toString().slice(-10)}`
+  const candidateValues: Record<string, unknown> = {
+    email,
+    phone: hasColumn('phone') && columnMap.get('phone')?.is_nullable === 'NO' ? placeholderPhone : null,
+    otp,
+    otpExpiresAt,
+    emailVerified: false,
+    phoneVerified: false,
+    accountVerified: false,
+    role: 'customer',
+    onboardingStep: 0,
+    onboardingComplete: false,
+    profileCompletion: 'pending',
+    firstName: '',
+    lastName: '',
+    createdAt: now,
+    updatedAt: now,
+  }
+
+  const insertableEntries = Object.entries(candidateValues).filter(([key, value]) => {
+    if (!hasColumn(key)) return false
+    if (value !== undefined) return true
+    const column = columnMap.get(key)
+    return Boolean(column && column.is_nullable === 'NO' && !column.column_default)
+  })
+
+  const quotedColumns = insertableEntries.map(([key]) => `"${key}"`)
+  const insertParams = insertableEntries.map(([, value]) => value)
+  const insertPlaceholders = insertableEntries.map((_, index) => `$${index + 1}`)
+
+  const updateAssignments: string[] = []
+  const updateParams: unknown[] = []
+  for (const key of ['otp', 'otpExpiresAt', 'updatedAt']) {
+    if (!hasColumn(key)) continue
+    updateParams.push(candidateValues[key])
+    updateAssignments.push(`"${key}" = $${insertParams.length + updateParams.length}`)
+  }
+
+  const query = `
+    INSERT INTO "users" (${quotedColumns.join(', ')})
+    VALUES (${insertPlaceholders.join(', ')})
+    ON CONFLICT ("email") DO UPDATE
+    SET ${updateAssignments.join(', ')}
+    RETURNING *
+  `
+
+  const result = await pool.query(query, [...insertParams, ...updateParams])
+  return result.rows?.[0] ?? null
+}
+
+export const createOtpBootstrapUser = async (
+  email: string,
+  otp: string,
+  otpExpiresAt: Date,
+  tx: Tx = db,
+) => {
+  try {
+    return await createUser(
+      {
+        email,
+        otp,
+        otpExpiresAt,
+        emailVerified: false,
+        role: 'customer',
+      },
+      tx,
+    )
+  } catch (error) {
+    console.warn('[Auth OTP] Primary user insert failed, trying legacy-compatible fallback:', error)
+    return createLegacyCompatibleOtpUser(email, otp, otpExpiresAt)
+  }
 }
 
 export const updateUserByEmail = async (email: string, updateData: Partial<User>, tx: Tx = db) => {

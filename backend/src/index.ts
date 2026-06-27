@@ -3,6 +3,7 @@ import path from 'path'
 import { server } from './app'
 import './crons'
 import { testDatabaseConnection } from './models/client'
+import { ensureAuthBillingSchemaCompatibility } from './models/services/authBillingSchemaCompatibility.service'
 
 // Determine environment
 const env = process.env.NODE_ENV || 'development'
@@ -23,6 +24,10 @@ async function startServer() {
     console.error('❌ Failed to connect to database. Server will not start.')
     process.exit(1)
   }
+
+  console.log('🔧 Ensuring auth and billing schema compatibility...')
+  await ensureAuthBillingSchemaCompatibility()
+  console.log('✅ Auth and billing schema compatibility check completed')
 
   // Set server timeout to 3.5 minutes (210000ms) to allow for slow external API calls
   // Default Node.js server timeout is 2 minutes (120000ms)

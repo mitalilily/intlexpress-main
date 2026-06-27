@@ -1,32 +1,23 @@
 import 'dotenv/config'
-import { readFileSync } from 'fs'
+import { readdirSync, readFileSync } from 'fs'
 import path from 'path'
 import { pool } from '../models/client'
 
 async function runMigration() {
   const client = await pool.connect()
   try {
-    // Run all migration files in order
-    const migrationFiles = [
-      path.join(__dirname, '../../src/drizzle/migrations/0001_fix_condition_column_type.sql'),
-      path.join(__dirname, '../../src/drizzle/migrations/0002_add_business_type_to_couriers.sql'),
-      path.join(
-        __dirname,
-        '../../src/drizzle/migrations/0003_add_service_provider_to_shipping_rates.sql',
-      ),
-    ]
+    const backendRoot = path.join(__dirname, '../..')
+    const migrationFiles = readdirSync(backendRoot)
+      .filter((file) => /^migration_.*\.sql$/i.test(file))
+      .sort((a, b) => a.localeCompare(b))
+      .map((file) => path.join(backendRoot, file))
 
     for (const migrationFile of migrationFiles) {
       try {
         console.log('📄 Reading migration file:', migrationFile)
         const sql = readFileSync(migrationFile, 'utf-8')
 
-        // Remove comments and clean up SQL
-        const cleanSql = sql
-          .split('\n')
-          .filter((line) => !line.trim().startsWith('--'))
-          .join('\n')
-          .trim()
+        const cleanSql = sql.trim()
 
         if (!cleanSql) {
           console.log('⚠️ No SQL found in migration file, skipping')
@@ -39,14 +30,21 @@ async function runMigration() {
         await client.query(cleanSql)
         console.log('✅ Migration executed successfully!')
       } catch (error: any) {
-        if (error.message?.includes('does not exist')) {
-          console.log('ℹ️ Column or table does not exist yet, skipping migration')
-          console.log('   This is expected if running drizzle-kit push will create it')
-        } else if (error.message?.includes('already jsonb') || error.message?.includes('already exists')) {
+        if (
+          error.message?.includes('already jsonb') ||
+          error.message?.includes('already exists') ||
+          error.message?.includes('duplicate_object')
+        ) {
           console.log('ℹ️ Column already exists or is correct type, no action needed')
+        } else if (
+          error?.code === '42703' ||
+          error?.code === '42P01' ||
+          error.message?.includes('does not exist')
+        ) {
+          console.log('ℹ️ Legacy source column/table missing on this database, skipping this migration step')
         } else {
           console.error('❌ Migration failed:', error.message)
-          // Continue with other migrations even if one fails
+          throw error
         }
       }
     }

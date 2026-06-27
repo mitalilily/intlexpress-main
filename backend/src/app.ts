@@ -120,26 +120,34 @@ const configuredAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
   .map(normalizeOrigin)
 
 const allowedOrigins = new Set([
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5176',
+  'https://intlexpress-client.onrender.com',
+  'https://intlexpress-admin.onrender.com',
   'https://shiplifi.com',
   'https://www.shiplifi.com',
   'https://app.shiplifi.com',
+  'https://intlexpress.com',
+  'https://www.intlexpress.com',
+  'https://app.intlexpress.com',
+  'https://admin.intlexpress.com',
   ...configuredAllowedOrigins,
 ])
+
+const isLocalOrigin = (origin: string) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+const isFirstPartyOrigin = (origin: string) =>
+  /^https:\/\/([a-z0-9-]+\.)*(shiplifi|intlexpress)\.com$/.test(origin)
 
 const isAllowedOrigin = (origin: string) => {
   const normalizedOrigin = normalizeOrigin(origin)
 
-  if (allowedOrigins.has(normalizedOrigin)) {
+  if (
+    allowedOrigins.has(normalizedOrigin) ||
+    isLocalOrigin(normalizedOrigin) ||
+    isFirstPartyOrigin(normalizedOrigin)
+  ) {
     return true
   }
 
-  // Allow first-party HTTPS subdomains like preview or alternate app hosts.
-  return /^https:\/\/([a-z0-9-]+\.)*shiplifi\.com$/.test(normalizedOrigin)
+  return false
 }
 
 app.use(

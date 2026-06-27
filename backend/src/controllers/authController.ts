@@ -7,6 +7,7 @@ import {
   clearUserEmailToken,
   clearUserOtpByEmail,
   clampPreviousRefreshTokenExpiry,
+  createOtpBootstrapUser,
   createUserWithWallet,
   findUserByEmail,
   findUserById,
@@ -25,7 +26,6 @@ import { eq } from 'drizzle-orm'
 import { db } from '../models/client'
 import { changeAdminPassword, loginAdmin } from '../models/services/adminAuth.service'
 import { employees } from '../schema/schema'
-import { users } from '../models/schema/users'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
 
 const env = process.env.NODE_ENV || 'development'
@@ -196,13 +196,7 @@ export const requestOtp = async (req: Request, res: Response): Promise<any> => {
       await updateUserOtpByEmail(normalizedEmail, otp, expiry)
     } else {
       try {
-        await db.insert(users).values({
-          email: normalizedEmail,
-          otp,
-          otpExpiresAt: expiry,
-          emailVerified: false,
-          role: 'customer',
-        })
+        await createOtpBootstrapUser(normalizedEmail, otp, expiry)
       } catch (insertErr) {
         console.warn('[Auth OTP] Minimal user bootstrap failed, retrying OTP update:', insertErr)
         await updateUserOtpByEmail(normalizedEmail, otp, expiry)

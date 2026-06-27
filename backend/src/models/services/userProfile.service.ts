@@ -90,6 +90,53 @@ export const getProfileByUserId = async (userId: string) => {
   }
 }
 
+export const ensureUserProfileRecord = async (userId: string) => {
+  const existingProfile = await getProfileByUserId(userId)
+  if (existingProfile) {
+    return existingProfile
+  }
+
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      phone: users.phone,
+      profilePicture: users.profilePicture,
+      emailVerified: users.emailVerified,
+      phoneVerified: users.phoneVerified,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1)
+
+  if (!user) {
+    throw new HttpError(404, 'User not found')
+  }
+
+  await db
+    .insert(userProfiles)
+    .values({
+      ...DEFAULT_PROFILE,
+      userId,
+      companyInfo: {
+        ...DEFAULT_PROFILE.companyInfo,
+        contactEmail: user.email ?? '',
+        contactNumber: user.phone ?? '',
+        profilePicture: user.profilePicture ?? '',
+        POCEmailVerified: Boolean(user.emailVerified),
+        POCPhoneVerified: Boolean(user.phoneVerified),
+      },
+    })
+    .returning()
+
+  const createdProfile = await getProfileByUserId(userId)
+  if (!createdProfile) {
+    throw new HttpError(500, 'Failed to create user profile')
+  }
+
+  return createdProfile
+}
+
 /**
  * Upsert OR patch an existing profile in one call.
  * Users can only touch whitelisted fields; flags such as `approved`
