@@ -4,45 +4,44 @@ import { server } from './app'
 import './crons'
 import { testDatabaseConnection } from './models/client'
 import { ensureAuthBillingSchemaCompatibility } from './models/services/authBillingSchemaCompatibility.service'
+import { ensureDefaultAdminBootstrap } from './models/services/defaultAdminBootstrap.service'
 
-// Determine environment
 const env = process.env.NODE_ENV || 'development'
 console.log('node env', env)
 
-// Load correct .env file
 dotenv.config({ path: path.resolve(__dirname, `../.env.${env}`) })
 
-// Use PORT from env or fallback
 const PORT = process.env.PORT || 4000
 
-// Test database connection before starting server
 async function startServer() {
-  console.log('🔍 Testing database connection...')
+  console.log('Testing database connection...')
   const dbConnected = await testDatabaseConnection()
 
   if (!dbConnected) {
-    console.error('❌ Failed to connect to database. Server will not start.')
+    console.error('Failed to connect to database. Server will not start.')
     process.exit(1)
   }
 
-  console.log('🔧 Ensuring auth and billing schema compatibility...')
+  console.log('Ensuring auth and billing schema compatibility...')
   await ensureAuthBillingSchemaCompatibility()
-  console.log('✅ Auth and billing schema compatibility check completed')
+  console.log('Auth and billing schema compatibility check completed')
 
-  // Set server timeout to 3.5 minutes (210000ms) to allow for slow external API calls
-  // Default Node.js server timeout is 2 minutes (120000ms)
-  server.timeout = 210000 // 3.5 minutes
+  console.log('Ensuring default admin bootstrap...')
+  await ensureDefaultAdminBootstrap()
+  console.log('Default admin bootstrap check completed')
+
+  server.timeout = 210000
 
   server.listen(PORT, () => {
     const url =
       env === 'production'
         ? process.env.API_PUBLIC_URL || 'https://www.shiplifi.com/api'
         : `http://localhost:${PORT}`
-    console.log(`🚀 Server running on port ${PORT} in ${env} mode at ${url}`)
+    console.log(`Server running on port ${PORT} in ${env} mode at ${url}`)
   })
 }
 
 startServer().catch((err) => {
-  console.error('❌ Failed to start server:', err)
+  console.error('Failed to start server:', err)
   process.exit(1)
 })

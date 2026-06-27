@@ -3,27 +3,11 @@ import { eq } from "drizzle-orm";
 import { signAccessToken, signRefreshToken } from "../../utils/jwt";
 import { db } from "../client";
 import { users } from "../schema/users";
+import { getAdminEmailCandidates, normalizeAdminEmail } from "./defaultAdminBootstrap.service";
 import { findUserByEmail, findUserById, saveRefreshToken } from "./userService";
 
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
-const normalizeAdminEmail = (email: string) => String(email || "").trim().toLowerCase();
-
-const getAdminEmailCandidates = (email: string) => {
-  const normalized = normalizeAdminEmail(email);
-  const candidates = [normalized];
-
-  if (normalized.startsWith("admin@intlexpress.")) {
-    candidates.push(normalized.replace("admin@intlexpress.", "admin@shiplifi."));
-  }
-
-  if (normalized.startsWith("admin@shiplifi.")) {
-    candidates.push(normalized.replace("admin@shiplifi.", "admin@intlexpress."));
-  }
-
-  return [...new Set(candidates.filter(Boolean))];
-};
 
 const resolveAdminUserByEmail = async (email: string) => {
   const requestedEmail = normalizeAdminEmail(email);
