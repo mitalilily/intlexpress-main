@@ -14041,6 +14041,8 @@ export interface PaginationParams {
 
 export interface IOrderFilters {
   status?: string
+  orderType?: string
+  type?: string
   fromDate?: string
   toDate?: string
   search?: string
@@ -14063,6 +14065,7 @@ export const getAllOrdersService = async (
     filters: {
       userId,
       status: filters.status,
+      orderType: filters.orderType || filters.type,
       fromDate: filters.fromDate,
       toDate: filters.toDate,
       search: filters.search,

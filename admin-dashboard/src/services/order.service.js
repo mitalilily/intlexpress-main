@@ -116,3 +116,33 @@ export async function updateAdminOrderStatus(
     throw error
   }
 }
+
+export async function fetchAdminReverseQuote(payload) {
+  try {
+    const response = await api.post('/admin/orders/reverse/quote', payload)
+    return response.data
+  } catch (error) {
+    console.error('Error fetching reverse quote:', error.response?.data || error.message)
+    throw error
+  }
+}
+
+export async function createAdminReverseFromOrder(payload) {
+  try {
+    const response = await api.post('/admin/orders/reverse/create', payload)
+    return response.data
+  } catch (error) {
+    console.error('Error creating reverse order:', error.response?.data || error.message)
+    throw error
+  }
+}
+
+export async function createAdminManualReverseOrder(payload) {
+  try {
+    const response = await api.post('/admin/orders/reverse/manual', payload)
+    return response.data
+  } catch (error) {
+    console.error('Error creating manual reverse order:', error.response?.data || error.message)
+    throw error
+  }
+}

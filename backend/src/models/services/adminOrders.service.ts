@@ -56,6 +56,7 @@ export const getAllOrdersServiceAdmin = async ({
     filters: {
       userId: filters.userId,
       status: filters.status,
+      orderType: filters.orderType || filters.type,
       fromDate: filters.fromDate,
       toDate: filters.toDate,
       search: filters.search,

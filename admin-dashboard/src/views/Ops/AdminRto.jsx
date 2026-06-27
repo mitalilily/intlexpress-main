@@ -13,9 +13,11 @@ import TableFilters from 'components/Tables/TableFilters'
 import { useAdminRto, useAdminRtoKpis } from 'hooks/useOps'
 import { useState } from 'react'
 import { exportAdminRto } from 'services/ops.service'
+import { useHistory } from 'react-router-dom'
 import { GenericTable } from 'views/Dashboard/Tables/components/GenericTable'
 
 export default function AdminRto() {
+  const history = useHistory()
   const [filters, setFilters] = useState({ search: '', fromDate: '', toDate: '' })
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
@@ -69,19 +71,24 @@ export default function AdminRto() {
             <StatHelpText>Sum of RTO charges</StatHelpText>
           </Stat>
         </HStack>
-        <Button
-          onClick={() =>
-            exportAdminRto({
-              search: filters.search,
-              fromDate: filters.fromDate || undefined,
-              toDate: filters.toDate || undefined,
-            })
-          }
-          colorScheme="blue"
-          variant="solid"
-        >
-          Export CSV
-        </Button>
+        <HStack spacing={3}>
+          <Button onClick={() => history.push('/admin/ops/reverse-orders')} variant="outline">
+            Reverse Orders
+          </Button>
+          <Button
+            onClick={() =>
+              exportAdminRto({
+                search: filters.search,
+                fromDate: filters.fromDate || undefined,
+                toDate: filters.toDate || undefined,
+              })
+            }
+            colorScheme="blue"
+            variant="solid"
+          >
+            Export CSV
+          </Button>
+        </HStack>
       </HStack>
       <TableFilters
         filters={filterOptions}

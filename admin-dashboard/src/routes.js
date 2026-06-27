@@ -26,7 +26,7 @@ import { lazy, Suspense } from 'react'
 import { BsCreditCard2Back } from 'react-icons/bs'
 import { CiCalculator1 } from 'react-icons/ci'
 import { IoLocation } from 'react-icons/io5'
-import { MdGavel } from 'react-icons/md'
+import { MdGavel, MdKeyboardReturn } from 'react-icons/md'
 import { AdminRoute } from 'views/Auth/AdminRoute'
 import SignIn from 'views/Auth/SignIn'
 import AdminBillingInvoices from 'views/Billing/AdminBillingInvoices'
@@ -39,6 +39,7 @@ import Dashboard from 'views/Dashboard/Dashboard'
 import DeveloperLogs from 'views/Developer/DeveloperLogs'
 import ApiIntegration from 'views/Integrations/ApiIntegration'
 import AdminNdr from 'views/Ops/AdminNdr'
+import AdminReverseOrders from 'views/Ops/AdminReverseOrders'
 import AdminRto from 'views/Ops/AdminRto'
 import AdminNotificationsPage from 'views/Notifications/AdminNotificationsPage'
 import Orders from 'views/Orders/Orders'
@@ -108,6 +109,17 @@ const dashRoutes = [
         component: () => (
           <AdminRoute>
             <AdminNdr />
+          </AdminRoute>
+        ),
+        layout: '/admin',
+      },
+      {
+        path: '/ops/reverse-orders',
+        name: 'Reverse Orders',
+        icon: <MdKeyboardReturn />,
+        component: () => (
+          <AdminRoute>
+            <AdminReverseOrders />
           </AdminRoute>
         ),
         layout: '/admin',

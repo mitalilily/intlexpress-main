@@ -9,6 +9,13 @@ import {
 import { db } from '../../models/client'
 import { DelhiveryService } from '../../models/services/couriers/delhivery.service'
 import { ShadowfaxService } from '../../models/services/couriers/shadowfax.service'
+import {
+  appendReversePickupTags,
+  assertReversePickupAllowed,
+  getOriginalOrderForReversePickup,
+  quoteReverseForOrder,
+} from '../../models/services/reverse.service'
+import { createB2CShipmentService } from '../../models/services/shiprocket.service'
 import { b2c_orders } from '../../schema/schema'
 import { buildCsv } from '../../utils/csv'
 import {
@@ -36,6 +43,7 @@ export const getAllOrdersControllerAdmin = async (req: any, res: Response) => {
     // Filters from query
     const filters = {
       status: req.query.status as string | undefined,
+      orderType: (req.query.orderType || req.query.type) as string | undefined,
       fromDate: req.query.fromDate as string | undefined,
       toDate: req.query.toDate as string | undefined,
       search: req.query.search as string | undefined,
@@ -63,6 +71,7 @@ export const exportOrdersControllerAdmin = async (req: any, res: Response) => {
     // Filters from query
     const filters = {
       status: req.query.status as string | undefined,
+      orderType: (req.query.orderType || req.query.type) as string | undefined,
       fromDate: req.query.fromDate as string | undefined,
       toDate: req.query.toDate as string | undefined,
       search: req.query.search as string | undefined,
@@ -386,5 +395,130 @@ export const updateProviderOrderControllerAdmin = async (req: any, res: Response
           ? error.response.status
           : 500
     return res.status(statusCode).json({ success: false, message: error?.message || 'Failed to update provider order' })
+  }
+}
+
+const getOriginalOrderIdFromBody = (body: Record<string, any>) =>
+  String(body?.original_order_id || body?.order_id || body?.orderId || '').trim()
+
+export const quoteReverseOrderControllerAdmin = async (req: any, res: Response) => {
+  try {
+    const body = req.body || {}
+    const originalOrderId = getOriginalOrderIdFromBody(body)
+    if (!originalOrderId) {
+      return res.status(400).json({ success: false, message: 'Original order ID is required' })
+    }
+
+    const originalOrder = await getOriginalOrderForReversePickup(originalOrderId)
+    if (!originalOrder?.user_id) {
+      return res.status(404).json({ success: false, message: 'Original order not found' })
+    }
+
+    await assertReversePickupAllowed(originalOrderId, originalOrder.user_id)
+    const quote = await quoteReverseForOrder(
+      originalOrderId,
+      body?.weightGrams ? Number(body.weightGrams) : undefined,
+      originalOrder.user_id,
+    )
+
+    return res.status(200).json({
+      success: true,
+      quote,
+      order: {
+        id: originalOrder.id,
+        user_id: originalOrder.user_id,
+        order_number: originalOrder.order_number,
+        integration_type: originalOrder.integration_type,
+      },
+    })
+  } catch (error: any) {
+    const statusCode = typeof error?.statusCode === 'number' ? error.statusCode : 400
+    return res.status(statusCode).json({
+      success: false,
+      message: error?.message || 'Failed to quote reverse order',
+    })
+  }
+}
+
+export const createReverseOrderControllerAdmin = async (req: any, res: Response) => {
+  try {
+    const body = req.body || {}
+    const originalOrderId = getOriginalOrderIdFromBody(body)
+    if (!originalOrderId) {
+      return res.status(400).json({ success: false, message: 'Original order ID is required' })
+    }
+
+    const originalOrder = await getOriginalOrderForReversePickup(originalOrderId)
+    if (!originalOrder?.user_id) {
+      return res.status(404).json({ success: false, message: 'Original order not found' })
+    }
+
+    await assertReversePickupAllowed(originalOrderId, originalOrder.user_id)
+    const quote = await quoteReverseForOrder(
+      originalOrderId,
+      body?.weightGrams ? Number(body.weightGrams) : undefined,
+      originalOrder.user_id,
+    )
+    const reverseCharge = Number(quote.rate || 0)
+    if (!Number.isFinite(reverseCharge) || reverseCharge <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No reverse pickup rate available for this order',
+      })
+    }
+
+    const payload = {
+      ...body,
+      original_order_id: originalOrderId,
+      payment_type: 'reverse',
+      package_weight: Number(quote.weightGrams || 0) / 1000,
+      shipping_charges: reverseCharge,
+      freight_charges: reverseCharge,
+      selected_max_slab_weight: quote.max_slab_weight ?? undefined,
+      courier_id: body.courier_id ?? quote.courierId,
+      tags: appendReversePickupTags(body.tags, originalOrderId),
+    }
+
+    const shipment = await createB2CShipmentService(payload, originalOrder.user_id, false)
+    return res.status(200).json({ success: true, shipment })
+  } catch (error: any) {
+    const statusCode = typeof error?.statusCode === 'number' ? error.statusCode : 400
+    return res.status(statusCode).json({
+      success: false,
+      message: error?.message || 'Failed to create reverse order',
+    })
+  }
+}
+
+export const createManualReverseOrderControllerAdmin = async (req: any, res: Response) => {
+  try {
+    const body = req.body || {}
+    const merchantUserId = String(body?.userId || body?.user_id || '').trim()
+    if (!merchantUserId) {
+      return res.status(400).json({ success: false, message: 'Merchant user ID is required' })
+    }
+
+    const payload = {
+      ...body,
+      payment_type: 'reverse',
+      isReverse: true,
+      order_amount: Number(body?.order_amount ?? 0),
+      prepaid_amount: Number(body?.prepaid_amount ?? 0),
+      shipping_charges: Number(body?.shipping_charges ?? 0),
+      freight_charges: Number(body?.freight_charges ?? 0),
+      is_rto_different: body?.is_rto_different || 'no',
+      request_auto_pickup: body?.request_auto_pickup || 'Yes',
+      rto: body?.rto || body?.pickup,
+      tags: [String(body?.tags || '').trim(), 'reverse_manual'].filter(Boolean).join(','),
+    }
+
+    const shipment = await createB2CShipmentService(payload, merchantUserId, false)
+    return res.status(200).json({ success: true, shipment })
+  } catch (error: any) {
+    const statusCode = typeof error?.statusCode === 'number' ? error.statusCode : 400
+    return res.status(statusCode).json({
+      success: false,
+      message: error?.message || 'Failed to create manual reverse order',
+    })
   }
 }

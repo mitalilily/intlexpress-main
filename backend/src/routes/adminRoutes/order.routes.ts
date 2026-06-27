@@ -1,9 +1,12 @@
 import { Router } from 'express'
 import {
   addManualNdrToOrderControllerAdmin,
+  createManualReverseOrderControllerAdmin,
+  createReverseOrderControllerAdmin,
   escalateProviderOrderControllerAdmin,
   getAllOrdersControllerAdmin,
   getProviderPodControllerAdmin,
+  quoteReverseOrderControllerAdmin,
   generateProviderQrControllerAdmin,
   exportOrdersControllerAdmin,
   regenerateOrderDocumentsControllerAdmin,
@@ -16,6 +19,9 @@ const router = Router()
 
 router.get('/all-orders', requireAuth, isAdminMiddleware, getAllOrdersControllerAdmin)
 router.get('/export', requireAuth, isAdminMiddleware, exportOrdersControllerAdmin)
+router.post('/reverse/quote', requireAuth, isAdminMiddleware, quoteReverseOrderControllerAdmin)
+router.post('/reverse/create', requireAuth, isAdminMiddleware, createReverseOrderControllerAdmin)
+router.post('/reverse/manual', requireAuth, isAdminMiddleware, createManualReverseOrderControllerAdmin)
 router.post('/:id/status', requireAuth, isAdminMiddleware, updateOrderStatusControllerAdmin)
 router.post('/:id/ndr', requireAuth, isAdminMiddleware, addManualNdrToOrderControllerAdmin)
 router.post('/:id/provider-update', requireAuth, isAdminMiddleware, updateProviderOrderControllerAdmin)

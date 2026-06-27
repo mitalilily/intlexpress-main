@@ -9,6 +9,7 @@ import { b2bOrderListSelect, b2cOrderListSelect } from './orderListSelects'
 export interface CombinedOrderFilters {
   userId?: string
   status?: string | string[]
+  orderType?: string
   fromDate?: string
   toDate?: string
   search?: string
@@ -128,6 +129,23 @@ const buildPickupAlertCondition = (alias: 'b2c' | 'b2b', pickupAlert?: string) =
   return null
 }
 
+const buildOrderTypeCondition = (alias: 'b2c' | 'b2b', orderType?: string) => {
+  const normalizedOrderType = String(orderType || '').trim().toLowerCase()
+  if (!normalizedOrderType) return null
+
+  if (alias === 'b2b') {
+    if (normalizedOrderType === 'reverse') return sql`false`
+    if (normalizedOrderType === 'forward' || normalizedOrderType === 'non_reverse') return null
+    return sql`lower(coalesce(${sql.raw(`${alias}.order_type`)}, '')) = ${normalizedOrderType}`
+  }
+
+  if (normalizedOrderType === 'forward' || normalizedOrderType === 'non_reverse') {
+    return sql`lower(coalesce(${sql.raw(`${alias}.order_type`)}, '')) <> 'reverse'`
+  }
+
+  return sql`lower(coalesce(${sql.raw(`${alias}.order_type`)}, '')) = ${normalizedOrderType}`
+}
+
 const buildOrderConditions = (alias: 'b2c' | 'b2b', filters: CombinedOrderFilters) => {
   const conditions: SQL[] = [sql`true`]
 
@@ -138,6 +156,11 @@ const buildOrderConditions = (alias: 'b2c' | 'b2b', filters: CombinedOrderFilter
   const statusCondition = buildStatusCondition(`${alias}.order_status`, filters.status)
   if (statusCondition) {
     conditions.push(statusCondition)
+  }
+
+  const orderTypeCondition = buildOrderTypeCondition(alias, filters.orderType)
+  if (orderTypeCondition) {
+    conditions.push(orderTypeCondition)
   }
 
   if (filters.fromDate) {
