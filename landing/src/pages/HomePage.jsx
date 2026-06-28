@@ -116,24 +116,24 @@ export function HomePage() {
       />
       <section
         ref={heroSectionRef}
-        className="relative overflow-hidden bg-ink pb-24 pt-16 text-white"
+        className="relative overflow-hidden bg-ink pb-16 pt-10 text-white sm:pb-20 sm:pt-14 lg:pb-24 lg:pt-16"
       >
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 hidden md:block">
           <Suspense fallback={null}>
             <HomeBackgroundScene />
           </Suspense>
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(34,195,19,0.22),transparent_28%),radial-gradient(circle_at_70%_8%,rgba(255,229,0,0.22),transparent_30%),radial-gradient(circle_at_92%_42%,rgba(255,122,0,0.18),transparent_28%),linear-gradient(180deg,rgba(6,27,5,0.18)_0%,rgba(6,27,5,0.56)_35%,rgba(6,27,5,0.94)_100%)]" />
         </div>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(34,195,19,0.26),transparent_28%),radial-gradient(circle_at_82%_8%,rgba(255,229,0,0.24),transparent_24%),radial-gradient(circle_at_88%_36%,rgba(255,122,0,0.18),transparent_24%),linear-gradient(180deg,rgba(6,27,5,0.22)_0%,rgba(6,27,5,0.6)_42%,rgba(6,27,5,0.94)_100%)]" />
 
-        <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="grid items-start gap-10 pt-8 lg:grid-cols-[1.02fr_0.98fr]">
-            <MotionDiv className="max-w-3xl" style={{ y: heroCopyY }}>
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid items-start gap-6 pt-4 sm:gap-8 sm:pt-6 lg:gap-10 lg:pt-8 lg:grid-cols-[1.02fr_0.98fr]">
+            <MotionDiv className="max-w-3xl lg:pr-4" style={{ y: heroCopyY }}>
               <MotionH1
                 variants={fadeUp}
                 initial="hidden"
                 animate="show"
                 custom={0.12}
-                className="mt-6 max-w-3xl font-display text-5xl font-extrabold leading-tight tracking-tight sm:text-6xl"
+                className="mt-4 max-w-3xl font-display text-4xl font-extrabold leading-tight tracking-tight sm:mt-6 sm:text-5xl lg:text-6xl"
               >
                 Ship Smarter, Save More with Shiplifi
               </MotionH1>
@@ -142,7 +142,7 @@ export function HomePage() {
                 initial="hidden"
                 animate="show"
                 custom={0.2}
-                className="mt-6 max-w-2xl text-lg leading-8 text-sand/80"
+                className="mt-5 max-w-2xl text-base leading-7 text-sand/80 sm:mt-6 sm:text-lg sm:leading-8"
               >
                 Compare delivery prices, book quickly, and keep every order in view from one simple
                 place built for online sellers.
@@ -152,23 +152,23 @@ export function HomePage() {
                 initial="hidden"
                 animate="show"
                 custom={0.28}
-                className="mt-10 flex flex-wrap gap-4"
+                className="mt-8 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:gap-4"
               >
                 <Link
                   to="/contact"
-                  className="rounded-full bg-gradient-to-r from-ocean via-sky to-coral px-7 py-3 font-semibold text-ink transition hover:scale-[1.02]"
+                  className="w-full rounded-full bg-gradient-to-r from-ocean via-sky to-coral px-7 py-3 text-center font-semibold text-ink transition hover:scale-[1.02] sm:w-auto"
                 >
                   Request a Demo
                 </Link>
                 <Link
                   to="/solutions"
-                  className="rounded-full border border-white/15 px-7 py-3 font-semibold text-white transition hover:border-sky/60 hover:bg-white/6"
+                  className="w-full rounded-full border border-white/15 px-7 py-3 text-center font-semibold text-white transition hover:border-sky/60 hover:bg-white/6 sm:w-auto"
                 >
                   Explore Platform Features
                 </Link>
               </MotionDiv>
 
-              <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              <div className="mt-8 grid gap-4 sm:mt-10 sm:grid-cols-3">
                 {stats.map((stat, index) => (
                   <MotionDiv
                     key={stat.label}
@@ -176,7 +176,7 @@ export function HomePage() {
                     initial="hidden"
                     animate="show"
                     custom={0.34 + index * 0.08}
-                    className="rounded-3xl border border-white/10 bg-white/8 p-5 backdrop-blur-md"
+                    className="rounded-3xl border border-white/10 bg-white/8 p-4 backdrop-blur-md sm:p-5"
                   >
                     <p className="font-display text-2xl font-bold text-gradient">{stat.value}</p>
                     <p className="mt-2 text-sm leading-6 text-sand/75">{stat.label}</p>
@@ -190,15 +190,15 @@ export function HomePage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.55, ease: 'easeOut', delay: 0.18 }}
               style={{ y: heroPanelY }}
-              className="rounded-[2.25rem] border border-white/14 bg-white/8 p-2 shadow-[0_30px_120px_rgba(0,0,0,0.2)] backdrop-blur-2xl"
+              className="rounded-[1.75rem] border border-white/14 bg-white/8 p-1.5 shadow-[0_30px_120px_rgba(0,0,0,0.2)] backdrop-blur-2xl sm:rounded-[2.25rem] sm:p-2"
             >
-              <div className="rounded-[2rem] border border-white/14 bg-[radial-gradient(circle_at_top_right,rgba(255,122,0,0.16),transparent_34%),linear-gradient(180deg,rgba(24,53,0,0.76)_0%,rgba(6,27,5,0.86)_100%)] p-6 text-white">
+              <div className="rounded-[1.5rem] border border-white/14 bg-[radial-gradient(circle_at_top_right,rgba(255,122,0,0.16),transparent_34%),linear-gradient(180deg,rgba(24,53,0,0.76)_0%,rgba(6,27,5,0.86)_100%)] p-4 text-white sm:rounded-[2rem] sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="max-w-md">
                     <p className="text-sm font-semibold uppercase tracking-[0.18em] text-coral">
                       At a glance
                     </p>
-                    <h3 className="mt-2 font-display text-[1.9rem] font-bold leading-tight">
+                    <h3 className="mt-2 font-display text-[1.55rem] font-bold leading-tight sm:text-[1.9rem]">
                       See your orders, courier choices, and delivery progress in one screen.
                     </h3>
                     <p className="mt-3 text-sm leading-6 text-white/68">
@@ -210,12 +210,12 @@ export function HomePage() {
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/6 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl">
+                <div className="mt-5 rounded-[1.4rem] border border-white/10 bg-white/6 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl sm:mt-6 sm:rounded-[1.6rem] sm:p-4">
                   <div className="grid gap-3">
                     {routingPreview.map((item, index) => (
                       <div
                         key={item.label}
-                        className="grid gap-2 rounded-[1.2rem] border border-white/10 bg-white/6 px-4 py-4 shadow-sm backdrop-blur"
+                        className="grid gap-2 rounded-[1.1rem] border border-white/10 bg-white/6 px-3.5 py-3.5 shadow-sm backdrop-blur sm:rounded-[1.2rem] sm:px-4 sm:py-4"
                       >
                         <div className="flex items-center gap-3">
                           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-ocean via-sky to-coral text-xs font-bold text-ink shadow-lg shadow-coral/20">
@@ -238,7 +238,7 @@ export function HomePage() {
 
           <MotionDiv
             style={{ y: heroCardsY }}
-            className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+            className="mt-8 grid gap-4 sm:mt-10 md:grid-cols-2 xl:grid-cols-4"
           >
             {networkMoments.map((item, index) => (
               <MotionDiv
