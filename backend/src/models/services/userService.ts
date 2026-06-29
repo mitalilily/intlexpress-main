@@ -796,6 +796,163 @@ export async function createUserWithWallet(data: Partial<IUser>, txn: any = db) 
   })
 }
 
+export async function ensureUserBootstrapRecords(userId: string, tx: Tx = db) {
+  const [user] = await tx
+    .select({
+      id: users.id,
+      email: users.email,
+      phone: users.phone,
+      profilePicture: users.profilePicture,
+      emailVerified: users.emailVerified,
+      phoneVerified: users.phoneVerified,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1)
+
+  if (!user) {
+    throw new Error(`User not found: ${userId}`)
+  }
+
+  const [wallet] = await tx
+    .select({ id: schema.wallets.id })
+    .from(schema.wallets)
+    .where(eq(schema.wallets.userId, userId))
+    .limit(1)
+
+  if (!wallet) {
+    await tx.insert(schema.wallets).values({
+      userId,
+      balance: sql`0`,
+    })
+  }
+
+  const [userPlan] = await tx
+    .select({ id: schema.userPlans.id })
+    .from(schema.userPlans)
+    .where(eq(schema.userPlans.userId, userId))
+    .limit(1)
+
+  if (!userPlan) {
+    const [basicPlan] = await tx
+      .select({ id: schema.plans.id })
+      .from(schema.plans)
+      .where(sql`lower(${schema.plans.name}) = 'basic'`)
+      .limit(1)
+
+    if (basicPlan) {
+      await tx.insert(schema.userPlans).values({
+        userId,
+        plan_id: basicPlan.id,
+        is_active: true,
+      })
+    }
+  }
+
+  const [billingPreferences] = await tx
+    .select({ userId: schema.billingPreferences.userId })
+    .from(schema.billingPreferences)
+    .where(eq(schema.billingPreferences.userId, userId))
+    .limit(1)
+
+  if (!billingPreferences) {
+    await tx.insert(schema.billingPreferences).values({
+      userId,
+      frequency: 'monthly',
+      autoGenerate: true,
+      customFrequencyDays: null,
+    })
+  }
+
+  const [labelPreferences] = await tx
+    .select({ userId: schema.labelPreferences.user_id })
+    .from(schema.labelPreferences)
+    .where(eq(schema.labelPreferences.user_id, userId))
+    .limit(1)
+
+  if (!labelPreferences) {
+    await tx.insert(schema.labelPreferences).values({
+      user_id: userId,
+      printer_type: 'thermal',
+      char_limit: 25,
+      max_items: 3,
+      powered_by: 'Shiplifi',
+      order_info: {
+        orderId: true,
+        invoiceNumber: true,
+        orderDate: false,
+        invoiceDate: false,
+        orderBarcode: true,
+        invoiceBarcode: true,
+        customerPhone: true,
+        rtoRoutingCode: true,
+        declaredValue: true,
+        cod: true,
+        awb: true,
+        terms: true,
+      },
+      shipper_info: {
+        shipperPhone: true,
+        gstin: true,
+        shipperAddress: true,
+        rtoAddress: false,
+        sellerBrandName: true,
+        brandLogo: true,
+      },
+      product_info: {
+        itemName: true,
+        productCost: true,
+        productQuantity: true,
+        skuCode: false,
+        dimension: false,
+        deadWeight: false,
+        otherCharges: true,
+      },
+      brand_logo: null,
+    })
+  }
+
+  const [invoicePreferences] = await tx
+    .select({ userId: schema.invoicePreferences.userId })
+    .from(schema.invoicePreferences)
+    .where(eq(schema.invoicePreferences.userId, userId))
+    .limit(1)
+
+  if (!invoicePreferences) {
+    await tx.insert(schema.invoicePreferences).values({
+      userId,
+      prefix: 'INV',
+      suffix: '',
+      template: 'classic',
+      includeLogo: true,
+      includeSignature: true,
+      logoFile: null,
+      signatureFile: null,
+    })
+  }
+
+  const [profile] = await tx
+    .select({ userId: schema.userProfiles.userId })
+    .from(schema.userProfiles)
+    .where(eq(schema.userProfiles.userId, userId))
+    .limit(1)
+
+  if (!profile) {
+    await tx.insert(schema.userProfiles).values({
+      ...DEFAULT_PROFILE,
+      userId,
+      companyInfo: {
+        ...DEFAULT_PROFILE.companyInfo,
+        contactEmail: user.email ?? '',
+        contactNumber: user.phone ?? '',
+        profilePicture: user.profilePicture ?? '',
+        POCEmailVerified: Boolean(user.emailVerified),
+        POCPhoneVerified: Boolean(user.phoneVerified),
+      },
+    })
+  }
+}
+
 type GetUsersParams = {
   page: number
   perPage: number
@@ -845,6 +1002,8 @@ export async function getAllUsersWithRoleUser({
     const pattern = `%${search.trim()}%`
     filters.push(
       or(
+        ilike(users.email, pattern),
+        ilike(sql`coalesce(${users.phone}, '')`, pattern),
         ilike(sql`coalesce(${schema.userProfiles.companyInfo} ->> 'brandName', '')`, pattern), // Brand name
         ilike(sql`coalesce(${schema.userProfiles.companyInfo} ->> 'contactPerson', '')`, pattern),
         ilike(sql`coalesce(${schema.userProfiles.companyInfo} ->> 'contactEmail', '')`, pattern),

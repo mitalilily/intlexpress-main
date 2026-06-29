@@ -1,5 +1,8 @@
 import { CopyIcon } from '@chakra-ui/icons'
 import {
+  Alert,
+  AlertDescription,
+  AlertIcon,
   Badge,
   Box,
   Button,
@@ -173,10 +176,19 @@ const CourierCredentials = () => {
   }
 
   if (isLoading) return <Spinner size="md" />
-  if (error) return <Text color="red.500">Failed to load Delhivery credentials</Text>
 
   return (
     <Flex direction="column" pt={{ base: '120px', md: '75px' }} gap={5}>
+      {error && (
+        <Alert status="warning" borderRadius="lg">
+          <AlertIcon />
+          <AlertDescription>
+            Delhivery credentials could not be loaded from the API, so blank fallback cards are
+            shown. You can still save fresh account details from here.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Stack spacing={1}>
         <Text fontSize="xl" fontWeight="bold">
           Delhivery Accounts

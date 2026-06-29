@@ -206,7 +206,7 @@ const PricingManagement = () => {
 
                       {/* B2C Pricing Tab */}
                       <TabPanel px={0} py={6}>
-                        <RateCardContainer />
+                        <RateCardContainer forceBusinessType="B2C" embedded />
                       </TabPanel>
                     </TabPanels>
                   </Tabs>

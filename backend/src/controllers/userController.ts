@@ -1,6 +1,7 @@
 import { Response } from 'express'
 import { getProfileByUserId, upsertUserProfile } from '../models/services/userProfile.service'
 import {
+  ensureUserBootstrapRecords,
   findUserByEmail,
   findUserById,
   findUserByPhone,
@@ -52,8 +53,9 @@ export const completeRegistration = async (req: any, res: Response): Promise<any
 
   try {
     const user = await findUserById(userId)
-    const userProfile = await getProfileByUserId(userId)
     if (!user) return res.status(404).json({ error: 'User not found' })
+    await ensureUserBootstrapRecords(userId)
+    const userProfile = await getProfileByUserId(userId)
 
     let updates: any = {}
     const isOnlyB2B =

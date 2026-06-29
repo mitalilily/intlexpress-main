@@ -9,6 +9,7 @@ import {
   clampPreviousRefreshTokenExpiry,
   createOtpBootstrapUser,
   createUserWithWallet,
+  ensureUserBootstrapRecords,
   findUserByEmail,
   findUserById,
   handleEmailVerificationRequest,
@@ -263,6 +264,7 @@ export const verifyOtp = async (req: Request, res: Response): Promise<any> => {
 
     await clearUserOtpByEmail(normalizedEmail)
     await markEmailVerified(normalizedEmail) // update emailVerified = true
+    await ensureUserBootstrapRecords(user.id)
     const accessToken = signAccessToken(user.id, user.role ?? 'customer')
 
     const { token: refreshToken } = signRefreshToken(user.id, user.role ?? 'customer')
@@ -333,6 +335,7 @@ export const requestEmailVerification = async (req: Request, res: Response): Pro
 
     // ── If the flow returned a user (authenticated / verified)
     if (user) {
+      await ensureUserBootstrapRecords(user.id)
       const accessToken = signAccessToken(user.id, user.role ?? 'customer')
       const { token: refreshToken } = signRefreshToken(user.id, user.role ?? 'customer')
 
@@ -375,6 +378,7 @@ export const verifyEmailToken = async (req: Request, res: Response): Promise<any
 
     await markEmailVerified(email)
     await clearUserEmailToken(email)
+    await ensureUserBootstrapRecords(user.id)
     /* ── Sign & Set JWTs ────────────────────────────────────────────── */
     const accessToken = signAccessToken(user.id, user.role ?? 'customer')
 
@@ -470,6 +474,9 @@ export const googleOAuthLogin = async (req: Request, res: Response): Promise<any
     }
 
     user = await findUserByEmail(email)
+    if (user) {
+      await ensureUserBootstrapRecords(user.id)
+    }
 
     if (user) {
       /* ── Sign & Set JWTs ────────────────────────────────────────────── */

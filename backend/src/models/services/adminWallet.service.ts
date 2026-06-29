@@ -21,7 +21,7 @@ export const getAllWallets = async ({
   sortOrder = 'desc',
 }: GetAllWalletsParams) => {
   const offset = (page - 1) * limit
-  const filters: any[] = []
+  const filters: any[] = [eq(users.role, 'customer')]
 
   // Search filter
   if (search.trim()) {
@@ -53,7 +53,7 @@ export const getAllWallets = async ({
     .select({ count: sql<number>`count(*)` })
     .from(wallets)
     .innerJoin(users, eq(wallets.userId, users.id))
-    .innerJoin(userProfiles, eq(users.id, userProfiles.userId))
+    .leftJoin(userProfiles, eq(users.id, userProfiles.userId))
     .where(filters.length > 0 ? and(...filters) : undefined)
 
   const totalCount = Number(totalCountResult[0]?.count || 0)
@@ -73,7 +73,7 @@ export const getAllWallets = async ({
     })
     .from(wallets)
     .innerJoin(users, eq(wallets.userId, users.id))
-    .innerJoin(userProfiles, eq(users.id, userProfiles.userId))
+    .leftJoin(userProfiles, eq(users.id, userProfiles.userId))
     .where(filters.length > 0 ? and(...filters) : undefined)
     .orderBy(orderBy)
     .limit(limit)
@@ -102,7 +102,7 @@ export const getWalletByUserId = async (userId: string) => {
     })
     .from(wallets)
     .innerJoin(users, eq(wallets.userId, users.id))
-    .innerJoin(userProfiles, eq(users.id, userProfiles.userId))
+    .leftJoin(userProfiles, eq(users.id, userProfiles.userId))
     .where(eq(wallets.userId, userId))
     .limit(1)
 
