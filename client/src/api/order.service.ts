@@ -1,6 +1,9 @@
 import axiosInstance from './axiosInstance'
 
 export interface CreateShipmentParams {
+  reference_number?: string
+  notes?: string
+  return_reason?: string
   qc_type?: 'param' | string
   custom_qc?: Array<{
     item?: string
@@ -28,6 +31,7 @@ export interface CreateShipmentParams {
   } | CreateShipmentParams['custom_qc']
   order_number: string
   payment_type: 'cod' | 'prepaid' | 'reverse'
+  fragile_shipment?: boolean | string | number
   package_weight?: number
   package_length?: number
   prepaid_amount?: number

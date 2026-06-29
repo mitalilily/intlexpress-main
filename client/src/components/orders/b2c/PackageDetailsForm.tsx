@@ -18,9 +18,18 @@ interface PackageDetailsFormProps {
   fields: { id: string }[]
   remove: UseFieldArrayRemove
   append: UseFieldArrayAppend<B2CFormData, 'products'>
+  itemLabel?: string
+  addButtonLabel?: string
 }
 
-const PackageDetailsForm = ({ control, fields, remove, append }: PackageDetailsFormProps) => {
+const PackageDetailsForm = ({
+  control,
+  fields,
+  remove,
+  append,
+  itemLabel = 'Product',
+  addButtonLabel = 'Add Product',
+}: PackageDetailsFormProps) => {
   return (
     <Stack gap={0.65}>
       {fields.map((item, index) => (
@@ -37,7 +46,7 @@ const PackageDetailsForm = ({ control, fields, remove, append }: PackageDetailsF
           <Stack gap={0.6}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Typography variant="body2" fontWeight={700} sx={{ color: '#17171A' }}>
-                Product {index + 1}
+                {itemLabel} {index + 1}
               </Typography>
               <IconButton
                 size="small"
@@ -206,7 +215,7 @@ const PackageDetailsForm = ({ control, fields, remove, append }: PackageDetailsF
             },
           }}
         >
-          Add Product
+          {addButtonLabel}
         </Button>
       </Box>
     </Stack>

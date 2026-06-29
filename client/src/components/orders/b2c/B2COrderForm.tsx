@@ -6,12 +6,14 @@ import {
   Paper,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
   alpha,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { Controller, FormProvider, useFieldArray, useForm } from 'react-hook-form'
-import { BiRupee } from 'react-icons/bi'
+import { BiRefresh, BiRupee } from 'react-icons/bi'
 import { FaBox, FaTruck, FaUser } from 'react-icons/fa'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { fetchAvailableCouriers } from '../../../api/courier'
@@ -28,10 +30,17 @@ import PickupLocationForm from '../PickupLocationForm'
 import { SelectCourierForm } from '../SelectCourierForm'
 import PackageDetailsForm from './PackageDetailsForm'
 import PackageDimensionsForm from './PackageDimensionsForm'
+import ReversePickupDetailsStep from './ReversePickupDetailsStep'
 
 const ACCENT = '#333d81'
 const TEXT_PRIMARY = '#17171A'
 const TEXT_MUTED = '#496189'
+
+const sanitizeReverseTagValue = (value: string) =>
+  value
+    .trim()
+    .replace(/[\s,=|]+/g, '_')
+    .slice(0, 36)
 
 export type Product = {
   productName: string
@@ -44,6 +53,7 @@ export type Product = {
 }
 
 export type B2CFormData = {
+  isReversePickup?: boolean
   buyerName: string
   buyerPhone: string
   buyerEmail: string
@@ -59,6 +69,10 @@ export type B2CFormData = {
   height: number
   orderId: string
   orderDate: string
+  referenceNumber?: string
+  returnReason?: string
+  pickupNotes?: string
+  fragileShipment?: boolean
   orderType: 'prepaid' | 'cod'
   courierPartner: string
   shippingCharges?: number
@@ -112,7 +126,6 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
   const navigate = useNavigate()
   const location = useLocation()
   const [currentStep, setCurrentStep] = useState(0)
-  const steps = ['Order & Delivery', 'Courier Selection']
   const { data: paymentOptions } = usePaymentOptions()
 
   const defaultPickupSlot = getDefaultPickupSlot()
@@ -127,16 +140,22 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
 
   const methods = useForm<B2CFormData>({
     defaultValues: {
+      isReversePickup: false,
       products: [{ productName: '', price: 0, quantity: 1 }],
       weight: 0,
       length: 0,
       breadth: 0,
       height: 0,
+      country: 'India',
       courierPartnerId: '',
       amazonRequestToken: null,
       amazonRateId: null,
       amazonServiceId: null,
       amazonCarrierId: null,
+      referenceNumber: '',
+      returnReason: '',
+      pickupNotes: '',
+      fragileShipment: false,
       pickupDate: defaultPickupSlot.pickupDate,
       pickupTime: defaultPickupSlot.pickupTime,
       orderType: getDefaultOrderType(),
@@ -160,10 +179,16 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
   const giftWrap = Number(watch('giftWrap') || 0)
   const discount = Number(watch('discount') || 0)
   const prepaidAmount = Number(watch('prepaidAmount') || 0)
+  const isReversePickup = watch('isReversePickup') === true
   const orderType = watch('orderType') || getDefaultOrderType()
+  const steps = isReversePickup
+    ? ['Reverse Pickup Details', 'Courier Selection']
+    : ['Order & Delivery', 'Courier Selection']
 
   // Ensure orderType is valid based on payment options
   useEffect(() => {
+    if (isReversePickup) return
+
     if (paymentOptions && orderType) {
       const isCurrentTypeEnabled =
         (orderType === 'cod' && paymentOptions.codEnabled) ||
@@ -178,7 +203,7 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
         setValue('orderType', newOrderType)
       }
     }
-  }, [paymentOptions, orderType, setValue])
+  }, [isReversePickup, paymentOptions, orderType, setValue])
 
   const subtotal = fields.reduce(
     (sum, _, idx) =>
@@ -216,6 +241,20 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
     setValue('slabs', null)
   }, [setValue])
 
+  useEffect(() => {
+    setCurrentStep(0)
+
+    if (!isReversePickup) return
+
+    setValue('shippingCharges', 0)
+    setValue('transactionFee', 0)
+    setValue('giftWrap', 0)
+    setValue('discount', 0)
+    setValue('prepaidAmount', 0)
+    setValue('courierCod', 0)
+    setValue('isRtoSame', true)
+  }, [isReversePickup, setValue])
+
   const onSubmit = async (data: B2CFormData) => {
     try {
       const normalizedOrderId = data.orderId.trim()
@@ -240,27 +279,48 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
       let amazonRateId = data.amazonRateId ?? undefined
       let amazonServiceId = data.amazonServiceId ?? undefined
       let amazonCarrierId = data.amazonCarrierId ?? undefined
-      const shipmentPaymentType = data.orderType
+      const shipmentPaymentType: CreateShipmentParams['payment_type'] = isReversePickup
+        ? 'reverse'
+        : data.orderType
       const packageWeightForBooking = data.weight
+      const serviceabilityOrigin = isReversePickup ? data.pincode : data.pickupLocationPincode
+      const serviceabilityDestination = isReversePickup ? data.pickupLocationPincode : data.pincode
+      const reverseTags = isReversePickup
+        ? [
+            'reverse_manual',
+            data.referenceNumber?.trim()
+              ? `reference_number=${sanitizeReverseTagValue(data.referenceNumber)}`
+              : '',
+            data.returnReason?.trim()
+              ? `return_reason=${sanitizeReverseTagValue(data.returnReason)}`
+              : '',
+            data.pickupNotes?.trim() ? 'pickup_notes_added' : '',
+            data.fragileShipment ? 'fragile_shipment' : '',
+          ]
+            .filter(Boolean)
+            .join(',')
+        : undefined
 
       if (data.integrationType === 'amazon' && (!amazonRequestToken || !amazonRateId)) {
         try {
           const refreshedCouriers = await fetchAvailableCouriers({
-            origin: data.pickupLocationPincode,
-            destination: data.pincode,
+            origin: serviceabilityOrigin,
+            destination: serviceabilityDestination,
             pickupId: data.pickupLocationId,
-            pickupName: data.pickupLocationName,
-            pickupPhone: data.pickupLocationPOCPhone,
-            pickupAddress: data.pickupAddress,
-            pickupCity: data.pickupCity,
-            pickupState: data.pickupState,
-            deliveryName: data.buyerName,
-            deliveryPhone: data.buyerPhone,
-            deliveryAddress: data.address,
-            deliveryCity: data.city,
-            deliveryState: data.state,
+            pickupName: isReversePickup ? data.buyerName : data.pickupLocationName,
+            pickupPhone: isReversePickup ? data.buyerPhone : data.pickupLocationPOCPhone,
+            pickupAddress: isReversePickup ? data.address : data.pickupAddress,
+            pickupCity: isReversePickup ? data.city : data.pickupCity,
+            pickupState: isReversePickup ? data.state : data.pickupState,
+            deliveryName: isReversePickup ? data.pickupLocationName : data.buyerName,
+            deliveryPhone: isReversePickup
+              ? data.pickupLocationPOCPhone
+              : data.buyerPhone,
+            deliveryAddress: isReversePickup ? data.pickupAddress : data.address,
+            deliveryCity: isReversePickup ? data.pickupCity : data.city,
+            deliveryState: isReversePickup ? data.pickupState : data.state,
             payment_type: shipmentPaymentType,
-            order_amount: subtotal,
+            order_amount: isReversePickup ? undefined : subtotal,
             cod: shipmentPaymentType === 'cod' ? 1 : 0,
             weight: data.weight,
             length: data.length,
@@ -268,6 +328,7 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
             height: data.height,
             shipment_type: 'b2c',
             context: 'shipment_courier_selection',
+            isReverse: isReversePickup,
           })
 
           const selectedCourierOptionKey = String(data.courierOptionKey ?? '')
@@ -318,22 +379,31 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
       const payload: CreateShipmentParams = {
         order_number: normalizedOrderId,
         payment_type: shipmentPaymentType,
-        order_amount: subtotal,
+        isReverse: isReversePickup,
+        request_auto_pickup: isReversePickup ? 'Yes' : undefined,
+        reference_number: data.referenceNumber?.trim() || undefined,
+        notes: data.pickupNotes?.trim() || undefined,
+        return_reason: data.returnReason?.trim() || undefined,
+        fragile_shipment: isReversePickup ? Boolean(data.fragileShipment) : undefined,
+        tags: reverseTags,
+        order_amount: isReversePickup ? 0 : subtotal,
         order_date: data?.orderDate,
         package_weight: packageWeightForBooking,
         package_length: data.length,
         cod_charges: shipmentPaymentType === 'cod' ? data?.courierCod : 0,
         package_breadth: data.breadth,
         package_height: data.height,
-        shipping_charges: Number(data?.shippingCharges ?? 0), // What seller charges customer
+        shipping_charges: isReversePickup
+          ? Number(data?.forwardCharges ?? 0)
+          : Number(data?.shippingCharges ?? 0), // What seller charges customer
         freight_charges: Number(data?.forwardCharges ?? 0), // What platform charges seller (based on rate card)
         courier_cost: data?.courierCost ? Number(data.courierCost) : undefined, // Estimated courier cost from serviceability (what platform pays courier)
-        prepaid_amount: data?.prepaidAmount,
-        is_rto_different: data?.isRtoSame ? 'no' : 'yes',
-        discount: data.discount ?? 0,
+        prepaid_amount: isReversePickup ? 0 : data?.prepaidAmount,
+        is_rto_different: isReversePickup ? 'no' : data?.isRtoSame ? 'no' : 'yes',
+        discount: isReversePickup ? 0 : data.discount ?? 0,
         integration_type: data?.integrationType,
-        transaction_fee: data?.transactionFee,
-        gift_wrap: data?.giftWrap,
+        transaction_fee: isReversePickup ? 0 : data?.transactionFee,
+        gift_wrap: isReversePickup ? 0 : data?.giftWrap,
         consignee: {
           name: data.buyerName,
           address: data.address,
@@ -355,7 +425,19 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
           pickup_date: data.pickupDate,
           pickup_time: data.pickupTime,
         },
-        ...(!data?.isRtoSame && {
+        ...(isReversePickup
+          ? {
+              rto: {
+                warehouse_name: data?.pickupLocationName ?? '',
+                address: data?.pickupAddress ?? '',
+                name: data?.pickupLocationPOCName ?? '',
+                phone: data?.pickupLocationPOCPhone ?? '',
+                city: data?.pickupCity ?? '',
+                state: data?.pickupState ?? '',
+                pincode: data.pickupLocationPincode ?? '',
+              },
+            }
+          : !data?.isRtoSame && {
           rto: {
             warehouse_name: data?.rtoLocationName ?? '',
             address: data?.rtoAddress ?? '',
@@ -382,7 +464,7 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
         amazon_rate_id: amazonRateId,
         amazon_service_id: amazonServiceId,
         amazon_carrier_id: amazonCarrierId,
-        shadowfax_forward_mode: data.shadowfaxForwardMode,
+        shadowfax_forward_mode: isReversePickup ? undefined : data.shadowfaxForwardMode,
         shadowfax_service_mode: data.shadowfaxServiceMode,
         selected_max_slab_weight:
           data.selectedMaxSlabWeight !== undefined && data.selectedMaxSlabWeight !== null
@@ -398,7 +480,7 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
       createShipmentMutation.mutate(payload, {
         onSuccess: () => {
           if (location.pathname === '/orders/create') {
-            navigate('/orders/list?status=pending')
+            navigate(isReversePickup ? '/orders/list' : '/orders/list?status=pending')
           }
         },
       })
@@ -415,21 +497,40 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
         ),
       )
 
-      const step1Fields: (keyof B2CFormData)[] = [
-        'buyerName',
-        'buyerPhone',
-        'address',
-        'pincode',
-        'orderType',
-        'city',
-        'state',
-        'country',
-        ...productFields,
-        'weight',
-        'length',
-        'breadth',
-        'height',
-      ]
+      const step1Fields: (keyof B2CFormData)[] = isReversePickup
+        ? [
+            'orderId',
+            'orderDate',
+            'buyerName',
+            'buyerPhone',
+            'address',
+            'pincode',
+            'city',
+            'state',
+            'country',
+            'pickupLocationId',
+            'returnReason',
+            ...productFields,
+            'weight',
+            'length',
+            'breadth',
+            'height',
+          ]
+        : [
+            'buyerName',
+            'buyerPhone',
+            'address',
+            'pincode',
+            'orderType',
+            'city',
+            'state',
+            'country',
+            ...productFields,
+            'weight',
+            'length',
+            'breadth',
+            'height',
+          ]
 
       const baseValid = await trigger(step1Fields)
       if (!baseValid) return false
@@ -443,7 +544,9 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
         if (!serviceable) {
           methods.setError('pincode', {
             type: 'manual',
-            message: 'Destination pincode not serviceable by any courier',
+            message: isReversePickup
+              ? 'Customer pickup pincode is not serviceable by any courier'
+              : 'Destination pincode not serviceable by any courier',
           })
           return false
         }
@@ -468,8 +571,8 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 0))
 
   useEffect(() => {
-    setValue('orderAmount', totalCollectable, { shouldValidate: true })
-  }, [totalCollectable])
+    setValue('orderAmount', isReversePickup ? 0 : totalCollectable, { shouldValidate: true })
+  }, [isReversePickup, setValue, totalCollectable])
 
   useEffect(() => {
     register('courierPartnerId', {
@@ -532,8 +635,75 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
               },
             }}
           >
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              justifyContent="space-between"
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              gap={0.8}
+              sx={{ mb: 0.75 }}
+            >
+              <Box>
+                <Typography sx={{ fontSize: '0.86rem', fontWeight: 800, color: TEXT_PRIMARY }}>
+                  {isReversePickup ? 'Create Reverse Order' : 'Create Forward Order'}
+                </Typography>
+                <Typography sx={{ fontSize: '0.74rem', color: TEXT_MUTED, mt: 0.15 }}>
+                  {isReversePickup
+                    ? 'DTO flow: pickup from customer, then return to your selected warehouse.'
+                    : 'Standard B2C flow: ship from your pickup location to the customer.'}
+                </Typography>
+              </Box>
+
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={isReversePickup ? 'reverse' : 'forward'}
+                onChange={(_, nextValue: 'forward' | 'reverse' | null) => {
+                  if (!nextValue) return
+                  setValue('isReversePickup', nextValue === 'reverse', {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                  })
+                }}
+                sx={{
+                  bgcolor: alpha(ACCENT, 0.04),
+                  borderRadius: 2,
+                  '& .MuiToggleButton-root': {
+                    textTransform: 'none',
+                    px: 1.5,
+                    py: 0.55,
+                    border: 0,
+                    color: TEXT_MUTED,
+                    fontWeight: 700,
+                  },
+                  '& .Mui-selected': {
+                    backgroundColor: ACCENT,
+                    color: '#fff',
+                    '&:hover': {
+                      backgroundColor: ACCENT,
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="forward">Forward Order</ToggleButton>
+                <ToggleButton value="reverse">
+                  <Stack direction="row" alignItems="center" gap={0.45}>
+                    <BiRefresh size={14} />
+                    <span>Reverse Pickup</span>
+                  </Stack>
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Stack>
+
             {/* Step content */}
             {currentStep === 0 && (
+              isReversePickup ? (
+                <ReversePickupDetailsStep
+                  append={append}
+                  control={control}
+                  fields={fields}
+                  remove={remove}
+                />
+              ) : (
               <Stack gap={0.75} mb={0.75}>
                 {/* Order Information */}
                 <Box>
@@ -925,6 +1095,7 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
                   </Grid>
                 </Grid>
               </Stack>
+              )
             )}
 
             {currentStep === 1 && (
@@ -934,7 +1105,10 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
                     {errors.courierPartnerId.message as string}
                   </Alert>
                 )}
-                <SelectCourierForm shipment_type="b2c" />
+                <SelectCourierForm
+                  shipment_type="b2c"
+                  mode={isReversePickup ? 'reverse' : 'forward'}
+                />
 
                 {/* Error shown as Alert */}
               </FormSectionAccordion>
@@ -1010,7 +1184,7 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
                       background: ACCENT,
                     }}
                   >
-                    Create & Book Order
+                    {isReversePickup ? 'Create & Manifest Reverse Order' : 'Create & Book Order'}
                   </Button>
                 )}
               </Stack>

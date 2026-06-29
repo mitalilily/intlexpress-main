@@ -17,11 +17,18 @@ const TEXT_SECONDARY = '#4C6185'
 const SURFACE = '#F6F8FC'
 type CourierSortOption = 'recommended' | 'price_low_to_high' | 'faster_delivery'
 
-export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b2c' }) => {
+export const SelectCourierForm = ({
+  shipment_type,
+  mode = 'forward',
+}: {
+  shipment_type: 'b2b' | 'b2c'
+  mode?: 'forward' | 'reverse'
+}) => {
   const { watch, setValue, clearErrors } = useFormContext<B2BFormData | B2CFormData>()
   const [courierSort, setCourierSort] = useState<CourierSortOption>('recommended')
   const watchFormValue = watch as any
   const setFormValue = setValue as any
+  const isReverseMode = mode === 'reverse'
 
   const products = watch('products') ?? []
   const deliveryPincode = watch('pincode') ?? ''
@@ -56,20 +63,22 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
   const gstPercent = Number(watchFormValue('gstPercent') || 0)
   const gstAmount = Number(watchFormValue('gstAmount') || 0)
   const walletDebitAmount = Number(watchFormValue('walletDebitAmount') || 0)
-  const activeRateKey = 'forward'
-  const effectivePaymentType: 'cod' | 'prepaid' = orderType
-  const originPincode = pickupPincode
-  const destinationPincode = deliveryPincode
-  const originName = pickupName
-  const originPhone = pickupPhone
-  const originAddressLine = pickupAddressLine
-  const originCity = pickupCity
-  const originState = pickupState
-  const destinationName = buyerName
-  const destinationPhone = buyerPhone
-  const destinationAddressLine = deliveryAddressLine
-  const destinationCity = deliveryCity
-  const destinationState = deliveryState
+  const activeRateKey = isReverseMode ? 'rto' : 'forward'
+  const effectivePaymentType: 'cod' | 'prepaid' | 'reverse' = isReverseMode
+    ? 'reverse'
+    : orderType
+  const originPincode = isReverseMode ? deliveryPincode : pickupPincode
+  const destinationPincode = isReverseMode ? pickupPincode : deliveryPincode
+  const originName = isReverseMode ? buyerName : pickupName
+  const originPhone = isReverseMode ? buyerPhone : pickupPhone
+  const originAddressLine = isReverseMode ? deliveryAddressLine : pickupAddressLine
+  const originCity = isReverseMode ? deliveryCity : pickupCity
+  const originState = isReverseMode ? deliveryState : pickupState
+  const destinationName = isReverseMode ? pickupName : buyerName
+  const destinationPhone = isReverseMode ? pickupPhone : buyerPhone
+  const destinationAddressLine = isReverseMode ? pickupAddressLine : deliveryAddressLine
+  const destinationCity = isReverseMode ? pickupCity : deliveryCity
+  const destinationState = isReverseMode ? pickupState : deliveryState
 
   // COMPUTE TOTAL WEIGHT AND PRICE
   let totalWeight = 0
@@ -120,14 +129,15 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
     totalProductPrice + shippingCharges + transactionFee + giftWrap - discount - prepaidAmount
   // Keep courier rating aligned with booking: COD percent is based on the shipment
   // product value, not customer-facing shipping/fees collected from the buyer.
-  const courierPayloadOrderAmount = Math.max(totalProductPrice, 0)
+  const courierPayloadOrderAmount = isReverseMode ? 0 : Math.max(totalProductPrice, 0)
 
   const cod = effectivePaymentType === 'cod' ? 1 : 0
   const hasRequiredPackageDetails =
     Number(totalWeight) > 0 &&
     (shipment_type !== 'b2c' ||
       (Number(length) > 0 && Number(breadth) > 0 && Number(height) > 0))
-  const hasRequiredOrderAmount = shipment_type !== 'b2c' || courierPayloadOrderAmount > 0
+  const hasRequiredOrderAmount =
+    shipment_type !== 'b2c' || isReverseMode || courierPayloadOrderAmount > 0
   const canFetchCouriers = Boolean(
     originPincode && destinationPincode && hasRequiredPackageDetails && hasRequiredOrderAmount,
   )
@@ -155,7 +165,7 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
     weight: totalWeight,
     cod,
     payment_type: effectivePaymentType,
-    orderAmount: courierPayloadOrderAmount,
+    orderAmount: isReverseMode ? undefined : courierPayloadOrderAmount,
     shipmentType: shipment_type,
     enabled: canFetchCouriers,
     ...(shipment_type === 'b2c'
@@ -165,6 +175,7 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
       : {}),
     ...(preferredShadowfaxForwardMode ? { shadowfax_forward_mode: preferredShadowfaxForwardMode } : {}),
     shadowfax_service_mode: selectedShadowfaxServiceMode ?? undefined,
+    isReverse: isReverseMode,
   }
 
   if (shipment_type === 'b2c') {
@@ -232,7 +243,13 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
   }, [availableCouriers, selectedCourierId, selectedCourierOptionKey, setFormValue, setValue])
 
   if (!canFetchCouriers) {
-    return <Typography>Fill pickup, delivery, package, and order value first to fetch couriers</Typography>
+    return (
+      <Typography>
+        {isReverseMode
+          ? 'Fill customer pickup, return location, and package details first to fetch reverse couriers'
+          : 'Fill pickup, delivery, package, and order value first to fetch couriers'}
+      </Typography>
+    )
   }
   if (isLoading || isFetching)
     return (
@@ -244,7 +261,9 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
       </Paper>
     )
   if (isError) return <Typography color="error">Failed to fetch couriers</Typography>
-  if (!availableCouriers.length) return <Typography>No couriers available</Typography>
+  if (!availableCouriers.length) {
+    return <Typography>{isReverseMode ? 'No reverse couriers available' : 'No couriers available'}</Typography>
+  }
 
   const getModeIcon = (mode?: string) => {
     const normalizedMode = String(mode || '').toLowerCase()
@@ -447,14 +466,15 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
                   'linear-gradient(135deg, #333d81 0%, #1A5DD1 55%, #3D8BFF 100%)',
               }}
             >
-                <Typography sx={{ fontSize: 10, letterSpacing: '0.08em', opacity: 0.88, color: '#fff' }}>
-                SHIPMENT SNAPSHOT
+              <Typography sx={{ fontSize: 10, letterSpacing: '0.08em', opacity: 0.88, color: '#fff' }}>
+                {isReverseMode ? 'REVERSE SNAPSHOT' : 'SHIPMENT SNAPSHOT'}
               </Typography>
               <Typography variant="subtitle1" sx={{ mt: 0.25, fontWeight: 800, color: '#fff' }}>
                 {watch('orderId') || 'Pending Order ID'}
               </Typography>
               <Typography sx={{ mt: 0.35, opacity: 0.9, color: '#fff', fontSize: 12 }}>
-                {shipment_type.toUpperCase()} • {effectivePaymentType.toUpperCase()} •{' '}
+                {(isReverseMode ? 'REVERSE PICKUP' : shipment_type.toUpperCase())} •{' '}
+                {effectivePaymentType.toUpperCase()} •{' '}
                 {(Number(totalWeight) / 1000).toFixed(2)} kg
               </Typography>
             </Box>
@@ -463,13 +483,13 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
               <Grid container spacing={0.75}>
                 {[
                   {
-                    label: 'Customer Total',
-                    value: formatCurrency(totalOrderValue),
+                    label: isReverseMode ? 'Return Item Value' : 'Customer Total',
+                    value: formatCurrency(isReverseMode ? totalProductPrice : totalOrderValue),
                   },
                   { label: 'Courier Options', value: String(availableCouriers.length) },
                   { label: 'Zone', value: shipmentZoneDisplay || '-' },
-                  { label: 'Pickup', value: originPincode || '-' },
-                  { label: 'Delivery', value: destinationPincode || '-' },
+                  { label: isReverseMode ? 'Customer Pickup' : 'Pickup', value: originPincode || '-' },
+                  { label: isReverseMode ? 'Return To' : 'Delivery', value: destinationPincode || '-' },
                 ].map((item) => (
                   <Grid key={item.label} size={{ xs: 6 }}>
                     <Box
@@ -493,10 +513,12 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
 
               <Stack spacing={0.65}>
                 <Typography sx={{ fontSize: 12, fontWeight: 800, color: TEXT_SECONDARY }}>
-                  Price Breakup
+                  {isReverseMode ? 'Reverse Charge Preview' : 'Price Breakup'}
                 </Typography>
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography sx={{ color: TEXT_SECONDARY }}>Products</Typography>
+                  <Typography sx={{ color: TEXT_SECONDARY }}>
+                    {isReverseMode ? 'Return Items' : 'Products'}
+                  </Typography>
                   <Typography sx={{ fontWeight: 700, color: TEXT_PRIMARY }}>
                     {formatCurrency(totalProductPrice)}
                   </Typography>
@@ -548,7 +570,9 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
                     </Typography>
                     {forwardCharges > 0 && (
                       <Stack direction="row" justifyContent="space-between">
-                        <Typography sx={{ color: TEXT_SECONDARY }}>Forward Freight</Typography>
+                        <Typography sx={{ color: TEXT_SECONDARY }}>
+                          {isReverseMode ? 'Reverse Freight' : 'Forward Freight'}
+                        </Typography>
                         <Typography sx={{ fontWeight: 700, color: TEXT_PRIMARY }}>
                           {formatCurrency(forwardCharges)}
                         </Typography>
@@ -595,7 +619,7 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
 
           <Paper sx={{ p: 1.25, borderRadius: 2, bgcolor: '#fff' }}>
             <Typography sx={{ fontWeight: 800, color: TEXT_PRIMARY }}>
-              Delivery Summary
+              {isReverseMode ? 'Customer Pickup Summary' : 'Delivery Summary'}
             </Typography>
             <Stack spacing={0.75} sx={{ mt: 0.85 }}>
               <Stack direction="row" spacing={1.2} alignItems="flex-start">
@@ -632,14 +656,14 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
 
           <Paper sx={{ p: 1.25, borderRadius: 2, bgcolor: '#fff' }}>
             <Typography sx={{ fontWeight: 800, color: TEXT_PRIMARY }}>
-              Pickup Summary
+              {isReverseMode ? 'Return Location Summary' : 'Pickup Summary'}
             </Typography>
             <Stack spacing={0.75} sx={{ mt: 0.85 }}>
               <Stack direction="row" spacing={1.2} alignItems="flex-start">
                 <BiCalendar color={ACCENT} size={18} />
                 <Box>
                   <Typography sx={{ fontWeight: 700, color: TEXT_PRIMARY }}>
-                    {pickupName || 'Pickup Location'}
+                    {isReverseMode ? pickupName || 'Return Location' : pickupName || 'Pickup Location'}
                   </Typography>
                   <Typography sx={{ color: TEXT_SECONDARY, fontSize: 12 }}>
                     {pickupAddressLine || '-'}, {pickupCity || '-'}, {pickupState || '-'} -{' '}
@@ -711,10 +735,12 @@ export const SelectCourierForm = ({ shipment_type }: { shipment_type: 'b2b' | 'b
           >
             <Box>
               <Typography variant="subtitle1" sx={{ fontWeight: 800, color: TEXT_PRIMARY }}>
-                Select Courier Partner
+                {isReverseMode ? 'Select Reverse Courier' : 'Select Courier Partner'}
               </Typography>
               <Typography sx={{ mt: 0.25, color: TEXT_SECONDARY, fontSize: 12 }}>
-                Compare freight, speed and chargeable weight before locking the shipment.
+                {isReverseMode
+                  ? 'Compare reverse freight, speed, and chargeable weight before manifesting the return.'
+                  : 'Compare freight, speed and chargeable weight before locking the shipment.'}
               </Typography>
             </Box>
             <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap">
