@@ -46,6 +46,7 @@ import {
   serializeDelhiveryAccountsForMetadata,
   type DelhiveryAccountConfig,
 } from '../../models/services/delhiveryCredentials.service'
+import { triggerDelhiveryForgotPassword } from '../../models/services/couriers/delhivery.service'
 
 export interface ShippingRateFilters {
   courier_name?: string[]
@@ -466,8 +467,11 @@ const buildDelhiveryCredentialResponse = (accounts: DelhiveryAccountConfig[]) =>
     accountLabel: account.accountLabel,
     apiBase: account.apiBase || DEFAULT_DELHIVERY_API_BASE,
     clientName: account.clientName || '',
+    username: account.username || '',
     hasApiKey: Boolean((account.apiKey || '').trim()),
     apiKeyMasked: maskDelhiveryApiKey(account.apiKey || ''),
+    hasPassword: Boolean((account.password || '').trim()),
+    passwordMasked: account.password ? '********' : '',
     isActive: account.isActive === true,
     isDefault: account.isDefault === true,
     pickupLocationIds: account.pickupLocationIds || [],
@@ -505,7 +509,9 @@ const sanitizeDelhiveryAccountsPayload = (
         existing?.apiBase ||
         DEFAULT_DELHIVERY_API_BASE,
       clientName: String(record.clientName || '').trim() || existing?.clientName || '',
+      username: String(record.username || '').trim() || existing?.username || '',
       apiKey: nextApiKey || existing?.apiKey || '',
+      password: String(record.password || '').trim() || existing?.password || '',
       isActive:
         typeof record.isActive === 'boolean' ? record.isActive : existing?.isActive ?? index === 0,
       isDefault: record.isDefault === true,
@@ -601,7 +607,9 @@ export const updateDelhiveryCredentialsController = async (req: Request, res: Re
                 existingAccounts[0]?.accountLabel || getDefaultDelhiveryAccountLabel(0),
               apiBase,
               clientName,
+              username: existingAccounts[0]?.username || '',
               apiKey,
+              password: existingAccounts[0]?.password || '',
               isActive: existingAccounts[0]?.isActive ?? true,
               isDefault: true,
               pickupLocationIds: existingAccounts[0]?.pickupLocationIds || [],
@@ -629,6 +637,8 @@ export const updateDelhiveryCredentialsController = async (req: Request, res: Re
         apiBase: primaryAccount?.apiBase || DEFAULT_DELHIVERY_API_BASE,
         clientName: primaryAccount?.clientName || '',
         apiKey: primaryAccount?.apiKey || '',
+        username: primaryAccount?.username || '',
+        password: primaryAccount?.password || '',
         metadata: nextMetadata,
         updatedAt: new Date(),
       }
@@ -643,6 +653,8 @@ export const updateDelhiveryCredentialsController = async (req: Request, res: Re
         apiBase: primaryAccount?.apiBase || DEFAULT_DELHIVERY_API_BASE,
         clientName: primaryAccount?.clientName || '',
         apiKey: primaryAccount?.apiKey || '',
+        username: primaryAccount?.username || '',
+        password: primaryAccount?.password || '',
         metadata: nextMetadata,
       })
     }
@@ -655,6 +667,40 @@ export const updateDelhiveryCredentialsController = async (req: Request, res: Re
   } catch (err) {
     console.error(err)
     res.status(500).json({ success: false, message: 'Failed to update Delhivery credentials' })
+  }
+}
+
+export const resetDelhiveryPasswordController = async (req: Request, res: Response) => {
+  try {
+    const requestedAccountCode = String(req.body?.accountCode || 'account_2').trim()
+    const requestedUsername = String(req.body?.username || '').trim()
+    const requestedApiBase = String(req.body?.apiBase || '').trim()
+
+    const accounts = await getDelhiveryAccounts()
+    const selectedAccount =
+      accounts.find((account) => account.accountCode === requestedAccountCode) || accounts[1] || accounts[0]
+
+    const username = requestedUsername || selectedAccount?.username || ''
+    const apiBase = requestedApiBase || selectedAccount?.apiBase || ''
+
+    const result = await triggerDelhiveryForgotPassword({
+      username,
+      apiBase,
+    })
+
+    res.json({
+      success: true,
+      message: 'Delhivery password reset request submitted successfully',
+      data: result,
+    })
+  } catch (err: any) {
+    console.error('Failed to trigger Delhivery forgot-password request:', err)
+    const statusCode = typeof err?.statusCode === 'number' ? err.statusCode : 500
+    res.status(statusCode).json({
+      success: false,
+      message: err?.message || 'Failed to submit Delhivery password reset request',
+      data: err?.data || null,
+    })
   }
 }
 

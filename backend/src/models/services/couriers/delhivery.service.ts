@@ -89,6 +89,8 @@ const isDelhiveryAlreadyCancelledResponse = (value: unknown) => {
   return responseText.includes('already cancelled') || responseText.includes('already canceled')
 }
 
+const DEFAULT_DELHIVERY_B2B_AUTH_API_BASE = 'https://ltl-clients-api.delhivery.com'
+
 const getDelhiveryCancellationMessage = (value: unknown): string | null => {
   if (!value) return null
 
@@ -155,6 +157,69 @@ export const isDelhiveryCancellationAccepted = (value: unknown) => {
     result?.response?.status === true ||
     (acceptedText && !rejectedText)
   )
+}
+
+const normalizeDelhiveryB2BAuthApiBase = (value: unknown) => {
+  const normalized = String(value || '')
+    .trim()
+    .replace(/\/+$/, '')
+
+  if (normalized.toLowerCase().includes('ltl-clients-api')) {
+    return normalized
+  }
+
+  return DEFAULT_DELHIVERY_B2B_AUTH_API_BASE
+}
+
+export const triggerDelhiveryForgotPassword = async ({
+  username,
+  apiBase,
+}: {
+  username: string
+  apiBase?: string | null
+}) => {
+  const normalizedUsername = String(username || '').trim()
+  if (!normalizedUsername) {
+    throw new HttpError(400, 'Delhivery username is required to reset the password.')
+  }
+
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const requestBody: Record<string, string> = {
+    username: normalizedUsername,
+  }
+
+  if (resolvedApiBase.toLowerCase().includes('ltl-clients-api-dev')) {
+    requestBody.redirect_url = 'https://www.delhivery.com'
+  }
+
+  try {
+    const response = await axios.post(`${resolvedApiBase}/forgot-password`, requestBody, {
+      headers: {
+        Connection: 'keep-alive',
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      timeout: 30000,
+    })
+
+    return {
+      apiBase: resolvedApiBase,
+      status: response.status,
+      data: response.data,
+    }
+  } catch (err: any) {
+    const providerMessage =
+      extractProviderErrorMessage(err?.response?.data) ||
+      err?.response?.data?.message ||
+      err?.message ||
+      'Delhivery forgot-password request failed'
+
+    throw new HttpError(
+      Number(err?.response?.status) || 502,
+      providerMessage,
+      err?.response?.data || err,
+    )
+  }
 }
 
 export class DelhiveryService {

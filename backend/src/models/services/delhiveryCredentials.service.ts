@@ -18,6 +18,8 @@ export interface DelhiveryAccountConfig {
   apiBase: string
   clientName: string
   apiKey: string
+  username: string
+  password: string
   isActive: boolean
   isDefault: boolean
   pickupLocationIds: string[]
@@ -82,6 +84,8 @@ const buildEmptyAccount = (index: number): DelhiveryAccountConfig => ({
   apiBase: DEFAULT_DELHIVERY_API_BASE,
   clientName: '',
   apiKey: '',
+  username: '',
+  password: '',
   isActive: index === 0,
   isDefault: index === 0,
   pickupLocationIds: [],
@@ -105,6 +109,8 @@ const normalizeAccount = (
   const apiBase = normalize(raw.apiBase || fallback?.apiBase) || DEFAULT_DELHIVERY_API_BASE
   const clientName = normalize(raw.clientName || fallback?.clientName)
   const apiKey = normalize(raw.apiKey || fallback?.apiKey)
+  const username = normalize(raw.username || fallback?.username)
+  const password = normalize(raw.password || fallback?.password)
   const accountLabel =
     normalize(raw.accountLabel) || DELHIVERY_ACCOUNT_LABELS[index] || `Delhivery Account ${index + 1}`
   const isActive = raw.isActive === undefined ? index === 0 || Boolean(apiKey) : raw.isActive === true
@@ -120,6 +126,8 @@ const normalizeAccount = (
     apiBase,
     clientName,
     apiKey,
+    username,
+    password,
     isActive,
     isDefault,
     pickupLocationIds,
@@ -227,6 +235,8 @@ export const serializeDelhiveryAccountsForMetadata = (accounts: DelhiveryAccount
     apiBase: account.apiBase,
     clientName: account.clientName,
     apiKey: account.apiKey,
+    username: account.username,
+    password: account.password,
     isActive: account.isActive,
     isDefault: account.isDefault,
     pickupLocationIds: account.pickupLocationIds,
@@ -239,6 +249,8 @@ export const getDelhiveryAccounts = async (): Promise<DelhiveryAccountConfig[]> 
       apiBase: courier_credentials.apiBase,
       clientName: courier_credentials.clientName,
       apiKey: courier_credentials.apiKey,
+      username: courier_credentials.username,
+      password: courier_credentials.password,
       metadata: courier_credentials.metadata,
     })
     .from(courier_credentials)

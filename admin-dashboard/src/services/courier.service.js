@@ -147,3 +147,11 @@ export const updateDelhiveryCredentials = async (payload) => {
   if (!data?.success) throw new Error('Failed to update Delhivery credentials')
   return data.data
 }
+
+export const triggerDelhiveryForgotPassword = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/forgot-password', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to submit Delhivery password reset request')
+  }
+  return data
+}

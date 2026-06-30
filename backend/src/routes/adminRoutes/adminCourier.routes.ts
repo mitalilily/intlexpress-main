@@ -7,6 +7,7 @@ import {
   getAllCouriersController,
   getShippingRatesController,
   importShippingRatesController,
+  resetDelhiveryPasswordController,
   updateAmazonCredentialsController,
   updateDelhiveryCredentialsController,
   updateEkartCredentialsController,
@@ -44,6 +45,12 @@ router.put(
   requireAuth,
   isAdminMiddleware,
   updateDelhiveryCredentialsController,
+)
+router.post(
+  '/credentials/delhivery/forgot-password',
+  requireAuth,
+  isAdminMiddleware,
+  resetDelhiveryPasswordController,
 )
 router.put(
   '/credentials/ekart',

@@ -10,6 +10,7 @@ import {
   fetchAvailableCouriers,
   fetchServiceProviders,
   fetchShippingRates,
+  triggerDelhiveryForgotPassword,
   updateDelhiveryCredentials,
   updateCourierStatus,
   updateServiceProviderStatus,
@@ -123,6 +124,11 @@ export const useUpdateDelhiveryCredentials = () => {
     },
   })
 }
+
+export const useDelhiveryForgotPassword = () =>
+  useMutation({
+    mutationFn: triggerDelhiveryForgotPassword,
+  })
 
 export const useShippingRates = (filters = {}) => {
   return useQuery({

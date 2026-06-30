@@ -23,6 +23,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import {
   useCourierCredentials,
+  useDelhiveryForgotPassword,
   useUpdateDelhiveryCredentials,
 } from 'hooks/useCouriers'
 
@@ -51,8 +52,12 @@ const buildEmptyAccount = (index) => ({
   apiBase: 'https://track.delhivery.com',
   clientName: '',
   apiKey: '',
+  username: '',
+  password: '',
   hasApiKey: false,
   apiKeyMasked: '',
+  hasPassword: false,
+  passwordMasked: '',
   isActive: index === 0,
   isDefault: index === 0,
   pickupLocationIds: [],
@@ -103,6 +108,7 @@ const CourierCredentials = () => {
   const toast = useToast()
   const { data, isLoading, error } = useCourierCredentials()
   const updateDelhivery = useUpdateDelhiveryCredentials()
+  const forgotPasswordMutation = useDelhiveryForgotPassword()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
 
   useEffect(() => {
@@ -167,6 +173,8 @@ const CourierCredentials = () => {
           apiBase: account.apiBase,
           clientName: account.clientName,
           apiKey: account.apiKey,
+          username: account.username,
+          password: account.password,
           isActive: account.isActive,
           isDefault: account.isDefault,
           pickupLocationIds: normalizeArrayInput(account.pickupLocationIds),
@@ -184,6 +192,32 @@ const CourierCredentials = () => {
         onError: (err) => {
           toast({
             title: 'Failed to update Delhivery accounts',
+            description: err?.message,
+            status: 'error',
+          })
+        },
+      },
+    )
+  }
+
+  const handleForgotPassword = (account) => {
+    forgotPasswordMutation.mutate(
+      {
+        accountCode: account.accountCode,
+        username: account.username,
+        apiBase: account.apiBase,
+      },
+      {
+        onSuccess: (response) => {
+          toast({
+            title: 'Delhivery password reset request submitted',
+            description: response?.message,
+            status: 'success',
+          })
+        },
+        onError: (err) => {
+          toast({
+            title: 'Failed to submit Delhivery password reset request',
             description: err?.message,
             status: 'error',
           })
@@ -347,6 +381,50 @@ const CourierCredentials = () => {
                     </Text>
                   )}
                 </FormControl>
+
+                {index === 1 && (
+                  <>
+                    <FormControl>
+                      <FormLabel>B2B Username</FormLabel>
+                      <Input
+                        value={account.username || ''}
+                        onChange={(e) => updateAccount(index, { username: e.target.value })}
+                        placeholder="Registered Delhivery username without spaces"
+                      />
+                    </FormControl>
+
+                    <FormControl>
+                      <FormLabel>B2B Password</FormLabel>
+                      <Input
+                        type="password"
+                        value={account.password || ''}
+                        onChange={(e) => updateAccount(index, { password: e.target.value })}
+                        placeholder={account.passwordMasked || 'Enter Delhivery B2B password'}
+                      />
+                      {!!account.passwordMasked && !account.password && (
+                        <Text fontSize="xs" color="gray.500" mt={1}>
+                          A saved B2B password already exists.
+                        </Text>
+                      )}
+                    </FormControl>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => handleForgotPassword(account)}
+                      isLoading={
+                        forgotPasswordMutation.isPending &&
+                        forgotPasswordMutation.variables?.accountCode === account.accountCode
+                      }
+                      isDisabled={!String(account.username || '').trim()}
+                    >
+                      Reset Delhivery B2B Password
+                    </Button>
+
+                    <Text fontSize="xs" color="gray.500">
+                      This triggers Delhivery&apos;s forgot-password API for the saved B2B username.
+                    </Text>
+                  </>
+                )}
 
                 <FormControl>
                   <FormLabel>Pickup Location IDs</FormLabel>
