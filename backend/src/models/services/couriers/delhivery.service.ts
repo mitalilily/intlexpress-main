@@ -527,6 +527,30 @@ export const createDelhiveryB2BClientWarehouse = async ({
   }
 }
 
+export const updateDelhiveryB2BClientWarehouse = async ({
+  token,
+  apiBase,
+  payload,
+}: {
+  token: string
+  apiBase?: string | null
+  payload: Record<string, any>
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+
+  const response = await axios.patch(`${resolvedApiBase}/client-warehouse/update/`, payload, {
+    headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+    timeout: 30000,
+  })
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
 export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''

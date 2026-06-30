@@ -30,6 +30,7 @@ import {
   useDelhiveryB2BFreightEstimate,
   useDelhiveryB2BFreightCharges,
   useDelhiveryB2BClientWarehouseCreate,
+  useDelhiveryB2BClientWarehouseUpdate,
   useDelhiveryForgotPassword,
   useUpdateDelhiveryCredentials,
 } from 'hooks/useCouriers'
@@ -161,6 +162,7 @@ const CourierCredentials = () => {
   const b2bFreightEstimateMutation = useDelhiveryB2BFreightEstimate()
   const b2bFreightChargesMutation = useDelhiveryB2BFreightCharges()
   const b2bClientWarehouseCreateMutation = useDelhiveryB2BClientWarehouseCreate()
+  const b2bClientWarehouseUpdateMutation = useDelhiveryB2BClientWarehouseUpdate()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -395,7 +397,43 @@ const CourierCredentials = () => {
               pin: b2bTestInputs.warehouseReturnPin,
               address: b2bTestInputs.warehouseReturnAddress,
             },
-          }),
+      }),
+    }
+  }
+
+  const buildClientWarehouseUpdatePayload = (account) => {
+    const businessDay = String(b2bTestInputs.warehouseBusinessDay || 'TUE').trim().toUpperCase()
+
+    return {
+      ...buildB2BAccountPayload(account),
+      cl_warehouse_name: b2bTestInputs.warehouseName,
+      update_dict: {
+        city: b2bTestInputs.warehouseCity,
+        state: b2bTestInputs.warehouseState,
+        country: b2bTestInputs.warehouseCountry,
+        address_details: {
+          address: b2bTestInputs.warehouseAddress,
+          contact_person: b2bTestInputs.warehouseContactPerson,
+          phone_number: b2bTestInputs.warehousePhoneNumber,
+        },
+        buisness_hours: {
+          [businessDay]: {
+            start_time: b2bTestInputs.warehouseBusinessStart,
+            close_time: b2bTestInputs.warehouseBusinessClose,
+          },
+        },
+        ...(b2bTestInputs.warehouseSameAsForwardAddress
+          ? {}
+          : {
+              ret_address: {
+                address: b2bTestInputs.warehouseReturnAddress,
+                city: b2bTestInputs.warehouseCity,
+                state: b2bTestInputs.warehouseState,
+                pin: b2bTestInputs.warehouseReturnPin,
+                country: b2bTestInputs.warehouseCountry,
+              },
+            }),
+      },
     }
   }
 
@@ -1045,6 +1083,24 @@ const CourierCredentials = () => {
                         isDisabled={!account.hasB2BAuthToken}
                       >
                         Create Client Warehouse
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          handleB2BAction(
+                            b2bClientWarehouseUpdateMutation,
+                            buildClientWarehouseUpdatePayload(account),
+                            {
+                              success: 'Delhivery B2B client warehouse updated',
+                              error: 'Delhivery B2B client warehouse update failed',
+                            },
+                          )
+                        }
+                        isLoading={b2bClientWarehouseUpdateMutation.isPending}
+                        isDisabled={!account.hasB2BAuthToken}
+                      >
+                        Update Client Warehouse
                       </Button>
                     </Stack>
                   </>

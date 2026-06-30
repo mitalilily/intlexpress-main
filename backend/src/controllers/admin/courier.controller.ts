@@ -55,6 +55,7 @@ import {
   loginDelhiveryB2B,
   logoutDelhiveryB2B,
   triggerDelhiveryForgotPassword,
+  updateDelhiveryB2BClientWarehouse,
 } from '../../models/services/couriers/delhivery.service'
 
 export interface ShippingRateFilters {
@@ -969,6 +970,26 @@ export const createDelhiveryB2BClientWarehouseController = async (
     respondWithDelhiveryB2BResult(res, 'Delhivery B2B client warehouse created', result)
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to create Delhivery B2B client warehouse')
+  }
+}
+
+export const updateDelhiveryB2BClientWarehouseController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const { accountCode: _accountCode, token: _token, apiBase: _apiBase, ...payload } = req.body || {}
+    const result = await updateDelhiveryB2BClientWarehouse({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      payload,
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B client warehouse updated', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to update Delhivery B2B client warehouse')
   }
 }
 

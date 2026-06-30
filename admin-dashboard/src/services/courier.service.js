@@ -201,3 +201,11 @@ export const createDelhiveryB2BClientWarehouse = async (payload) => {
   }
   return data
 }
+
+export const updateDelhiveryB2BClientWarehouse = async (payload) => {
+  const { data } = await api.patch('/admin/couriers/credentials/delhivery/client-warehouse', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to update Delhivery B2B client warehouse')
+  }
+  return data
+}

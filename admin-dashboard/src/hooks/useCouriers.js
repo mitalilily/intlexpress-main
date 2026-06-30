@@ -20,6 +20,7 @@ import {
   triggerDelhiveryForgotPassword,
   updateDelhiveryCredentials,
   updateCourierStatus,
+  updateDelhiveryB2BClientWarehouse,
   updateServiceProviderStatus,
   updateShippingRate,
   uploadShippingRates,
@@ -182,6 +183,11 @@ export const useDelhiveryB2BFreightCharges = () =>
 export const useDelhiveryB2BClientWarehouseCreate = () =>
   useMutation({
     mutationFn: createDelhiveryB2BClientWarehouse,
+  })
+
+export const useDelhiveryB2BClientWarehouseUpdate = () =>
+  useMutation({
+    mutationFn: updateDelhiveryB2BClientWarehouse,
   })
 
 export const useShippingRates = (filters = {}) => {
