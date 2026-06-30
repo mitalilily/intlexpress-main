@@ -209,3 +209,11 @@ export const updateDelhiveryB2BClientWarehouse = async (payload) => {
   }
   return data
 }
+
+export const createDelhiveryB2BShipment = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/shipment', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to create Delhivery B2B shipment')
+  }
+  return data
+}

@@ -31,6 +31,7 @@ import {
   useDelhiveryB2BFreightCharges,
   useDelhiveryB2BClientWarehouseCreate,
   useDelhiveryB2BClientWarehouseUpdate,
+  useDelhiveryB2BShipmentCreate,
   useDelhiveryForgotPassword,
   useUpdateDelhiveryCredentials,
 } from 'hooks/useCouriers'
@@ -148,6 +149,60 @@ const DEFAULT_B2B_TEST_INPUTS = {
   warehouseReturnPin: '721657',
   warehouseReturnAddress: 'test',
   warehouseSameAsForwardAddress: false,
+  shipmentPayloadText: JSON.stringify(
+    {
+      pickup_location_name: 'pass registered wh name',
+      payment_mode: 'cod',
+      cod_amount: 122,
+      weight: 100,
+      dropoff_location: {
+        consignee_name: 'Utkarsh',
+        address: 'sector 7a',
+        city: 'jajpur',
+        state: 'odisha',
+        zip: '756043',
+        phone: '9876543210',
+        email: '',
+      },
+      rov_insurance: true,
+      invoices: [
+        { ewaybill: '', inv_num: 'I22331030453', inv_amt: 59729.67, inv_qr_code: '' },
+        { ewaybill: '', inv_num: 'DEL/1122/0095407', inv_amt: '2520480.0', inv_qr_code: '' },
+      ],
+      shipment_details: [
+        {
+          order_id: 'oid1',
+          box_count: 1,
+          description: 'Test description',
+          weight: 1000,
+          waybills: [],
+          master: false,
+        },
+      ],
+      doc_data: [
+        {
+          doc_type: 'INVOICE_COPY',
+          doc_meta: { invoice_num: ['1/2/2025'] },
+        },
+      ],
+      fm_pickup: false,
+      freight_mode: 'fop',
+      billing_address: {
+        name: 'String required',
+        company: 'String required',
+        consignor: 'String required',
+        address: 'String required',
+        city: 'String required',
+        state: 'String required',
+        pin: 'String required',
+        phone: 'String required',
+        pan_number: 'ABCDE1234F',
+        gst_number: '',
+      },
+    },
+    null,
+    2,
+  ),
 }
 
 const CourierCredentials = () => {
@@ -163,6 +218,7 @@ const CourierCredentials = () => {
   const b2bFreightChargesMutation = useDelhiveryB2BFreightCharges()
   const b2bClientWarehouseCreateMutation = useDelhiveryB2BClientWarehouseCreate()
   const b2bClientWarehouseUpdateMutation = useDelhiveryB2BClientWarehouseUpdate()
+  const b2bShipmentCreateMutation = useDelhiveryB2BShipmentCreate()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -434,6 +490,31 @@ const CourierCredentials = () => {
               },
             }),
       },
+    }
+  }
+
+  const buildShipmentPayload = (account) => ({
+    ...buildB2BAccountPayload(account),
+    ...JSON.parse(b2bTestInputs.shipmentPayloadText),
+  })
+
+  const handleShipmentCreate = (account) => {
+    try {
+      const payload = buildShipmentPayload(account)
+      handleB2BAction(
+        b2bShipmentCreateMutation,
+        payload,
+        {
+          success: 'Delhivery B2B shipment creation submitted',
+          error: 'Delhivery B2B shipment creation failed',
+        },
+      )
+    } catch (err) {
+      toast({
+        title: 'Invalid shipment payload JSON',
+        description: err?.message,
+        status: 'error',
+      })
     }
   }
 
@@ -1101,6 +1182,27 @@ const CourierCredentials = () => {
                         isDisabled={!account.hasB2BAuthToken}
                       >
                         Update Client Warehouse
+                      </Button>
+
+                      <FormControl>
+                        <FormLabel>Shipment Creation Payload</FormLabel>
+                        <Textarea
+                          rows={16}
+                          value={b2bTestInputs.shipmentPayloadText}
+                          onChange={(e) =>
+                            updateB2BTestInput('shipmentPayloadText', e.target.value)
+                          }
+                          placeholder="Paste Delhivery B2B manifest payload JSON"
+                        />
+                      </FormControl>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleShipmentCreate(account)}
+                        isLoading={b2bShipmentCreateMutation.isPending}
+                        isDisabled={!account.hasB2BAuthToken}
+                      >
+                        Create B2B Shipment
                       </Button>
                     </Stack>
                   </>

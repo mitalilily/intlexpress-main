@@ -3,6 +3,7 @@ import { Router } from 'express'
 import {
   checkDelhiveryB2BServiceabilityController,
   createDelhiveryB2BClientWarehouseController,
+  createDelhiveryB2BShipmentController,
   estimateDelhiveryB2BFreightController,
   estimateDelhiveryB2BTatController,
   getDelhiveryB2BFreightChargesController,
@@ -107,6 +108,12 @@ router.patch(
   requireAuth,
   isAdminMiddleware,
   updateDelhiveryB2BClientWarehouseController,
+)
+router.post(
+  '/credentials/delhivery/shipment',
+  requireAuth,
+  isAdminMiddleware,
+  createDelhiveryB2BShipmentController,
 )
 router.put(
   '/credentials/ekart',

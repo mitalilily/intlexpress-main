@@ -49,6 +49,7 @@ import {
 import {
   checkDelhiveryB2BServiceability,
   createDelhiveryB2BClientWarehouse,
+  createDelhiveryB2BShipment,
   estimateDelhiveryB2BFreight,
   estimateDelhiveryB2BTat,
   getDelhiveryB2BFreightCharges,
@@ -990,6 +991,23 @@ export const updateDelhiveryB2BClientWarehouseController = async (
     respondWithDelhiveryB2BResult(res, 'Delhivery B2B client warehouse updated', result)
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to update Delhivery B2B client warehouse')
+  }
+}
+
+export const createDelhiveryB2BShipmentController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const { accountCode: _accountCode, token: _token, apiBase: _apiBase, ...payload } = req.body || {}
+    const result = await createDelhiveryB2BShipment({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      payload,
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B shipment creation submitted', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to create Delhivery B2B shipment')
   }
 }
 

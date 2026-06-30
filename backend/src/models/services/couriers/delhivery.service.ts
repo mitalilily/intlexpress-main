@@ -551,6 +551,54 @@ export const updateDelhiveryB2BClientWarehouse = async ({
   }
 }
 
+const appendDelhiveryManifestField = (form: any, key: string, value: unknown) => {
+  if (value === undefined || value === null || value === '') return
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    form.append(key, String(value))
+    return
+  }
+
+  form.append(
+    key,
+    JSON.stringify(value),
+  )
+}
+
+export const createDelhiveryB2BShipment = async ({
+  token,
+  apiBase,
+  payload,
+}: {
+  token: string
+  apiBase?: string | null
+  payload: Record<string, any>
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const form = new (globalThis as any).FormData()
+
+  Object.entries(payload || {}).forEach(([key, value]) => {
+    appendDelhiveryManifestField(form, key, value)
+  })
+
+  const response = await axios.post(`${resolvedApiBase}/manifest`, form, {
+    headers: {
+      Authorization: `Bearer ${normalizedToken}`,
+      ...(typeof form.getHeaders === 'function' ? form.getHeaders() : {}),
+    },
+    timeout: 60000,
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+  })
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
 export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''

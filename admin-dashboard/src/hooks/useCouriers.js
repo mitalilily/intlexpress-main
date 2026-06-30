@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   checkDelhiveryB2BServiceability,
   createDelhiveryB2BClientWarehouse,
+  createDelhiveryB2BShipment,
   createCourier,
   deleteCourier,
   deleteShippingRateAPI,
@@ -188,6 +189,11 @@ export const useDelhiveryB2BClientWarehouseCreate = () =>
 export const useDelhiveryB2BClientWarehouseUpdate = () =>
   useMutation({
     mutationFn: updateDelhiveryB2BClientWarehouse,
+  })
+
+export const useDelhiveryB2BShipmentCreate = () =>
+  useMutation({
+    mutationFn: createDelhiveryB2BShipment,
   })
 
 export const useShippingRates = (filters = {}) => {
