@@ -23,6 +23,7 @@ import {
   updateDelhiveryCredentials,
   updateCourierStatus,
   updateDelhiveryB2BClientWarehouse,
+  updateDelhiveryB2BShipment,
   updateServiceProviderStatus,
   updateShippingRate,
   uploadShippingRates,
@@ -200,6 +201,11 @@ export const useDelhiveryB2BShipmentCreate = () =>
 export const useDelhiveryB2BShipmentStatus = () =>
   useMutation({
     mutationFn: getDelhiveryB2BShipmentStatus,
+  })
+
+export const useDelhiveryB2BShipmentUpdate = () =>
+  useMutation({
+    mutationFn: updateDelhiveryB2BShipment,
   })
 
 export const useShippingRates = (filters = {}) => {

@@ -19,6 +19,7 @@ import {
   resetDelhiveryPasswordController,
   updateAmazonCredentialsController,
   updateDelhiveryB2BClientWarehouseController,
+  updateDelhiveryB2BShipmentController,
   updateDelhiveryCredentialsController,
   updateEkartCredentialsController,
   updateShadowfaxCredentialsController,
@@ -121,6 +122,12 @@ router.post(
   requireAuth,
   isAdminMiddleware,
   getDelhiveryB2BShipmentStatusController,
+)
+router.put(
+  '/credentials/delhivery/shipment',
+  requireAuth,
+  isAdminMiddleware,
+  updateDelhiveryB2BShipmentController,
 )
 router.put(
   '/credentials/ekart',

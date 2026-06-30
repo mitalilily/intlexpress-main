@@ -59,6 +59,7 @@ import {
   logoutDelhiveryB2B,
   triggerDelhiveryForgotPassword,
   updateDelhiveryB2BClientWarehouse,
+  updateDelhiveryB2BShipment,
 } from '../../models/services/couriers/delhivery.service'
 
 export interface ShippingRateFilters {
@@ -1039,6 +1040,31 @@ export const getDelhiveryB2BShipmentStatusController = async (
     respondWithDelhiveryB2BResult(res, 'Delhivery B2B shipment status fetched', result)
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B shipment status')
+  }
+}
+
+export const updateDelhiveryB2BShipmentController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const {
+      accountCode: _accountCode,
+      token: _token,
+      apiBase: _apiBase,
+      lrn,
+      lrn_number,
+      ...payload
+    } = req.body || {}
+    const result = await updateDelhiveryB2BShipment({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      lrn: String(lrn || lrn_number || '').trim(),
+      payload,
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B shipment updated', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to update Delhivery B2B shipment')
   }
 }
 

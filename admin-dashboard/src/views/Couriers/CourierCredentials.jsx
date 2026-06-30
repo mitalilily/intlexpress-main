@@ -33,6 +33,7 @@ import {
   useDelhiveryB2BClientWarehouseUpdate,
   useDelhiveryB2BShipmentCreate,
   useDelhiveryB2BShipmentStatus,
+  useDelhiveryB2BShipmentUpdate,
   useDelhiveryForgotPassword,
   useUpdateDelhiveryCredentials,
 } from 'hooks/useCouriers'
@@ -205,6 +206,27 @@ const DEFAULT_B2B_TEST_INPUTS = {
     2,
   ),
   shipmentJobId: '',
+  shipmentUpdateLrn: '220110457',
+  shipmentUpdatePayloadText: JSON.stringify(
+    {
+      cod_amount: 0,
+      consignee_name: 'rahul',
+      consignee_address: 'jammu',
+      consignee_pincode: '844120',
+      consignee_phone: '9999999999',
+      weight_g: 30,
+      invoices: [{ inv_number: 'I22331030453', inv_amount: 59729.67, qr_code: '', ewaybill: '' }],
+      cb: {
+        uri: 'https://btob-api-dev.delhivery.com/docket/upload_callback',
+        method: 'POST',
+        authorization: 'Bearer Token',
+      },
+      dimensions: [{ width_cm: 5, height_cm: 4, length_cm: 3, box_count: 1 }],
+      invoice_files_meta: [{ invoices: ['inv00'] }],
+    },
+    null,
+    2,
+  ),
 }
 
 const CourierCredentials = () => {
@@ -222,6 +244,7 @@ const CourierCredentials = () => {
   const b2bClientWarehouseUpdateMutation = useDelhiveryB2BClientWarehouseUpdate()
   const b2bShipmentCreateMutation = useDelhiveryB2BShipmentCreate()
   const b2bShipmentStatusMutation = useDelhiveryB2BShipmentStatus()
+  const b2bShipmentUpdateMutation = useDelhiveryB2BShipmentUpdate()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -549,6 +572,30 @@ const CourierCredentials = () => {
         error: 'Delhivery B2B shipment status failed',
       },
     )
+  }
+
+  const handleShipmentUpdate = (account) => {
+    try {
+      const payload = {
+        ...buildB2BAccountPayload(account),
+        lrn: b2bTestInputs.shipmentUpdateLrn,
+        ...JSON.parse(b2bTestInputs.shipmentUpdatePayloadText),
+      }
+      handleB2BAction(
+        b2bShipmentUpdateMutation,
+        payload,
+        {
+          success: 'Delhivery B2B shipment updated',
+          error: 'Delhivery B2B shipment update failed',
+        },
+      )
+    } catch (err) {
+      toast({
+        title: 'Invalid shipment update payload JSON',
+        description: err?.message,
+        status: 'error',
+      })
+    }
   }
 
   if (isLoading) return <Spinner size="md" />
@@ -1256,6 +1303,39 @@ const CourierCredentials = () => {
                         }
                       >
                         Check Shipment Creation Status
+                      </Button>
+
+                      <FormControl>
+                        <FormLabel>Shipment Update LRN</FormLabel>
+                        <Input
+                          value={b2bTestInputs.shipmentUpdateLrn}
+                          onChange={(e) => updateB2BTestInput('shipmentUpdateLrn', e.target.value)}
+                          placeholder="Manifested LRN to update"
+                        />
+                      </FormControl>
+
+                      <FormControl>
+                        <FormLabel>Shipment Update Payload</FormLabel>
+                        <Textarea
+                          rows={14}
+                          value={b2bTestInputs.shipmentUpdatePayloadText}
+                          onChange={(e) =>
+                            updateB2BTestInput('shipmentUpdatePayloadText', e.target.value)
+                          }
+                          placeholder="Paste Delhivery B2B shipment update payload JSON"
+                        />
+                      </FormControl>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleShipmentUpdate(account)}
+                        isLoading={b2bShipmentUpdateMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken ||
+                          !String(b2bTestInputs.shipmentUpdateLrn || '').trim()
+                        }
+                      >
+                        Update Manifested Shipment
                       </Button>
                     </Stack>
                   </>

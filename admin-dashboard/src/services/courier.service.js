@@ -225,3 +225,11 @@ export const getDelhiveryB2BShipmentStatus = async (payload) => {
   }
   return data
 }
+
+export const updateDelhiveryB2BShipment = async (payload) => {
+  const { data } = await api.put('/admin/couriers/credentials/delhivery/shipment', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to update Delhivery B2B shipment')
+  }
+  return data
+}

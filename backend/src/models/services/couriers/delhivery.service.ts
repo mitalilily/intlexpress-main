@@ -659,6 +659,48 @@ export const getDelhiveryB2BShipmentStatus = async ({
   }
 }
 
+export const updateDelhiveryB2BShipment = async ({
+  token,
+  apiBase,
+  lrn,
+  payload,
+}: {
+  token: string
+  apiBase?: string | null
+  lrn: string
+  payload: Record<string, any>
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const normalizedLrn = String(lrn || '').trim()
+  if (!normalizedLrn) {
+    throw new HttpError(400, 'LRN is required for Delhivery B2B shipment update.')
+  }
+
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const form = new (globalThis as any).FormData()
+
+  Object.entries(payload || {}).forEach(([key, value]) => {
+    appendDelhiveryManifestField(form, key, value)
+  })
+
+  const response = await axios.put(`${resolvedApiBase}/lrn/update/${encodeURIComponent(normalizedLrn)}`, form, {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${normalizedToken}`,
+      ...(typeof form.getHeaders === 'function' ? form.getHeaders() : {}),
+    },
+    timeout: 60000,
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+  })
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
 export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''
