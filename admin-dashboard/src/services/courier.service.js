@@ -273,3 +273,13 @@ export const createDelhiveryB2BPickupRequest = async (payload) => {
   }
   return data
 }
+
+export const cancelDelhiveryB2BPickupRequest = async (payload) => {
+  const { data } = await api.delete('/admin/couriers/credentials/delhivery/pickup-request', {
+    data: payload,
+  })
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to cancel Delhivery B2B pickup request')
+  }
+  return data
+}

@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   useCourierCredentials,
   useDelhiveryB2BAppointmentBook,
+  useDelhiveryB2BPickupRequestCancel,
   useDelhiveryB2BShipmentCancel,
   useDelhiveryB2BLogin,
   useDelhiveryB2BLogout,
@@ -247,6 +248,8 @@ const DEFAULT_B2B_TEST_INPUTS = {
   pickupRequestStartTime: '05:00:00',
   pickupRequestExpectedPackageCount: '1',
   pickupRequestId: '',
+  pickupCancelId: 'pur_id_1',
+  pickupCancelRequestId: '',
 }
 
 const CourierCredentials = () => {
@@ -270,6 +273,7 @@ const CourierCredentials = () => {
   const b2bShipmentTrackMutation = useDelhiveryB2BShipmentTrack()
   const b2bAppointmentBookMutation = useDelhiveryB2BAppointmentBook()
   const b2bPickupRequestCreateMutation = useDelhiveryB2BPickupRequestCreate()
+  const b2bPickupRequestCancelMutation = useDelhiveryB2BPickupRequestCancel()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -720,6 +724,23 @@ const CourierCredentials = () => {
       {
         success: 'Delhivery B2B pickup request created',
         error: 'Delhivery B2B pickup request failed',
+      },
+    )
+  }
+
+  const handlePickupRequestCancel = (account) => {
+    handleB2BAction(
+      b2bPickupRequestCancelMutation,
+      {
+        ...buildB2BAccountPayload(account),
+        pickupId: b2bTestInputs.pickupCancelId,
+        ...(String(b2bTestInputs.pickupCancelRequestId || '').trim()
+          ? { requestId: String(b2bTestInputs.pickupCancelRequestId || '').trim() }
+          : {}),
+      },
+      {
+        success: 'Delhivery B2B pickup request cancelled',
+        error: 'Delhivery B2B pickup request cancellation failed',
       },
     )
   }
@@ -1676,6 +1697,39 @@ const CourierCredentials = () => {
                         }
                       >
                         Create Pickup Request
+                      </Button>
+
+                      <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                        <FormControl>
+                          <FormLabel>Pickup Cancel ID</FormLabel>
+                          <Input
+                            value={b2bTestInputs.pickupCancelId}
+                            onChange={(e) => updateB2BTestInput('pickupCancelId', e.target.value)}
+                            placeholder="Pickup id to cancel"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Cancel X-Request-Id</FormLabel>
+                          <Input
+                            value={b2bTestInputs.pickupCancelRequestId}
+                            onChange={(e) =>
+                              updateB2BTestInput('pickupCancelRequestId', e.target.value)
+                            }
+                            placeholder="Optional unique request id"
+                          />
+                        </FormControl>
+                      </Grid>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handlePickupRequestCancel(account)}
+                        isLoading={b2bPickupRequestCancelMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken ||
+                          !String(b2bTestInputs.pickupCancelId || '').trim()
+                        }
+                      >
+                        Cancel Pickup Request
                       </Button>
                     </Stack>
                   </>

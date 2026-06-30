@@ -2,6 +2,7 @@
 import { Router } from 'express'
 import {
   bookDelhiveryB2BAppointmentController,
+  cancelDelhiveryB2BPickupRequestController,
   createDelhiveryB2BPickupRequestController,
   cancelDelhiveryB2BShipmentController,
   checkDelhiveryB2BServiceabilityController,
@@ -163,6 +164,12 @@ router.post(
   requireAuth,
   isAdminMiddleware,
   createDelhiveryB2BPickupRequestController,
+)
+router.delete(
+  '/credentials/delhivery/pickup-request',
+  requireAuth,
+  isAdminMiddleware,
+  cancelDelhiveryB2BPickupRequestController,
 )
 router.put(
   '/credentials/ekart',

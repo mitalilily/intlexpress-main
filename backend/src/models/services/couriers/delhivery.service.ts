@@ -844,6 +844,43 @@ export const createDelhiveryB2BPickupRequest = async ({
   }
 }
 
+export const cancelDelhiveryB2BPickupRequest = async ({
+  token,
+  apiBase,
+  pickupId,
+  requestId,
+}: {
+  token: string
+  apiBase?: string | null
+  pickupId: string
+  requestId?: string | null
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const normalizedPickupId = String(pickupId || '').trim()
+  if (!normalizedPickupId) {
+    throw new HttpError(400, 'pickup_id is required for Delhivery B2B pickup cancellation.')
+  }
+
+  const normalizedRequestId = String(requestId || '').trim()
+  const response = await axios.delete(
+    `${resolvedApiBase}/pickup_requests/${encodeURIComponent(normalizedPickupId)}`,
+    {
+      headers: {
+        ...buildDelhiveryB2BAuthHeaders(normalizedToken),
+        ...(normalizedRequestId ? { 'X-Request-Id': normalizedRequestId } : {}),
+      },
+      timeout: 30000,
+    },
+  )
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
 export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''
