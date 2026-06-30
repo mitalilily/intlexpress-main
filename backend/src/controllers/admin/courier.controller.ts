@@ -50,8 +50,10 @@ import {
   checkDelhiveryB2BServiceability,
   createDelhiveryB2BClientWarehouse,
   createDelhiveryB2BShipment,
+  extractDelhiveryB2BJobId,
   estimateDelhiveryB2BFreight,
   estimateDelhiveryB2BTat,
+  getDelhiveryB2BShipmentStatus,
   getDelhiveryB2BFreightCharges,
   loginDelhiveryB2B,
   logoutDelhiveryB2B,
@@ -1004,10 +1006,39 @@ export const createDelhiveryB2BShipmentController = async (req: Request, res: Re
       apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
       payload,
     })
+    const jobId = extractDelhiveryB2BJobId(result.data)
 
-    respondWithDelhiveryB2BResult(res, 'Delhivery B2B shipment creation submitted', result)
+    res.json({
+      success: true,
+      message: 'Delhivery B2B shipment creation submitted',
+      data: {
+        apiBase: result.apiBase,
+        status: result.status,
+        jobId,
+        providerResponse: result.data,
+      },
+    })
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to create Delhivery B2B shipment')
+  }
+}
+
+export const getDelhiveryB2BShipmentStatusController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const result = await getDelhiveryB2BShipmentStatus({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      jobId: String(req.body?.jobId || req.body?.job_id || '').trim(),
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B shipment status fetched', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B shipment status')
   }
 }
 

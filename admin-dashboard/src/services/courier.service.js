@@ -217,3 +217,11 @@ export const createDelhiveryB2BShipment = async (payload) => {
   }
   return data
 }
+
+export const getDelhiveryB2BShipmentStatus = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/shipment-status', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to fetch Delhivery B2B shipment status')
+  }
+  return data
+}

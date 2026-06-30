@@ -565,6 +565,37 @@ const appendDelhiveryManifestField = (form: any, key: string, value: unknown) =>
   )
 }
 
+export const extractDelhiveryB2BJobId = (value: unknown): string => {
+  if (!value) return ''
+
+  if (typeof value === 'string') {
+    return String(value).trim()
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const id = extractDelhiveryB2BJobId(entry)
+      if (id) return id
+    }
+    return ''
+  }
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    for (const key of ['job_id', 'jobId', 'request_id', 'requestId']) {
+      const direct = record[key]
+      if (typeof direct === 'string' && direct.trim()) return direct.trim()
+    }
+
+    for (const nested of Object.values(record)) {
+      const id = extractDelhiveryB2BJobId(nested)
+      if (id) return id
+    }
+  }
+
+  return ''
+}
+
 export const createDelhiveryB2BShipment = async ({
   token,
   apiBase,
@@ -590,6 +621,35 @@ export const createDelhiveryB2BShipment = async ({
     timeout: 60000,
     maxBodyLength: Infinity,
     maxContentLength: Infinity,
+  })
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
+export const getDelhiveryB2BShipmentStatus = async ({
+  token,
+  apiBase,
+  jobId,
+}: {
+  token: string
+  apiBase?: string | null
+  jobId: string
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const normalizedJobId = String(jobId || '').trim()
+  if (!normalizedJobId) {
+    throw new HttpError(400, 'job_id is required for Delhivery B2B shipment status.')
+  }
+
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const response = await axios.get(`${resolvedApiBase}/manifest`, {
+    headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+    params: { job_id: normalizedJobId },
+    timeout: 30000,
   })
 
   return {

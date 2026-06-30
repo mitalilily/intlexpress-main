@@ -32,6 +32,7 @@ import {
   useDelhiveryB2BClientWarehouseCreate,
   useDelhiveryB2BClientWarehouseUpdate,
   useDelhiveryB2BShipmentCreate,
+  useDelhiveryB2BShipmentStatus,
   useDelhiveryForgotPassword,
   useUpdateDelhiveryCredentials,
 } from 'hooks/useCouriers'
@@ -203,6 +204,7 @@ const DEFAULT_B2B_TEST_INPUTS = {
     null,
     2,
   ),
+  shipmentJobId: '',
 }
 
 const CourierCredentials = () => {
@@ -219,6 +221,7 @@ const CourierCredentials = () => {
   const b2bClientWarehouseCreateMutation = useDelhiveryB2BClientWarehouseCreate()
   const b2bClientWarehouseUpdateMutation = useDelhiveryB2BClientWarehouseUpdate()
   const b2bShipmentCreateMutation = useDelhiveryB2BShipmentCreate()
+  const b2bShipmentStatusMutation = useDelhiveryB2BShipmentStatus()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -501,14 +504,30 @@ const CourierCredentials = () => {
   const handleShipmentCreate = (account) => {
     try {
       const payload = buildShipmentPayload(account)
-      handleB2BAction(
-        b2bShipmentCreateMutation,
-        payload,
-        {
-          success: 'Delhivery B2B shipment creation submitted',
-          error: 'Delhivery B2B shipment creation failed',
+      b2bShipmentCreateMutation.mutate(payload, {
+        onSuccess: (response) => {
+          const nextJobId = String(response?.data?.jobId || '').trim()
+          if (nextJobId) {
+            updateB2BTestInput('shipmentJobId', nextJobId)
+          }
+          toast({
+            title: 'Delhivery B2B shipment creation submitted',
+            description: nextJobId
+              ? `Job ID ${nextJobId}`
+              : response?.data?.status
+                ? `Provider status ${response.data.status}`
+                : response?.message,
+            status: 'success',
+          })
         },
-      )
+        onError: (err) => {
+          toast({
+            title: 'Delhivery B2B shipment creation failed',
+            description: err?.message,
+            status: 'error',
+          })
+        },
+      })
     } catch (err) {
       toast({
         title: 'Invalid shipment payload JSON',
@@ -516,6 +535,20 @@ const CourierCredentials = () => {
         status: 'error',
       })
     }
+  }
+
+  const handleShipmentStatus = (account) => {
+    handleB2BAction(
+      b2bShipmentStatusMutation,
+      {
+        ...buildB2BAccountPayload(account),
+        jobId: b2bTestInputs.shipmentJobId,
+      },
+      {
+        success: 'Delhivery B2B shipment status fetched',
+        error: 'Delhivery B2B shipment status failed',
+      },
+    )
   }
 
   if (isLoading) return <Spinner size="md" />
@@ -1203,6 +1236,26 @@ const CourierCredentials = () => {
                         isDisabled={!account.hasB2BAuthToken}
                       >
                         Create B2B Shipment
+                      </Button>
+
+                      <FormControl>
+                        <FormLabel>Shipment Job ID</FormLabel>
+                        <Input
+                          value={b2bTestInputs.shipmentJobId}
+                          onChange={(e) => updateB2BTestInput('shipmentJobId', e.target.value)}
+                          placeholder="job_id / request_id from shipment creation"
+                        />
+                      </FormControl>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleShipmentStatus(account)}
+                        isLoading={b2bShipmentStatusMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken || !String(b2bTestInputs.shipmentJobId || '').trim()
+                        }
+                      >
+                        Check Shipment Creation Status
                       </Button>
                     </Stack>
                   </>

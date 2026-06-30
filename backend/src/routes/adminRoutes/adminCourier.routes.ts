@@ -4,6 +4,7 @@ import {
   checkDelhiveryB2BServiceabilityController,
   createDelhiveryB2BClientWarehouseController,
   createDelhiveryB2BShipmentController,
+  getDelhiveryB2BShipmentStatusController,
   estimateDelhiveryB2BFreightController,
   estimateDelhiveryB2BTatController,
   getDelhiveryB2BFreightChargesController,
@@ -114,6 +115,12 @@ router.post(
   requireAuth,
   isAdminMiddleware,
   createDelhiveryB2BShipmentController,
+)
+router.post(
+  '/credentials/delhivery/shipment-status',
+  requireAuth,
+  isAdminMiddleware,
+  getDelhiveryB2BShipmentStatusController,
 )
 router.put(
   '/credentials/ekart',
