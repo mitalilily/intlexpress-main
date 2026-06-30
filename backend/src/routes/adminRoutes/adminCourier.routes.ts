@@ -16,6 +16,7 @@ import {
   estimateDelhiveryB2BTatController,
   getDelhiveryB2BFreightChargesController,
   getCourierCredentialsController,
+  getDelhiveryB2BLrCopyController,
   deleteShippingRateController,
   fetchAvailableCouriersForAdmin,
   getAllCouriersController,
@@ -177,6 +178,12 @@ router.post(
   requireAuth,
   isAdminMiddleware,
   getDelhiveryB2BLabelUrlsController,
+)
+router.post(
+  '/credentials/delhivery/lr-copy',
+  requireAuth,
+  isAdminMiddleware,
+  getDelhiveryB2BLrCopyController,
 )
 router.put(
   '/credentials/ekart',

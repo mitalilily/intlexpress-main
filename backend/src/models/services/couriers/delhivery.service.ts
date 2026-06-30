@@ -920,6 +920,77 @@ export const getDelhiveryB2BLabelUrls = async ({
   }
 }
 
+export const getDelhiveryB2BLrCopy = async ({
+  token,
+  apiBase,
+  lrn,
+  lrCopyType,
+  requestId,
+}: {
+  token: string
+  apiBase?: string | null
+  lrn: string
+  lrCopyType?: string | null
+  requestId?: string | null
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const normalizedLrn = String(lrn || '').trim()
+  const normalizedLrCopyType = String(lrCopyType || '').trim()
+  const normalizedRequestId = String(requestId || '').trim()
+
+  if (!normalizedLrn) {
+    throw new HttpError(400, 'LRN is required for Delhivery B2B LR copy.')
+  }
+
+  const response = await axios.get(
+    `${resolvedApiBase}/lr_copy/print/${encodeURIComponent(normalizedLrn)}`,
+    {
+      headers: {
+        ...buildDelhiveryB2BAuthHeaders(normalizedToken),
+        ...(normalizedRequestId ? { 'X-Request-Id': normalizedRequestId } : {}),
+      },
+      params: normalizedLrCopyType ? { lr_copy_type: normalizedLrCopyType } : undefined,
+      responseType: 'arraybuffer',
+      timeout: 30000,
+    },
+  )
+
+  const contentType = String(response.headers?.['content-type'] || 'application/pdf').trim()
+  const contentDisposition = String(response.headers?.['content-disposition'] || '').trim()
+  const fileNameMatch = contentDisposition.match(/filename\*?=(?:UTF-8'')?\"?([^\";]+)\"?/i)
+  const defaultFileName = `delhivery-lr-copy-${normalizedLrn}.pdf`
+  const payloadBuffer = Buffer.from(response.data || [])
+
+  if (contentType.toLowerCase().includes('application/json')) {
+    try {
+      return {
+        apiBase: resolvedApiBase,
+        status: response.status,
+        data: JSON.parse(payloadBuffer.toString('utf8')),
+      }
+    } catch {
+      return {
+        apiBase: resolvedApiBase,
+        status: response.status,
+        data: {
+          raw: payloadBuffer.toString('utf8'),
+        },
+      }
+    }
+  }
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: {
+      fileName: fileNameMatch?.[1] || defaultFileName,
+      contentType,
+      pdfBase64: payloadBuffer.toString('base64'),
+    },
+  }
+}
+
 export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''

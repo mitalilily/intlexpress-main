@@ -291,3 +291,11 @@ export const getDelhiveryB2BLabelUrls = async (payload) => {
   }
   return data
 }
+
+export const getDelhiveryB2BLrCopy = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/lr-copy', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to fetch Delhivery B2B LR copy')
+  }
+  return data
+}

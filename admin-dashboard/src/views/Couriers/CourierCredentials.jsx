@@ -25,6 +25,7 @@ import {
   useCourierCredentials,
   useDelhiveryB2BAppointmentBook,
   useDelhiveryB2BLabelUrls,
+  useDelhiveryB2BLrCopy,
   useDelhiveryB2BPickupRequestCancel,
   useDelhiveryB2BShipmentCancel,
   useDelhiveryB2BLogin,
@@ -253,6 +254,9 @@ const DEFAULT_B2B_TEST_INPUTS = {
   pickupCancelRequestId: '',
   labelSize: 'std',
   labelLrn: '220041149',
+  lrCopyLrn: '123456789',
+  lrCopyType: '',
+  lrCopyRequestId: '',
 }
 
 const CourierCredentials = () => {
@@ -278,6 +282,7 @@ const CourierCredentials = () => {
   const b2bPickupRequestCreateMutation = useDelhiveryB2BPickupRequestCreate()
   const b2bPickupRequestCancelMutation = useDelhiveryB2BPickupRequestCancel()
   const b2bLabelUrlsMutation = useDelhiveryB2BLabelUrls()
+  const b2bLrCopyMutation = useDelhiveryB2BLrCopy()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -760,6 +765,56 @@ const CourierCredentials = () => {
       {
         success: 'Delhivery B2B label URLs fetched',
         error: 'Delhivery B2B label URL fetch failed',
+      },
+    )
+  }
+
+  const handleLrCopy = (account) => {
+    b2bLrCopyMutation.mutate(
+      {
+        ...buildB2BAccountPayload(account),
+        lrn: b2bTestInputs.lrCopyLrn,
+        ...(String(b2bTestInputs.lrCopyType || '').trim()
+          ? { lrCopyType: String(b2bTestInputs.lrCopyType || '').trim() }
+          : {}),
+        ...(String(b2bTestInputs.lrCopyRequestId || '').trim()
+          ? { requestId: String(b2bTestInputs.lrCopyRequestId || '').trim() }
+          : {}),
+      },
+      {
+        onSuccess: (response) => {
+          const providerResponse = response?.data?.providerResponse || {}
+          const pdfBase64 = String(providerResponse?.pdfBase64 || '').trim()
+          const fileName = String(providerResponse?.fileName || `delhivery-lr-copy-${b2bTestInputs.lrCopyLrn}.pdf`).trim()
+          const contentType = String(providerResponse?.contentType || 'application/pdf').trim()
+
+          if (pdfBase64) {
+            const binary = window.atob(pdfBase64)
+            const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
+            const blob = new Blob([bytes], { type: contentType })
+            const url = window.URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = fileName
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            window.URL.revokeObjectURL(url)
+          }
+
+          toast({
+            title: 'Delhivery B2B LR copy fetched',
+            description: pdfBase64 ? `Downloaded ${fileName}` : response?.message,
+            status: 'success',
+          })
+        },
+        onError: (err) => {
+          toast({
+            title: 'Delhivery B2B LR copy failed',
+            description: err?.message,
+            status: 'error',
+          })
+        },
       },
     )
   }
@@ -1781,6 +1836,45 @@ const CourierCredentials = () => {
                         }
                       >
                         Generate Shipping Label URLs
+                      </Button>
+
+                      <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                        <FormControl>
+                          <FormLabel>LR Copy LRN</FormLabel>
+                          <Input
+                            value={b2bTestInputs.lrCopyLrn}
+                            onChange={(e) => updateB2BTestInput('lrCopyLrn', e.target.value)}
+                            placeholder="LRN for LR copy PDF"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>LR Copy Type</FormLabel>
+                          <Input
+                            value={b2bTestInputs.lrCopyType}
+                            onChange={(e) => updateB2BTestInput('lrCopyType', e.target.value)}
+                            placeholder="Comma separated copy types, or blank for all"
+                          />
+                        </FormControl>
+                        <FormControl gridColumn={{ base: 'auto', md: '1 / -1' }}>
+                          <FormLabel>LR Copy X-Request-Id</FormLabel>
+                          <Input
+                            value={b2bTestInputs.lrCopyRequestId}
+                            onChange={(e) => updateB2BTestInput('lrCopyRequestId', e.target.value)}
+                            placeholder="Optional unique request id"
+                          />
+                        </FormControl>
+                      </Grid>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleLrCopy(account)}
+                        isLoading={b2bLrCopyMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken ||
+                          !String(b2bTestInputs.lrCopyLrn || '').trim()
+                        }
+                      >
+                        Fetch LR Copy PDF
                       </Button>
                     </Stack>
                   </>

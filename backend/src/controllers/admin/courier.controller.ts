@@ -59,6 +59,7 @@ import {
   estimateDelhiveryB2BTat,
   getDelhiveryB2BFreightCharges,
   getDelhiveryB2BLabelUrls,
+  getDelhiveryB2BLrCopy,
   getDelhiveryB2BShipmentStatus,
   getDelhiveryB2BShipmentUpdateStatus,
   loginDelhiveryB2B,
@@ -1228,6 +1229,30 @@ export const getDelhiveryB2BLabelUrlsController = async (req: Request, res: Resp
     respondWithDelhiveryB2BResult(res, 'Delhivery B2B label URLs fetched', result)
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B label URLs')
+  }
+}
+
+export const getDelhiveryB2BLrCopyController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const result = await getDelhiveryB2BLrCopy({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      lrn: String(req.body?.lrn || req.body?.lrn_number || '').trim(),
+      lrCopyType: String(req.body?.lrCopyType || req.body?.lr_copy_type || '').trim(),
+      requestId: String(
+        req.body?.requestId ||
+          req.body?.request_id ||
+          req.body?.xRequestId ||
+          req.body?.x_request_id ||
+          '',
+      ).trim(),
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B LR copy fetched', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B LR copy')
   }
 }
 
