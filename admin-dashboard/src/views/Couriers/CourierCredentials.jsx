@@ -127,6 +127,14 @@ const normalizeAccounts = (accounts) =>
       source.findIndex((entry) => entry.isDefault === true) === index,
   }))
 
+const isConfiguredAccount = (account, index) => {
+  if (index === 1) {
+    return Boolean(String(account.username || '').trim()) && Boolean(account.hasPassword || account.password)
+  }
+
+  return Boolean(account.hasApiKey || account.apiKey)
+}
+
 const DEFAULT_B2B_TEST_INPUTS = {
   serviceabilityPincode: '122001',
   serviceabilityWeight: '1',
@@ -308,7 +316,7 @@ const CourierCredentials = () => {
 
   const accountSummary = useMemo(
     () => ({
-      configured: accounts.filter((account) => account.hasApiKey || account.apiKey).length,
+      configured: accounts.filter((account, index) => isConfiguredAccount(account, index)).length,
       active: accounts.filter((account) => account.isActive).length,
     }),
     [accounts],
@@ -994,6 +1002,12 @@ const CourierCredentials = () => {
           <GridItem key={account.accountCode}>
             <Box borderWidth="1px" borderRadius="lg" p={5} h="100%">
               <VStack spacing={4} align="stretch" h="100%">
+                {(() => {
+                  const isB2BAccount = index === 1
+                  const isConfigured = isConfiguredAccount(account, index)
+
+                  return (
+                    <>
                 <Flex justify="space-between" align="center">
                   <Stack spacing={0}>
                     <Text fontWeight="semibold">
@@ -1006,14 +1020,17 @@ const CourierCredentials = () => {
                       {ACCOUNT_PRESETS[index]?.description || 'Delhivery account configuration'}
                     </Text>
                   </Stack>
-                  <Badge
-                    colorScheme={account.hasApiKey || account.apiKey ? 'green' : 'orange'}
-                  >
-                    {account.hasApiKey || account.apiKey ? 'Configured' : 'Missing API key'}
+                  <Badge colorScheme={isConfigured ? 'green' : 'orange'}>
+                    {isConfigured
+                      ? 'Configured'
+                      : isB2BAccount
+                        ? 'Missing B2B login'
+                        : 'Missing API key'}
                   </Badge>
                 </Flex>
 
-                <FormControl>
+                {!isB2BAccount && (
+                  <FormControl>
                   <FormLabel>Account Label</FormLabel>
                   <Input
                     value={account.accountLabel}
@@ -1022,27 +1039,33 @@ const CourierCredentials = () => {
                       ACCOUNT_PRESETS[index]?.defaultLabel || `Delhivery Account ${index + 1}`
                     }
                   />
-                </FormControl>
+                  </FormControl>
+                )}
 
-                <FormControl>
+                {!isB2BAccount && (
+                  <FormControl>
                   <FormLabel>API Base URL</FormLabel>
                   <Input
                     value={account.apiBase}
                     onChange={(e) => updateAccount(index, { apiBase: e.target.value })}
                     placeholder="https://track.delhivery.com"
                   />
-                </FormControl>
+                  </FormControl>
+                )}
 
-                <FormControl>
+                {!isB2BAccount && (
+                  <FormControl>
                   <FormLabel>Client Name</FormLabel>
                   <Input
                     value={account.clientName}
                     onChange={(e) => updateAccount(index, { clientName: e.target.value })}
                     placeholder="Registered Delhivery client name"
                   />
-                </FormControl>
+                  </FormControl>
+                )}
 
-                <FormControl>
+                {!isB2BAccount && (
+                  <FormControl>
                   <FormLabel>API Key</FormLabel>
                   <Input
                     type="password"
@@ -1055,7 +1078,8 @@ const CourierCredentials = () => {
                       Current key: {account.apiKeyMasked}
                     </Text>
                   )}
-                </FormControl>
+                  </FormControl>
+                )}
 
                 {index === 1 && (
                   <>
@@ -2091,7 +2115,8 @@ const CourierCredentials = () => {
                   </>
                 )}
 
-                <FormControl>
+                {!isB2BAccount && (
+                  <FormControl>
                   <FormLabel>Pickup Location IDs</FormLabel>
                   <Textarea
                     rows={3}
@@ -2103,9 +2128,11 @@ const CourierCredentials = () => {
                     }
                     placeholder="One pickup location ID per line"
                   />
-                </FormControl>
+                  </FormControl>
+                )}
 
-                <FormControl>
+                {!isB2BAccount && (
+                  <FormControl>
                   <FormLabel>Pickup Warehouse Names</FormLabel>
                   <Textarea
                     rows={3}
@@ -2117,9 +2144,11 @@ const CourierCredentials = () => {
                     }
                     placeholder="One warehouse name per line"
                   />
-                </FormControl>
+                  </FormControl>
+                )}
 
-                <Stack spacing={3} pt={1}>
+                {!isB2BAccount && (
+                  <Stack spacing={3} pt={1}>
                   <Flex align="center" justify="space-between">
                     <Text fontSize="sm">Active for booking</Text>
                     <Switch
@@ -2135,7 +2164,11 @@ const CourierCredentials = () => {
                       onChange={() => handleToggleDefault(index)}
                     />
                   </Flex>
-                </Stack>
+                  </Stack>
+                )}
+                    </>
+                  )
+                })()}
               </VStack>
             </Box>
           </GridItem>
