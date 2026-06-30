@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   useCourierCredentials,
   useDelhiveryB2BAppointmentBook,
+  useDelhiveryB2BDocumentGenerate,
   useDelhiveryB2BLabelUrls,
   useDelhiveryB2BLrCopy,
   useDelhiveryB2BPickupRequestCancel,
@@ -257,6 +258,14 @@ const DEFAULT_B2B_TEST_INPUTS = {
   lrCopyLrn: '123456789',
   lrCopyType: '',
   lrCopyRequestId: '',
+  documentDocType: 'shipping_label',
+  documentLrns: '220040156,220040143',
+  documentSize: 'a4',
+  documentLrCopyTypes: '',
+  documentCallbackUri: 'https://btob-api-dev.delhivery.com/v3/document/generate_label_pdf',
+  documentCallbackMethod: 'POST',
+  documentCallbackAuthorization: 'Bearer Token',
+  documentRequestId: '',
 }
 
 const CourierCredentials = () => {
@@ -283,6 +292,7 @@ const CourierCredentials = () => {
   const b2bPickupRequestCancelMutation = useDelhiveryB2BPickupRequestCancel()
   const b2bLabelUrlsMutation = useDelhiveryB2BLabelUrls()
   const b2bLrCopyMutation = useDelhiveryB2BLrCopy()
+  const b2bDocumentGenerateMutation = useDelhiveryB2BDocumentGenerate()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -811,6 +821,53 @@ const CourierCredentials = () => {
         onError: (err) => {
           toast({
             title: 'Delhivery B2B LR copy failed',
+            description: err?.message,
+            status: 'error',
+          })
+        },
+      },
+    )
+  }
+
+  const handleDocumentGenerate = (account) => {
+    const lrns = normalizeArrayInput(b2bTestInputs.documentLrns).slice(0, 25)
+    const lrCopyTypes = normalizeArrayInput(b2bTestInputs.documentLrCopyTypes)
+    const docType = String(b2bTestInputs.documentDocType || '').trim()
+
+    b2bDocumentGenerateMutation.mutate(
+      {
+        ...buildB2BAccountPayload(account),
+        docType,
+        lrns,
+        ...(docType === 'shipping_label'
+          ? { size: String(b2bTestInputs.documentSize || '').trim() }
+          : {}),
+        ...(docType === 'lr_copy' && lrCopyTypes.length ? { lr_copy_type: lrCopyTypes } : {}),
+        callback: {
+          uri: b2bTestInputs.documentCallbackUri,
+          method: b2bTestInputs.documentCallbackMethod,
+          authorization: b2bTestInputs.documentCallbackAuthorization,
+        },
+        ...(String(b2bTestInputs.documentRequestId || '').trim()
+          ? { requestId: String(b2bTestInputs.documentRequestId || '').trim() }
+          : {}),
+      },
+      {
+        onSuccess: (response) => {
+          const nextJobId = String(response?.data?.jobId || '').trim()
+          toast({
+            title: 'Delhivery B2B document generation submitted',
+            description: nextJobId
+              ? `Job ID ${nextJobId}`
+              : response?.data?.status
+                ? `Provider status ${response.data.status}`
+                : response?.message,
+            status: 'success',
+          })
+        },
+        onError: (err) => {
+          toast({
+            title: 'Delhivery B2B document generation failed',
             description: err?.message,
             status: 'error',
           })
@@ -1875,6 +1932,101 @@ const CourierCredentials = () => {
                         }
                       >
                         Fetch LR Copy PDF
+                      </Button>
+
+                      <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                        <FormControl>
+                          <FormLabel>Document Type</FormLabel>
+                          <Input
+                            value={b2bTestInputs.documentDocType}
+                            onChange={(e) =>
+                              updateB2BTestInput('documentDocType', e.target.value)
+                            }
+                            placeholder="shipping_label or lr_copy"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Document Size</FormLabel>
+                          <Input
+                            value={b2bTestInputs.documentSize}
+                            onChange={(e) => updateB2BTestInput('documentSize', e.target.value)}
+                            placeholder="sm | md | a4 | std"
+                          />
+                        </FormControl>
+                        <FormControl gridColumn={{ base: 'auto', md: '1 / -1' }}>
+                          <FormLabel>Document LRNs</FormLabel>
+                          <Textarea
+                            rows={3}
+                            value={b2bTestInputs.documentLrns}
+                            onChange={(e) => updateB2BTestInput('documentLrns', e.target.value)}
+                            placeholder="Comma separated LRNs, max 25"
+                          />
+                        </FormControl>
+                        <FormControl gridColumn={{ base: 'auto', md: '1 / -1' }}>
+                          <FormLabel>LR Copy Types</FormLabel>
+                          <Input
+                            value={b2bTestInputs.documentLrCopyTypes}
+                            onChange={(e) =>
+                              updateB2BTestInput('documentLrCopyTypes', e.target.value)
+                            }
+                            placeholder="Comma separated copy types for lr_copy, or blank for all"
+                          />
+                        </FormControl>
+                        <FormControl gridColumn={{ base: 'auto', md: '1 / -1' }}>
+                          <FormLabel>Callback URI</FormLabel>
+                          <Input
+                            value={b2bTestInputs.documentCallbackUri}
+                            onChange={(e) =>
+                              updateB2BTestInput('documentCallbackUri', e.target.value)
+                            }
+                            placeholder="https://example.com/callback"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Callback Method</FormLabel>
+                          <Input
+                            value={b2bTestInputs.documentCallbackMethod}
+                            onChange={(e) =>
+                              updateB2BTestInput('documentCallbackMethod', e.target.value)
+                            }
+                            placeholder="POST"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Callback Authorization</FormLabel>
+                          <Input
+                            value={b2bTestInputs.documentCallbackAuthorization}
+                            onChange={(e) =>
+                              updateB2BTestInput('documentCallbackAuthorization', e.target.value)
+                            }
+                            placeholder="Bearer Token"
+                          />
+                        </FormControl>
+                        <FormControl gridColumn={{ base: 'auto', md: '1 / -1' }}>
+                          <FormLabel>Document X-Request-Id</FormLabel>
+                          <Input
+                            value={b2bTestInputs.documentRequestId}
+                            onChange={(e) =>
+                              updateB2BTestInput('documentRequestId', e.target.value)
+                            }
+                            placeholder="Optional unique request id"
+                          />
+                        </FormControl>
+                      </Grid>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleDocumentGenerate(account)}
+                        isLoading={b2bDocumentGenerateMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken ||
+                          !String(b2bTestInputs.documentDocType || '').trim() ||
+                          !String(b2bTestInputs.documentLrns || '').trim() ||
+                          !String(b2bTestInputs.documentCallbackUri || '').trim() ||
+                          !String(b2bTestInputs.documentCallbackMethod || '').trim()
+                        }
+                      >
+                        Generate Document
                       </Button>
                     </Stack>
                   </>

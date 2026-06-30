@@ -991,6 +991,47 @@ export const getDelhiveryB2BLrCopy = async ({
   }
 }
 
+export const generateDelhiveryB2BDocument = async ({
+  token,
+  apiBase,
+  docType,
+  payload,
+  requestId,
+}: {
+  token: string
+  apiBase?: string | null
+  docType: string
+  payload: Record<string, any>
+  requestId?: string | null
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const normalizedDocType = String(docType || '').trim()
+  const normalizedRequestId = String(requestId || '').trim()
+
+  if (!normalizedDocType) {
+    throw new HttpError(400, 'doc_type is required for Delhivery B2B document generation.')
+  }
+
+  const response = await axios.post(
+    `${resolvedApiBase}/generate/${encodeURIComponent(normalizedDocType)}`,
+    payload,
+    {
+      headers: {
+        ...buildDelhiveryB2BAuthHeaders(normalizedToken),
+        ...(normalizedRequestId ? { 'X-Request-Id': normalizedRequestId } : {}),
+      },
+      timeout: 30000,
+    },
+  )
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
 export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''

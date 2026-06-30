@@ -1,6 +1,7 @@
 // routes/shippingRateRoutes.ts
 import { Router } from 'express'
 import {
+  generateDelhiveryB2BDocumentController,
   bookDelhiveryB2BAppointmentController,
   cancelDelhiveryB2BPickupRequestController,
   createDelhiveryB2BPickupRequestController,
@@ -184,6 +185,12 @@ router.post(
   requireAuth,
   isAdminMiddleware,
   getDelhiveryB2BLrCopyController,
+)
+router.post(
+  '/credentials/delhivery/generate-document',
+  requireAuth,
+  isAdminMiddleware,
+  generateDelhiveryB2BDocumentController,
 )
 router.put(
   '/credentials/ekart',

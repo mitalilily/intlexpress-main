@@ -299,3 +299,11 @@ export const getDelhiveryB2BLrCopy = async (payload) => {
   }
   return data
 }
+
+export const generateDelhiveryB2BDocument = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/generate-document', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to generate Delhivery B2B document')
+  }
+  return data
+}

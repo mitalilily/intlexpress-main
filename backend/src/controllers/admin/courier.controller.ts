@@ -47,6 +47,7 @@ import {
   type DelhiveryAccountConfig,
 } from '../../models/services/delhiveryCredentials.service'
 import {
+  generateDelhiveryB2BDocument,
   bookDelhiveryB2BAppointment,
   cancelDelhiveryB2BPickupRequest,
   createDelhiveryB2BPickupRequest,
@@ -1253,6 +1254,46 @@ export const getDelhiveryB2BLrCopyController = async (req: Request, res: Respons
     respondWithDelhiveryB2BResult(res, 'Delhivery B2B LR copy fetched', result)
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B LR copy')
+  }
+}
+
+export const generateDelhiveryB2BDocumentController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const {
+      accountCode: _accountCode,
+      token: _token,
+      apiBase: _apiBase,
+      docType,
+      doc_type,
+      requestId,
+      request_id,
+      xRequestId,
+      x_request_id,
+      ...payload
+    } = req.body || {}
+    const result = await generateDelhiveryB2BDocument({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      docType: String(docType || doc_type || '').trim(),
+      payload,
+      requestId: String(requestId || request_id || xRequestId || x_request_id || '').trim(),
+    })
+    const jobId = extractDelhiveryB2BJobId(result.data)
+
+    res.json({
+      success: true,
+      message: 'Delhivery B2B document generation submitted',
+      data: {
+        apiBase: result.apiBase,
+        status: result.status,
+        jobId,
+        providerResponse: result.data,
+      },
+    })
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to generate Delhivery B2B document')
   }
 }
 
