@@ -241,3 +241,11 @@ export const getDelhiveryB2BShipmentUpdateStatus = async (payload) => {
   }
   return data
 }
+
+export const cancelDelhiveryB2BShipment = async (payload) => {
+  const { data } = await api.delete('/admin/couriers/credentials/delhivery/shipment', { data: payload })
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to cancel Delhivery B2B shipment')
+  }
+  return data
+}

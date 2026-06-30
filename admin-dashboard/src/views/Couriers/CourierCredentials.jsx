@@ -23,6 +23,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import {
   useCourierCredentials,
+  useDelhiveryB2BShipmentCancel,
   useDelhiveryB2BLogin,
   useDelhiveryB2BLogout,
   useDelhiveryB2BServiceability,
@@ -229,6 +230,7 @@ const DEFAULT_B2B_TEST_INPUTS = {
     2,
   ),
   shipmentUpdateJobId: '',
+  shipmentCancelLrn: '220110457',
 }
 
 const CourierCredentials = () => {
@@ -248,6 +250,7 @@ const CourierCredentials = () => {
   const b2bShipmentStatusMutation = useDelhiveryB2BShipmentStatus()
   const b2bShipmentUpdateMutation = useDelhiveryB2BShipmentUpdate()
   const b2bShipmentUpdateStatusMutation = useDelhiveryB2BShipmentUpdateStatus()
+  const b2bShipmentCancelMutation = useDelhiveryB2BShipmentCancel()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -627,6 +630,20 @@ const CourierCredentials = () => {
       {
         success: 'Delhivery B2B shipment update status fetched',
         error: 'Delhivery B2B shipment update status failed',
+      },
+    )
+  }
+
+  const handleShipmentCancel = (account) => {
+    handleB2BAction(
+      b2bShipmentCancelMutation,
+      {
+        ...buildB2BAccountPayload(account),
+        lrn: b2bTestInputs.shipmentCancelLrn,
+      },
+      {
+        success: 'Delhivery B2B shipment cancelled',
+        error: 'Delhivery B2B shipment cancellation failed',
       },
     )
   }
@@ -1392,6 +1409,27 @@ const CourierCredentials = () => {
                         }
                       >
                         Check Shipment Update Status
+                      </Button>
+
+                      <FormControl>
+                        <FormLabel>Shipment Cancel LRN</FormLabel>
+                        <Input
+                          value={b2bTestInputs.shipmentCancelLrn}
+                          onChange={(e) => updateB2BTestInput('shipmentCancelLrn', e.target.value)}
+                          placeholder="Manifested LRN to cancel"
+                        />
+                      </FormControl>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleShipmentCancel(account)}
+                        isLoading={b2bShipmentCancelMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken ||
+                          !String(b2bTestInputs.shipmentCancelLrn || '').trim()
+                        }
+                      >
+                        Cancel Shipment
                       </Button>
                     </Stack>
                   </>

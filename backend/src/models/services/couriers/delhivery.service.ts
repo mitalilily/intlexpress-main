@@ -730,6 +730,34 @@ export const getDelhiveryB2BShipmentUpdateStatus = async ({
   }
 }
 
+export const cancelDelhiveryB2BShipment = async ({
+  token,
+  apiBase,
+  lrn,
+}: {
+  token: string
+  apiBase?: string | null
+  lrn: string
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const normalizedLrn = String(lrn || '').trim()
+  if (!normalizedLrn) {
+    throw new HttpError(400, 'LRN is required for Delhivery B2B shipment cancellation.')
+  }
+
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const response = await axios.delete(`${resolvedApiBase}/lrn/cancel/${encodeURIComponent(normalizedLrn)}`, {
+    headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+    timeout: 30000,
+  })
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
 export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''
