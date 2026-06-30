@@ -881,6 +881,45 @@ export const cancelDelhiveryB2BPickupRequest = async ({
   }
 }
 
+export const getDelhiveryB2BLabelUrls = async ({
+  token,
+  apiBase,
+  size,
+  lrn,
+}: {
+  token: string
+  apiBase?: string | null
+  size: string
+  lrn: string
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const normalizedSize = String(size || '').trim().toLowerCase()
+  const normalizedLrn = String(lrn || '').trim()
+
+  if (!normalizedSize) {
+    throw new HttpError(400, 'size is required for Delhivery B2B label URLs.')
+  }
+
+  if (!normalizedLrn) {
+    throw new HttpError(400, 'LRN is required for Delhivery B2B label URLs.')
+  }
+
+  const response = await axios.get(
+    `${resolvedApiBase}/label/get_urls/${encodeURIComponent(normalizedSize)}/${encodeURIComponent(normalizedLrn)}`,
+    {
+      headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+      timeout: 30000,
+    },
+  )
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
 export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''

@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   useCourierCredentials,
   useDelhiveryB2BAppointmentBook,
+  useDelhiveryB2BLabelUrls,
   useDelhiveryB2BPickupRequestCancel,
   useDelhiveryB2BShipmentCancel,
   useDelhiveryB2BLogin,
@@ -250,6 +251,8 @@ const DEFAULT_B2B_TEST_INPUTS = {
   pickupRequestId: '',
   pickupCancelId: 'pur_id_1',
   pickupCancelRequestId: '',
+  labelSize: 'std',
+  labelLrn: '220041149',
 }
 
 const CourierCredentials = () => {
@@ -274,6 +277,7 @@ const CourierCredentials = () => {
   const b2bAppointmentBookMutation = useDelhiveryB2BAppointmentBook()
   const b2bPickupRequestCreateMutation = useDelhiveryB2BPickupRequestCreate()
   const b2bPickupRequestCancelMutation = useDelhiveryB2BPickupRequestCancel()
+  const b2bLabelUrlsMutation = useDelhiveryB2BLabelUrls()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -741,6 +745,21 @@ const CourierCredentials = () => {
       {
         success: 'Delhivery B2B pickup request cancelled',
         error: 'Delhivery B2B pickup request cancellation failed',
+      },
+    )
+  }
+
+  const handleLabelUrls = (account) => {
+    handleB2BAction(
+      b2bLabelUrlsMutation,
+      {
+        ...buildB2BAccountPayload(account),
+        size: b2bTestInputs.labelSize,
+        lrn: b2bTestInputs.labelLrn,
+      },
+      {
+        success: 'Delhivery B2B label URLs fetched',
+        error: 'Delhivery B2B label URL fetch failed',
       },
     )
   }
@@ -1730,6 +1749,38 @@ const CourierCredentials = () => {
                         }
                       >
                         Cancel Pickup Request
+                      </Button>
+
+                      <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                        <FormControl>
+                          <FormLabel>Label Size</FormLabel>
+                          <Input
+                            value={b2bTestInputs.labelSize}
+                            onChange={(e) => updateB2BTestInput('labelSize', e.target.value)}
+                            placeholder="sm | md | a4 | std"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Label LRN</FormLabel>
+                          <Input
+                            value={b2bTestInputs.labelLrn}
+                            onChange={(e) => updateB2BTestInput('labelLrn', e.target.value)}
+                            placeholder="LRN for label URLs"
+                          />
+                        </FormControl>
+                      </Grid>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleLabelUrls(account)}
+                        isLoading={b2bLabelUrlsMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken ||
+                          !String(b2bTestInputs.labelSize || '').trim() ||
+                          !String(b2bTestInputs.labelLrn || '').trim()
+                        }
+                      >
+                        Generate Shipping Label URLs
                       </Button>
                     </Stack>
                   </>

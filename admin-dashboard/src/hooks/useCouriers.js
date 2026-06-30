@@ -20,6 +20,7 @@ import {
   fetchServiceProviders,
   fetchShippingRates,
   getDelhiveryB2BFreightCharges,
+  getDelhiveryB2BLabelUrls,
   getDelhiveryB2BShipmentStatus,
   getDelhiveryB2BShipmentUpdateStatus,
   loginDelhiveryB2B,
@@ -242,6 +243,11 @@ export const useDelhiveryB2BPickupRequestCreate = () =>
 export const useDelhiveryB2BPickupRequestCancel = () =>
   useMutation({
     mutationFn: cancelDelhiveryB2BPickupRequest,
+  })
+
+export const useDelhiveryB2BLabelUrls = () =>
+  useMutation({
+    mutationFn: getDelhiveryB2BLabelUrls,
   })
 
 export const useShippingRates = (filters = {}) => {

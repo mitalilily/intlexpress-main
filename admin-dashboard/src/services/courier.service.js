@@ -283,3 +283,11 @@ export const cancelDelhiveryB2BPickupRequest = async (payload) => {
   }
   return data
 }
+
+export const getDelhiveryB2BLabelUrls = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/label-urls', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to fetch Delhivery B2B label URLs')
+  }
+  return data
+}

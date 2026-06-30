@@ -58,6 +58,7 @@ import {
   estimateDelhiveryB2BFreight,
   estimateDelhiveryB2BTat,
   getDelhiveryB2BFreightCharges,
+  getDelhiveryB2BLabelUrls,
   getDelhiveryB2BShipmentStatus,
   getDelhiveryB2BShipmentUpdateStatus,
   loginDelhiveryB2B,
@@ -1210,6 +1211,23 @@ export const cancelDelhiveryB2BPickupRequestController = async (
     respondWithDelhiveryB2BResult(res, 'Delhivery B2B pickup request cancelled', result)
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to cancel Delhivery B2B pickup request')
+  }
+}
+
+export const getDelhiveryB2BLabelUrlsController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const result = await getDelhiveryB2BLabelUrls({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      size: String(req.body?.size || '').trim(),
+      lrn: String(req.body?.lrn || req.body?.lrn_number || '').trim(),
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B label URLs fetched', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B label URLs')
   }
 }
 
