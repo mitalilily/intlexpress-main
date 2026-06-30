@@ -3,6 +3,7 @@ import { Request, Response } from 'express'
 import { OAuth2Client } from 'google-auth-library'
 import path from 'path'
 import twilio from 'twilio'
+import { getProfileByUserId } from '../models/services/userProfile.service'
 import {
   clearUserEmailToken,
   clearUserOtpByEmail,
@@ -39,6 +40,17 @@ const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_T
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
 export const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString()
+
+const loadAuthenticatedProfile = async (userId: string) => {
+  await ensureUserBootstrapRecords(userId)
+  const profile = await getProfileByUserId(userId)
+
+  if (!profile) {
+    throw new Error(`Authenticated profile not found for user ${userId}`)
+  }
+
+  return profile
+}
 
 const sendSmsViaTwilio = async (phone: string, message: string) => {
   await client.messages.create({
@@ -264,7 +276,7 @@ export const verifyOtp = async (req: Request, res: Response): Promise<any> => {
 
     await clearUserOtpByEmail(normalizedEmail)
     await markEmailVerified(normalizedEmail) // update emailVerified = true
-    await ensureUserBootstrapRecords(user.id)
+    const authenticatedUser = await loadAuthenticatedProfile(user.id)
     const accessToken = signAccessToken(user.id, user.role ?? 'customer')
 
     const { token: refreshToken } = signRefreshToken(user.id, user.role ?? 'customer')
@@ -276,14 +288,7 @@ export const verifyOtp = async (req: Request, res: Response): Promise<any> => {
       message: 'OTP verified successfully',
       token: accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        phoneVerified: user.phoneVerified,
-        email: user.email,
-        emailVerified: true,
-        role: user.role,
-      },
+      user: authenticatedUser,
     })
   } catch (error) {
     console.error('Error in verifyOtp:', error)
@@ -335,7 +340,7 @@ export const requestEmailVerification = async (req: Request, res: Response): Pro
 
     // ── If the flow returned a user (authenticated / verified)
     if (user) {
-      await ensureUserBootstrapRecords(user.id)
+      const authenticatedUser = await loadAuthenticatedProfile(user.id)
       const accessToken = signAccessToken(user.id, user.role ?? 'customer')
       const { token: refreshToken } = signRefreshToken(user.id, user.role ?? 'customer')
 
@@ -344,6 +349,7 @@ export const requestEmailVerification = async (req: Request, res: Response): Pro
 
       result.data.token = accessToken
       result.data.refreshToken = refreshToken
+      result.data.user = authenticatedUser
     }
 
     return res.status(result.status).json(result.data)
@@ -378,7 +384,7 @@ export const verifyEmailToken = async (req: Request, res: Response): Promise<any
 
     await markEmailVerified(email)
     await clearUserEmailToken(email)
-    await ensureUserBootstrapRecords(user.id)
+    const authenticatedUser = await loadAuthenticatedProfile(user.id)
     /* ── Sign & Set JWTs ────────────────────────────────────────────── */
     const accessToken = signAccessToken(user.id, user.role ?? 'customer')
 
@@ -391,12 +397,7 @@ export const verifyEmailToken = async (req: Request, res: Response): Promise<any
       message: 'Email verified successfully',
       token: accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        emailVerified: true,
-        role: user.role,
-      },
+      user: authenticatedUser,
     })
   } catch (error) {
     console.error('verifyEmailToken error:', error)
@@ -474,9 +475,6 @@ export const googleOAuthLogin = async (req: Request, res: Response): Promise<any
     }
 
     user = await findUserByEmail(email)
-    if (user) {
-      await ensureUserBootstrapRecords(user.id)
-    }
 
     if (user) {
       /* ── Sign & Set JWTs ────────────────────────────────────────────── */
@@ -486,20 +484,13 @@ export const googleOAuthLogin = async (req: Request, res: Response): Promise<any
 
       /* ---------- persist newest refresh token ---------- */
       await saveRefreshToken(user.id, refreshToken, ONE_WEEK_MS)
+      const authenticatedUser = await loadAuthenticatedProfile(user.id)
 
       return res.json({
         message: 'Google login successful',
         token: accessToken,
         refreshToken,
-        user: {
-          id: user?.id,
-          email: user?.email,
-          emailVerified: user?.emailVerified,
-          phone: user?.phone,
-          phoneVerified: user?.phoneVerified,
-          profilePicture: user?.profilePicture,
-          role: user?.role,
-        },
+        user: authenticatedUser,
       })
     } else {
       return res.status(500).json({ error: 'User not found' })

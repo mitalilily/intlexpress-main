@@ -31,6 +31,22 @@ export type Tx = any
 
 type UserUpdate = Partial<Omit<User, 'id'>> // We typically don't allow changing id or phone
 
+const normalizeOptionalUserString = (
+  value: unknown,
+  options?: {
+    lowercase?: boolean
+  },
+): string | null | undefined => {
+  if (value === undefined) return undefined
+  if (value === null) return null
+  if (typeof value !== 'string') return value as any
+
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  return options?.lowercase ? trimmed.toLowerCase() : trimmed
+}
+
 const EMPTY_COMPANY: CompanyInfo = {
   businessName: '',
   brandName: '',
@@ -89,16 +105,23 @@ export const findUserById = async (id: string) => {
 
   if (!result[0]) return null
 
+  const userRow = result[0].user
+  const profileRow = result[0].profile
+
   // Merge `users`, `userProfile`, and current plan
   return {
-    ...result[0].user,
-    ...result[0].profile,
+    ...userRow,
+    ...(profileRow ?? {}),
+    id: userRow.id,
+    userId: userRow.id,
+    profileId: profileRow?.id || null,
     currentPlanId: result[0].userPlan?.plan_id || null, // current assigned plan
   }
 }
 
 export const findUserByEmail = async (email: string, tx: Tx = db) => {
-  const [user] = await tx.select().from(users).where(eq(users.email, email)).limit(1)
+  const normalizedEmail = email.trim().toLowerCase()
+  const [user] = await tx.select().from(users).where(eq(users.email, normalizedEmail)).limit(1)
   return user ?? null
 }
 
@@ -204,10 +227,11 @@ export const createOtpBootstrapUser = async (
 }
 
 export const updateUserByEmail = async (email: string, updateData: Partial<User>, tx: Tx = db) => {
+  const normalizedEmail = email.trim().toLowerCase()
   const [updatedUser] = await tx
     .update(users)
     .set(updateData)
-    .where(eq(users.email, email))
+    .where(eq(users.email, normalizedEmail))
     .returning()
   return updatedUser
 }
@@ -689,10 +713,32 @@ export const clampPreviousRefreshTokenExpiry = async (
 
 export async function createUserWithWallet(data: Partial<IUser>, txn: any = db) {
   return txn?.transaction(async (tx: any) => {
+    const userInsert: NewUser = {
+      email: normalizeOptionalUserString(data.email, { lowercase: true }),
+      phone: normalizeOptionalUserString(data.phone),
+      googleId: normalizeOptionalUserString(data.googleId),
+      pendingEmail: normalizeOptionalUserString((data as any).pendingEmail, { lowercase: true }),
+      pendingPhone: normalizeOptionalUserString((data as any).pendingPhone),
+      passwordHash: normalizeOptionalUserString(data.passwordHash ?? null),
+      refreshToken: normalizeOptionalUserString(data.refreshToken ?? null),
+      refreshTokenExpiresAt: data.refreshTokenExpiresAt ?? null,
+      previousRefreshToken: normalizeOptionalUserString(data.previousRefreshToken ?? null),
+      previousRefreshTokenExpiresAt: data.previousRefreshTokenExpiresAt ?? null,
+      emailVerified: data.emailVerified ?? false,
+      phoneVerified: data.phoneVerified ?? false,
+      accountVerified: data.accountVerified ?? false,
+      role: normalizeOptionalUserString(data.role) ?? 'customer',
+      profilePicture: normalizeOptionalUserString(data.profilePicture ?? null),
+      otp: normalizeOptionalUserString(data.otp ?? null),
+      otpExpiresAt: data.otpExpiresAt ?? null,
+      emailVerificationToken: normalizeOptionalUserString(data.emailVerificationToken ?? null),
+      emailVerificationTokenExpiresAt: data.emailVerificationTokenExpiresAt ?? null,
+    }
+
     // 1) insert user
     const [user] = await tx
       .insert(users)
-      .values(data as IUser)
+      .values(userInsert)
       .returning()
 
     // 2) insert wallet
@@ -1113,7 +1159,11 @@ export async function getAllUsersWithRoleUser({
 export const updateUserApprovalStatus = async (userId: string, approved: boolean) => {
   const [updated] = await db
     .update(schema.userProfiles)
-    .set({ approved })
+    .set({
+      approved,
+      approvedAt: approved ? new Date() : null,
+      updatedAt: new Date(),
+    })
     .where(eq(schema.userProfiles.userId, userId))
     .returning()
 
