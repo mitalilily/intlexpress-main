@@ -1,12 +1,18 @@
 // routes/shippingRateRoutes.ts
 import { Router } from 'express'
 import {
+  checkDelhiveryB2BServiceabilityController,
+  estimateDelhiveryB2BFreightController,
+  estimateDelhiveryB2BTatController,
+  getDelhiveryB2BFreightChargesController,
   getCourierCredentialsController,
   deleteShippingRateController,
   fetchAvailableCouriersForAdmin,
   getAllCouriersController,
   getShippingRatesController,
   importShippingRatesController,
+  loginDelhiveryB2BController,
+  logoutDelhiveryB2BController,
   resetDelhiveryPasswordController,
   updateAmazonCredentialsController,
   updateDelhiveryCredentialsController,
@@ -51,6 +57,42 @@ router.post(
   requireAuth,
   isAdminMiddleware,
   resetDelhiveryPasswordController,
+)
+router.post(
+  '/credentials/delhivery/login',
+  requireAuth,
+  isAdminMiddleware,
+  loginDelhiveryB2BController,
+)
+router.post(
+  '/credentials/delhivery/logout',
+  requireAuth,
+  isAdminMiddleware,
+  logoutDelhiveryB2BController,
+)
+router.post(
+  '/credentials/delhivery/serviceability',
+  requireAuth,
+  isAdminMiddleware,
+  checkDelhiveryB2BServiceabilityController,
+)
+router.post(
+  '/credentials/delhivery/tat',
+  requireAuth,
+  isAdminMiddleware,
+  estimateDelhiveryB2BTatController,
+)
+router.post(
+  '/credentials/delhivery/freight-estimate',
+  requireAuth,
+  isAdminMiddleware,
+  estimateDelhiveryB2BFreightController,
+)
+router.post(
+  '/credentials/delhivery/freight-charges',
+  requireAuth,
+  isAdminMiddleware,
+  getDelhiveryB2BFreightChargesController,
 )
 router.put(
   '/credentials/ekart',

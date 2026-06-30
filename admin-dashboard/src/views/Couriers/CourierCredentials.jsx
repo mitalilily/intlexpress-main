@@ -23,6 +23,12 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import {
   useCourierCredentials,
+  useDelhiveryB2BLogin,
+  useDelhiveryB2BLogout,
+  useDelhiveryB2BServiceability,
+  useDelhiveryB2BTat,
+  useDelhiveryB2BFreightEstimate,
+  useDelhiveryB2BFreightCharges,
   useDelhiveryForgotPassword,
   useUpdateDelhiveryCredentials,
 } from 'hooks/useCouriers'
@@ -58,6 +64,8 @@ const buildEmptyAccount = (index) => ({
   apiKeyMasked: '',
   hasPassword: false,
   passwordMasked: '',
+  hasB2BAuthToken: false,
+  b2bAuthTokenExpiresAt: '',
   isActive: index === 0,
   isDefault: index === 0,
   pickupLocationIds: [],
@@ -104,12 +112,39 @@ const normalizeAccounts = (accounts) =>
       source.findIndex((entry) => entry.isDefault === true) === index,
   }))
 
+const DEFAULT_B2B_TEST_INPUTS = {
+  serviceabilityPincode: '122001',
+  serviceabilityWeight: '1',
+  tatOriginPin: '400093',
+  tatDestinationPin: '122001',
+  freightSourcePin: '400069',
+  freightConsigneePin: '400069',
+  freightWeightG: '100000',
+  freightLengthCm: '11',
+  freightWidthCm: '1.1',
+  freightHeightCm: '11',
+  freightBoxCount: '1',
+  freightPaymentMode: 'prepaid',
+  freightCodAmount: '',
+  freightInvAmount: '123',
+  freightMode: 'fod',
+  freightRovInsurance: true,
+  freightChargesLrns: '',
+}
+
 const CourierCredentials = () => {
   const toast = useToast()
   const { data, isLoading, error } = useCourierCredentials()
   const updateDelhivery = useUpdateDelhiveryCredentials()
   const forgotPasswordMutation = useDelhiveryForgotPassword()
+  const b2bLoginMutation = useDelhiveryB2BLogin()
+  const b2bLogoutMutation = useDelhiveryB2BLogout()
+  const b2bServiceabilityMutation = useDelhiveryB2BServiceability()
+  const b2bTatMutation = useDelhiveryB2BTat()
+  const b2bFreightEstimateMutation = useDelhiveryB2BFreightEstimate()
+  const b2bFreightChargesMutation = useDelhiveryB2BFreightCharges()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
+  const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
   useEffect(() => {
     setAccounts(normalizeAccounts(data?.delhivery?.accounts))
@@ -225,6 +260,86 @@ const CourierCredentials = () => {
       },
     )
   }
+
+  const handleB2BLogin = (account) => {
+    b2bLoginMutation.mutate(
+      {
+        accountCode: account.accountCode,
+        username: account.username,
+        password: account.password,
+        apiBase: account.apiBase,
+      },
+      {
+        onSuccess: (response) => {
+          toast({
+            title: 'Delhivery B2B login successful',
+            description: response?.data?.expiresAt
+              ? `Token valid until ${new Date(response.data.expiresAt).toLocaleString()}`
+              : response?.message,
+            status: 'success',
+          })
+        },
+        onError: (err) => {
+          toast({
+            title: 'Delhivery B2B login failed',
+            description: err?.message,
+            status: 'error',
+          })
+        },
+      },
+    )
+  }
+
+  const updateB2BTestInput = (key, value) => {
+    setB2BTestInputs((current) => ({ ...current, [key]: value }))
+  }
+
+  const handleB2BAction = (mutation, payload, labels) => {
+    mutation.mutate(payload, {
+      onSuccess: (response) => {
+        toast({
+          title: labels.success,
+          description: response?.data?.status ? `Provider status ${response.data.status}` : response?.message,
+          status: 'success',
+        })
+      },
+      onError: (err) => {
+        toast({
+          title: labels.error,
+          description: err?.message,
+          status: 'error',
+        })
+      },
+    })
+  }
+
+  const buildB2BAccountPayload = (account) => ({
+    accountCode: account.accountCode,
+    apiBase: account.apiBase,
+  })
+
+  const buildFreightEstimatePayload = (account) => ({
+    ...buildB2BAccountPayload(account),
+    dimensions: [
+      {
+        length_cm: Number(b2bTestInputs.freightLengthCm),
+        width_cm: Number(b2bTestInputs.freightWidthCm),
+        height_cm: Number(b2bTestInputs.freightHeightCm),
+        box_count: Number(b2bTestInputs.freightBoxCount),
+      },
+    ],
+    weight_g: Number(b2bTestInputs.freightWeightG),
+    cheque_payment: false,
+    source_pin: b2bTestInputs.freightSourcePin,
+    consignee_pin: b2bTestInputs.freightConsigneePin,
+    payment_mode: b2bTestInputs.freightPaymentMode,
+    ...(b2bTestInputs.freightPaymentMode === 'cod'
+      ? { cod_amount: Number(b2bTestInputs.freightCodAmount || 0) }
+      : {}),
+    inv_amount: Number(b2bTestInputs.freightInvAmount),
+    freight_mode: b2bTestInputs.freightMode,
+    rov_insurance: b2bTestInputs.freightRovInsurance,
+  })
 
   if (isLoading) return <Spinner size="md" />
 
@@ -408,6 +523,51 @@ const CourierCredentials = () => {
                       )}
                     </FormControl>
 
+                    <Flex gap={2} wrap="wrap">
+                      <Badge colorScheme={account.hasB2BAuthToken ? 'green' : 'gray'}>
+                        {account.hasB2BAuthToken ? 'B2B token cached' : 'No B2B token'}
+                      </Badge>
+                      {!!account.b2bAuthTokenExpiresAt && (
+                        <Badge colorScheme="blue">
+                          Expires {new Date(account.b2bAuthTokenExpiresAt).toLocaleString()}
+                        </Badge>
+                      )}
+                    </Flex>
+
+                    <Button
+                      colorScheme="blue"
+                      variant="outline"
+                      onClick={() => handleB2BLogin(account)}
+                      isLoading={
+                        b2bLoginMutation.isPending &&
+                        b2bLoginMutation.variables?.accountCode === account.accountCode
+                      }
+                      isDisabled={
+                        !String(account.username || '').trim() ||
+                        (!String(account.password || '').trim() && !account.hasPassword)
+                      }
+                    >
+                      Test Delhivery B2B Login
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        handleB2BAction(
+                          b2bLogoutMutation,
+                          buildB2BAccountPayload(account),
+                          {
+                            success: 'Delhivery B2B logout successful',
+                            error: 'Delhivery B2B logout failed',
+                          },
+                        )
+                      }
+                      isLoading={b2bLogoutMutation.isPending}
+                      isDisabled={!account.hasB2BAuthToken}
+                    >
+                      Logout Delhivery B2B Token
+                    </Button>
+
                     <Button
                       variant="outline"
                       onClick={() => handleForgotPassword(account)}
@@ -423,6 +583,246 @@ const CourierCredentials = () => {
                     <Text fontSize="xs" color="gray.500">
                       This triggers Delhivery&apos;s forgot-password API for the saved B2B username.
                     </Text>
+
+                    <Stack spacing={3} borderTopWidth="1px" pt={4}>
+                      <Text fontWeight="semibold" fontSize="sm">
+                        B2B Endpoint Tests
+                      </Text>
+
+                      <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                        <FormControl>
+                          <FormLabel>Serviceability Pincode</FormLabel>
+                          <Input
+                            value={b2bTestInputs.serviceabilityPincode}
+                            onChange={(e) =>
+                              updateB2BTestInput('serviceabilityPincode', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Weight</FormLabel>
+                          <Input
+                            value={b2bTestInputs.serviceabilityWeight}
+                            onChange={(e) =>
+                              updateB2BTestInput('serviceabilityWeight', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                      </Grid>
+
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          handleB2BAction(
+                            b2bServiceabilityMutation,
+                            {
+                              ...buildB2BAccountPayload(account),
+                              pincode: b2bTestInputs.serviceabilityPincode,
+                              weight: b2bTestInputs.serviceabilityWeight,
+                            },
+                            {
+                              success: 'Delhivery B2B serviceability fetched',
+                              error: 'Delhivery B2B serviceability failed',
+                            },
+                          )
+                        }
+                        isLoading={b2bServiceabilityMutation.isPending}
+                        isDisabled={!account.hasB2BAuthToken}
+                      >
+                        Test Serviceability
+                      </Button>
+
+                      <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                        <FormControl>
+                          <FormLabel>TAT Origin Pin</FormLabel>
+                          <Input
+                            value={b2bTestInputs.tatOriginPin}
+                            onChange={(e) => updateB2BTestInput('tatOriginPin', e.target.value)}
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>TAT Destination Pin</FormLabel>
+                          <Input
+                            value={b2bTestInputs.tatDestinationPin}
+                            onChange={(e) =>
+                              updateB2BTestInput('tatDestinationPin', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                      </Grid>
+
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          handleB2BAction(
+                            b2bTatMutation,
+                            {
+                              ...buildB2BAccountPayload(account),
+                              originPin: b2bTestInputs.tatOriginPin,
+                              destinationPin: b2bTestInputs.tatDestinationPin,
+                            },
+                            {
+                              success: 'Delhivery B2B TAT fetched',
+                              error: 'Delhivery B2B TAT failed',
+                            },
+                          )
+                        }
+                        isLoading={b2bTatMutation.isPending}
+                        isDisabled={!account.hasB2BAuthToken}
+                      >
+                        Test Expected TAT
+                      </Button>
+
+                      <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                        <FormControl>
+                          <FormLabel>Freight Source Pin</FormLabel>
+                          <Input
+                            value={b2bTestInputs.freightSourcePin}
+                            onChange={(e) =>
+                              updateB2BTestInput('freightSourcePin', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Freight Consignee Pin</FormLabel>
+                          <Input
+                            value={b2bTestInputs.freightConsigneePin}
+                            onChange={(e) =>
+                              updateB2BTestInput('freightConsigneePin', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Weight Grams</FormLabel>
+                          <Input
+                            value={b2bTestInputs.freightWeightG}
+                            onChange={(e) => updateB2BTestInput('freightWeightG', e.target.value)}
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Invoice Amount</FormLabel>
+                          <Input
+                            value={b2bTestInputs.freightInvAmount}
+                            onChange={(e) =>
+                              updateB2BTestInput('freightInvAmount', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Length CM</FormLabel>
+                          <Input
+                            value={b2bTestInputs.freightLengthCm}
+                            onChange={(e) =>
+                              updateB2BTestInput('freightLengthCm', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Width CM</FormLabel>
+                          <Input
+                            value={b2bTestInputs.freightWidthCm}
+                            onChange={(e) =>
+                              updateB2BTestInput('freightWidthCm', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Height CM</FormLabel>
+                          <Input
+                            value={b2bTestInputs.freightHeightCm}
+                            onChange={(e) =>
+                              updateB2BTestInput('freightHeightCm', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Box Count</FormLabel>
+                          <Input
+                            value={b2bTestInputs.freightBoxCount}
+                            onChange={(e) =>
+                              updateB2BTestInput('freightBoxCount', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Payment Mode</FormLabel>
+                          <Input
+                            value={b2bTestInputs.freightPaymentMode}
+                            onChange={(e) =>
+                              updateB2BTestInput('freightPaymentMode', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Freight Mode</FormLabel>
+                          <Input
+                            value={b2bTestInputs.freightMode}
+                            onChange={(e) => updateB2BTestInput('freightMode', e.target.value)}
+                          />
+                        </FormControl>
+                      </Grid>
+
+                      <Flex align="center" justify="space-between">
+                        <Text fontSize="sm">ROV insurance</Text>
+                        <Switch
+                          isChecked={b2bTestInputs.freightRovInsurance}
+                          onChange={(e) =>
+                            updateB2BTestInput('freightRovInsurance', e.target.checked)
+                          }
+                        />
+                      </Flex>
+
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          handleB2BAction(
+                            b2bFreightEstimateMutation,
+                            buildFreightEstimatePayload(account),
+                            {
+                              success: 'Delhivery B2B freight estimate fetched',
+                              error: 'Delhivery B2B freight estimate failed',
+                            },
+                          )
+                        }
+                        isLoading={b2bFreightEstimateMutation.isPending}
+                        isDisabled={!account.hasB2BAuthToken}
+                      >
+                        Test Freight Estimator
+                      </Button>
+
+                      <FormControl>
+                        <FormLabel>LRNs</FormLabel>
+                        <Textarea
+                          rows={3}
+                          value={b2bTestInputs.freightChargesLrns}
+                          onChange={(e) =>
+                            updateB2BTestInput('freightChargesLrns', e.target.value)
+                          }
+                          placeholder="Comma separated LRNs"
+                        />
+                      </FormControl>
+
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          handleB2BAction(
+                            b2bFreightChargesMutation,
+                            {
+                              ...buildB2BAccountPayload(account),
+                              lrns: b2bTestInputs.freightChargesLrns,
+                            },
+                            {
+                              success: 'Delhivery B2B freight charges fetched',
+                              error: 'Delhivery B2B freight charges failed',
+                            },
+                          )
+                        }
+                        isLoading={b2bFreightChargesMutation.isPending}
+                        isDisabled={!account.hasB2BAuthToken}
+                      >
+                        Test Freight Charges
+                      </Button>
+                    </Stack>
                   </>
                 )}
 

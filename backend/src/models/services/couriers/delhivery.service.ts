@@ -171,6 +171,47 @@ const normalizeDelhiveryB2BAuthApiBase = (value: unknown) => {
   return DEFAULT_DELHIVERY_B2B_AUTH_API_BASE
 }
 
+const extractDelhiveryB2BToken = (value: unknown): string => {
+  if (!value) return ''
+
+  if (typeof value === 'string') {
+    const normalized = value.trim()
+    return normalized.split('.').length === 3 ? normalized : ''
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const token = extractDelhiveryB2BToken(entry)
+      if (token) return token
+    }
+    return ''
+  }
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    for (const key of [
+      'token',
+      'jwt',
+      'access_token',
+      'accessToken',
+      'bearer_token',
+      'bearerToken',
+      'auth_token',
+      'authToken',
+    ]) {
+      const direct = record[key]
+      if (typeof direct === 'string' && direct.trim()) return direct.trim()
+    }
+
+    for (const nested of Object.values(record)) {
+      const token = extractDelhiveryB2BToken(nested)
+      if (token) return token
+    }
+  }
+
+  return ''
+}
+
 export const triggerDelhiveryForgotPassword = async ({
   username,
   apiBase,
@@ -214,11 +255,251 @@ export const triggerDelhiveryForgotPassword = async ({
       err?.message ||
       'Delhivery forgot-password request failed'
 
-    throw new HttpError(
-      Number(err?.response?.status) || 502,
-      providerMessage,
-      err?.response?.data || err,
+    throw new HttpError(Number(err?.response?.status) || 502, providerMessage)
+  }
+}
+
+export const loginDelhiveryB2B = async ({
+  username,
+  password,
+  apiBase,
+}: {
+  username: string
+  password: string
+  apiBase?: string | null
+}) => {
+  const normalizedUsername = String(username || '').trim()
+  const normalizedPassword = String(password || '').trim()
+
+  if (!normalizedUsername || !normalizedPassword) {
+    throw new HttpError(400, 'Delhivery B2B username and password are required for login.')
+  }
+
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+
+  try {
+    const response = await axios.post(
+      `${resolvedApiBase}/ums/login`,
+      {
+        username: normalizedUsername,
+        password: normalizedPassword,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        timeout: 30000,
+      },
     )
+
+    const token = extractDelhiveryB2BToken(response.data)
+    if (!token) {
+      throw new HttpError(502, 'Delhivery login succeeded but did not return a bearer token.')
+    }
+
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
+    return {
+      apiBase: resolvedApiBase,
+      status: response.status,
+      token,
+      tokenType: 'Bearer',
+      expiresAt,
+      data: response.data,
+    }
+  } catch (err: any) {
+    if (err instanceof HttpError) throw err
+
+    const providerMessage =
+      extractProviderErrorMessage(err?.response?.data) ||
+      err?.response?.data?.message ||
+      err?.message ||
+      'Delhivery B2B login request failed'
+
+    throw new HttpError(Number(err?.response?.status) || 502, providerMessage)
+  }
+}
+
+const buildDelhiveryB2BAuthHeaders = (token: string, extraHeaders: Record<string, string> = {}) => ({
+  Authorization: `Bearer ${String(token || '').trim()}`,
+  'Content-Type': 'application/json',
+  Accept: 'application/json',
+  ...extraHeaders,
+})
+
+const ensureDelhiveryB2BToken = (token: string) => {
+  const normalizedToken = String(token || '').trim()
+  if (!normalizedToken) {
+    throw new HttpError(400, 'Delhivery B2B bearer token is required. Run login first.')
+  }
+  return normalizedToken
+}
+
+export const logoutDelhiveryB2B = async ({
+  token,
+  apiBase,
+}: {
+  token: string
+  apiBase?: string | null
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+
+  try {
+    const response = await axios.get(`${resolvedApiBase}/ums/logout`, {
+      headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+      timeout: 30000,
+    })
+
+    return {
+      apiBase: resolvedApiBase,
+      status: response.status,
+      data: response.data,
+    }
+  } catch (err: any) {
+    const providerMessage =
+      extractProviderErrorMessage(err?.response?.data) ||
+      err?.response?.data?.message ||
+      err?.message ||
+      'Delhivery B2B logout request failed'
+
+    throw new HttpError(Number(err?.response?.status) || 502, providerMessage)
+  }
+}
+
+export const checkDelhiveryB2BServiceability = async ({
+  token,
+  apiBase,
+  pincode,
+  weight,
+}: {
+  token: string
+  apiBase?: string | null
+  pincode: string
+  weight?: string | number | null
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const normalizedPincode = String(pincode || '').trim()
+  if (!normalizedPincode) {
+    throw new HttpError(400, 'Consignee pincode is required for Delhivery B2B serviceability.')
+  }
+
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const response = await axios.get(
+    `${resolvedApiBase}/pincode-service/${encodeURIComponent(normalizedPincode)}`,
+    {
+      headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+      params: weight ? { weight } : undefined,
+      timeout: 30000,
+    },
+  )
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
+export const estimateDelhiveryB2BTat = async ({
+  token,
+  apiBase,
+  originPin,
+  destinationPin,
+  requestId,
+}: {
+  token: string
+  apiBase?: string | null
+  originPin: string
+  destinationPin: string
+  requestId?: string | null
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const normalizedOriginPin = String(originPin || '').trim()
+  const normalizedDestinationPin = String(destinationPin || '').trim()
+  if (!normalizedOriginPin || !normalizedDestinationPin) {
+    throw new HttpError(400, 'Origin and destination pincodes are required for Delhivery B2B TAT.')
+  }
+
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const response = await axios.get(`${resolvedApiBase}/tat/estimate`, {
+    headers: buildDelhiveryB2BAuthHeaders(
+      normalizedToken,
+      requestId ? { 'X-Request-Id': String(requestId).trim() } : {},
+    ),
+    params: {
+      origin_pin: normalizedOriginPin,
+      destination_pin: normalizedDestinationPin,
+    },
+    timeout: 30000,
+  })
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
+export const estimateDelhiveryB2BFreight = async ({
+  token,
+  apiBase,
+  payload,
+}: {
+  token: string
+  apiBase?: string | null
+  payload: Record<string, any>
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+
+  const response = await axios.post(`${resolvedApiBase}/freight/estimate`, payload, {
+    headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+    timeout: 30000,
+  })
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
+export const getDelhiveryB2BFreightCharges = async ({
+  token,
+  apiBase,
+  lrns,
+}: {
+  token: string
+  apiBase?: string | null
+  lrns: string
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const normalizedLrns = String(lrns || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .slice(0, 25)
+    .join(',')
+
+  if (!normalizedLrns) {
+    throw new HttpError(400, 'At least one LRN is required for Delhivery freight charges.')
+  }
+
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const response = await axios.get(
+    `${resolvedApiBase}/lrn/freight-breakup/lrns=${encodeURIComponent(normalizedLrns)}`,
+    {
+      headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+      timeout: 30000,
+    },
+  )
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
   }
 }
 

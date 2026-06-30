@@ -155,3 +155,41 @@ export const triggerDelhiveryForgotPassword = async (payload) => {
   }
   return data
 }
+
+export const loginDelhiveryB2B = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/login', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to login to Delhivery B2B')
+  }
+  return data
+}
+
+export const logoutDelhiveryB2B = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/logout', payload)
+  if (!data?.success) throw new Error(data?.message || 'Failed to logout from Delhivery B2B')
+  return data
+}
+
+export const checkDelhiveryB2BServiceability = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/serviceability', payload)
+  if (!data?.success) throw new Error(data?.message || 'Failed to fetch Delhivery B2B serviceability')
+  return data
+}
+
+export const estimateDelhiveryB2BTat = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/tat', payload)
+  if (!data?.success) throw new Error(data?.message || 'Failed to fetch Delhivery B2B TAT')
+  return data
+}
+
+export const estimateDelhiveryB2BFreight = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/freight-estimate', payload)
+  if (!data?.success) throw new Error(data?.message || 'Failed to fetch Delhivery B2B freight estimate')
+  return data
+}
+
+export const getDelhiveryB2BFreightCharges = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/freight-charges', payload)
+  if (!data?.success) throw new Error(data?.message || 'Failed to fetch Delhivery B2B freight charges')
+  return data
+}

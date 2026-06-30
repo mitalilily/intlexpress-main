@@ -2,14 +2,20 @@
 import { useToast } from '@chakra-ui/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  checkDelhiveryB2BServiceability,
   createCourier,
   deleteCourier,
   deleteShippingRateAPI,
+  estimateDelhiveryB2BFreight,
+  estimateDelhiveryB2BTat,
   fetchCourierCredentials,
   fetchAllCouriersList,
   fetchAvailableCouriers,
   fetchServiceProviders,
   fetchShippingRates,
+  getDelhiveryB2BFreightCharges,
+  loginDelhiveryB2B,
+  logoutDelhiveryB2B,
   triggerDelhiveryForgotPassword,
   updateDelhiveryCredentials,
   updateCourierStatus,
@@ -128,6 +134,48 @@ export const useUpdateDelhiveryCredentials = () => {
 export const useDelhiveryForgotPassword = () =>
   useMutation({
     mutationFn: triggerDelhiveryForgotPassword,
+  })
+
+export const useDelhiveryB2BLogin = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: loginDelhiveryB2B,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['courierCredentials'])
+    },
+  })
+}
+
+export const useDelhiveryB2BLogout = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: logoutDelhiveryB2B,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['courierCredentials'])
+    },
+  })
+}
+
+export const useDelhiveryB2BServiceability = () =>
+  useMutation({
+    mutationFn: checkDelhiveryB2BServiceability,
+  })
+
+export const useDelhiveryB2BTat = () =>
+  useMutation({
+    mutationFn: estimateDelhiveryB2BTat,
+  })
+
+export const useDelhiveryB2BFreightEstimate = () =>
+  useMutation({
+    mutationFn: estimateDelhiveryB2BFreight,
+  })
+
+export const useDelhiveryB2BFreightCharges = () =>
+  useMutation({
+    mutationFn: getDelhiveryB2BFreightCharges,
   })
 
 export const useShippingRates = (filters = {}) => {

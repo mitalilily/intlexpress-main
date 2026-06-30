@@ -20,6 +20,8 @@ export interface DelhiveryAccountConfig {
   apiKey: string
   username: string
   password: string
+  b2bAuthToken: string
+  b2bAuthTokenExpiresAt: string
   isActive: boolean
   isDefault: boolean
   pickupLocationIds: string[]
@@ -86,6 +88,8 @@ const buildEmptyAccount = (index: number): DelhiveryAccountConfig => ({
   apiKey: '',
   username: '',
   password: '',
+  b2bAuthToken: '',
+  b2bAuthTokenExpiresAt: '',
   isActive: index === 0,
   isDefault: index === 0,
   pickupLocationIds: [],
@@ -111,6 +115,10 @@ const normalizeAccount = (
   const apiKey = normalize(raw.apiKey || fallback?.apiKey)
   const username = normalize(raw.username || fallback?.username)
   const password = normalize(raw.password || fallback?.password)
+  const b2bAuthToken = normalize(raw.b2bAuthToken || raw.b2b_auth_token)
+  const b2bAuthTokenExpiresAt = normalize(
+    raw.b2bAuthTokenExpiresAt || raw.b2b_auth_token_expires_at,
+  )
   const accountLabel =
     normalize(raw.accountLabel) || DELHIVERY_ACCOUNT_LABELS[index] || `Delhivery Account ${index + 1}`
   const isActive = raw.isActive === undefined ? index === 0 || Boolean(apiKey) : raw.isActive === true
@@ -128,6 +136,8 @@ const normalizeAccount = (
     apiKey,
     username,
     password,
+    b2bAuthToken,
+    b2bAuthTokenExpiresAt,
     isActive,
     isDefault,
     pickupLocationIds,
@@ -237,6 +247,8 @@ export const serializeDelhiveryAccountsForMetadata = (accounts: DelhiveryAccount
     apiKey: account.apiKey,
     username: account.username,
     password: account.password,
+    b2bAuthToken: account.b2bAuthToken,
+    b2bAuthTokenExpiresAt: account.b2bAuthTokenExpiresAt,
     isActive: account.isActive,
     isDefault: account.isDefault,
     pickupLocationIds: account.pickupLocationIds,

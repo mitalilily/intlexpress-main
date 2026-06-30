@@ -46,7 +46,15 @@ import {
   serializeDelhiveryAccountsForMetadata,
   type DelhiveryAccountConfig,
 } from '../../models/services/delhiveryCredentials.service'
-import { triggerDelhiveryForgotPassword } from '../../models/services/couriers/delhivery.service'
+import {
+  checkDelhiveryB2BServiceability,
+  estimateDelhiveryB2BFreight,
+  estimateDelhiveryB2BTat,
+  getDelhiveryB2BFreightCharges,
+  loginDelhiveryB2B,
+  logoutDelhiveryB2B,
+  triggerDelhiveryForgotPassword,
+} from '../../models/services/couriers/delhivery.service'
 
 export interface ShippingRateFilters {
   courier_name?: string[]
@@ -472,6 +480,8 @@ const buildDelhiveryCredentialResponse = (accounts: DelhiveryAccountConfig[]) =>
     apiKeyMasked: maskDelhiveryApiKey(account.apiKey || ''),
     hasPassword: Boolean((account.password || '').trim()),
     passwordMasked: account.password ? '********' : '',
+    hasB2BAuthToken: Boolean((account.b2bAuthToken || '').trim()),
+    b2bAuthTokenExpiresAt: account.b2bAuthTokenExpiresAt || '',
     isActive: account.isActive === true,
     isDefault: account.isDefault === true,
     pickupLocationIds: account.pickupLocationIds || [],
@@ -497,6 +507,10 @@ const sanitizeDelhiveryAccountsPayload = (
     const raw = rawAccounts[index] && typeof rawAccounts[index] === 'object' ? rawAccounts[index] : {}
     const record = raw as Record<string, any>
     const nextApiKey = String(record.apiKey || '').trim()
+    const nextUsername = String(record.username || '').trim()
+    const nextPassword = String(record.password || '').trim()
+    const usernameChanged = Boolean(nextUsername) && nextUsername !== (existing?.username || '')
+    const passwordChanged = Boolean(nextPassword) && nextPassword !== (existing?.password || '')
 
     return {
       accountCode,
@@ -509,9 +523,12 @@ const sanitizeDelhiveryAccountsPayload = (
         existing?.apiBase ||
         DEFAULT_DELHIVERY_API_BASE,
       clientName: String(record.clientName || '').trim() || existing?.clientName || '',
-      username: String(record.username || '').trim() || existing?.username || '',
+      username: nextUsername || existing?.username || '',
       apiKey: nextApiKey || existing?.apiKey || '',
-      password: String(record.password || '').trim() || existing?.password || '',
+      password: nextPassword || existing?.password || '',
+      b2bAuthToken: usernameChanged || passwordChanged ? '' : existing?.b2bAuthToken || '',
+      b2bAuthTokenExpiresAt:
+        usernameChanged || passwordChanged ? '' : existing?.b2bAuthTokenExpiresAt || '',
       isActive:
         typeof record.isActive === 'boolean' ? record.isActive : existing?.isActive ?? index === 0,
       isDefault: record.isDefault === true,
@@ -670,6 +687,90 @@ export const updateDelhiveryCredentialsController = async (req: Request, res: Re
   }
 }
 
+const persistDelhiveryB2BToken = async ({
+  accountCode,
+  token,
+  expiresAt,
+}: {
+  accountCode: string
+  token: string
+  expiresAt: string
+}) => {
+  const [existingRow] = await db
+    .select({ metadata: courier_credentials.metadata })
+    .from(courier_credentials)
+    .where(eq(courier_credentials.provider, 'delhivery'))
+    .limit(1)
+
+  if (!existingRow) return
+
+  const accounts = await getDelhiveryAccounts()
+  const nextAccounts = accounts.map((account) =>
+    account.accountCode === accountCode
+      ? {
+          ...account,
+          b2bAuthToken: token,
+          b2bAuthTokenExpiresAt: expiresAt,
+        }
+      : account,
+  )
+
+  const nextMetadata = {
+    ...(existingRow.metadata && typeof existingRow.metadata === 'object' ? existingRow.metadata : {}),
+    delhiveryAccounts: serializeDelhiveryAccountsForMetadata(nextAccounts),
+    delhiveryAccountsVersion: 2,
+  }
+
+  await db
+    .update(courier_credentials)
+    .set({
+      metadata: nextMetadata,
+      updatedAt: new Date(),
+    })
+    .where(eq(courier_credentials.provider, 'delhivery'))
+}
+
+const resolveDelhiveryB2BAccountForAdmin = async (accountCode = 'account_2') => {
+  const accounts = await getDelhiveryAccounts()
+  return (
+    accounts.find((account) => account.accountCode === accountCode) ||
+    accounts[1] ||
+    accounts[0]
+  )
+}
+
+const resolveDelhiveryB2BTokenForAdmin = (req: Request, account?: DelhiveryAccountConfig) => {
+  const directToken = String(req.body?.token || req.headers.authorization || '')
+    .replace(/^Bearer\s+/i, '')
+    .trim()
+
+  return directToken || account?.b2bAuthToken || ''
+}
+
+const respondWithDelhiveryB2BResult = (
+  res: Response,
+  message: string,
+  result: { apiBase: string; status: number; data: unknown },
+) =>
+  res.json({
+    success: true,
+    message,
+    data: {
+      apiBase: result.apiBase,
+      status: result.status,
+      providerResponse: result.data,
+    },
+  })
+
+const handleDelhiveryB2BAdminError = (res: Response, err: any, fallbackMessage: string) => {
+  console.error(fallbackMessage, err)
+  const statusCode = typeof err?.statusCode === 'number' ? err.statusCode : 500
+  res.status(statusCode).json({
+    success: false,
+    message: err?.message || fallbackMessage,
+  })
+}
+
 export const resetDelhiveryPasswordController = async (req: Request, res: Response) => {
   try {
     const requestedAccountCode = String(req.body?.accountCode || 'account_2').trim()
@@ -701,6 +802,152 @@ export const resetDelhiveryPasswordController = async (req: Request, res: Respon
       message: err?.message || 'Failed to submit Delhivery password reset request',
       data: err?.data || null,
     })
+  }
+}
+
+export const loginDelhiveryB2BController = async (req: Request, res: Response) => {
+  try {
+    const requestedAccountCode = String(req.body?.accountCode || 'account_2').trim()
+    const requestedUsername = String(req.body?.username || '').trim()
+    const requestedPassword = String(req.body?.password || '').trim()
+    const requestedApiBase = String(req.body?.apiBase || '').trim()
+
+    const accounts = await getDelhiveryAccounts()
+    const selectedAccount =
+      accounts.find((account) => account.accountCode === requestedAccountCode) ||
+      accounts[1] ||
+      accounts[0]
+
+    const username = requestedUsername || selectedAccount?.username || ''
+    const password = requestedPassword || selectedAccount?.password || ''
+    const apiBase = requestedApiBase || selectedAccount?.apiBase || ''
+
+    const result = await loginDelhiveryB2B({
+      username,
+      password,
+      apiBase,
+    })
+
+    if (result.token) {
+      await persistDelhiveryB2BToken({
+        accountCode: selectedAccount?.accountCode || requestedAccountCode,
+        token: result.token,
+        expiresAt: result.expiresAt,
+      })
+    }
+
+    res.json({
+      success: true,
+      message: 'Delhivery B2B login successful',
+      data: {
+        apiBase: result.apiBase,
+        status: result.status,
+        tokenType: result.tokenType,
+        hasToken: Boolean(result.token),
+        tokenMasked: result.token
+          ? `${result.token.slice(0, 8)}...${result.token.slice(-6)}`
+          : '',
+        expiresAt: result.expiresAt,
+      },
+    })
+  } catch (err: any) {
+    console.error('Failed to login to Delhivery B2B:', err)
+    const statusCode = typeof err?.statusCode === 'number' ? err.statusCode : 500
+    res.status(statusCode).json({
+      success: false,
+      message: err?.message || 'Failed to login to Delhivery B2B',
+    })
+  }
+}
+
+export const logoutDelhiveryB2BController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const result = await logoutDelhiveryB2B({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+    })
+
+    if (account?.accountCode) {
+      await persistDelhiveryB2BToken({
+        accountCode: account.accountCode,
+        token: '',
+        expiresAt: '',
+      })
+    }
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B logout successful', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to logout from Delhivery B2B')
+  }
+}
+
+export const checkDelhiveryB2BServiceabilityController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const result = await checkDelhiveryB2BServiceability({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      pincode: String(req.body?.pincode || req.body?.consigneePin || '').trim(),
+      weight: req.body?.weight,
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B serviceability fetched', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B serviceability')
+  }
+}
+
+export const estimateDelhiveryB2BTatController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const result = await estimateDelhiveryB2BTat({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      originPin: String(req.body?.originPin || req.body?.origin_pin || '').trim(),
+      destinationPin: String(req.body?.destinationPin || req.body?.destination_pin || '').trim(),
+      requestId: String(req.body?.requestId || '').trim(),
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B TAT fetched', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B TAT')
+  }
+}
+
+export const estimateDelhiveryB2BFreightController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const { accountCode: _accountCode, token: _token, apiBase: _apiBase, ...payload } = req.body || {}
+    const result = await estimateDelhiveryB2BFreight({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      payload,
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B freight estimate fetched', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B freight estimate')
+  }
+}
+
+export const getDelhiveryB2BFreightChargesController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const result = await getDelhiveryB2BFreightCharges({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      lrns: String(req.body?.lrns || '').trim(),
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B freight charges fetched', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B freight charges')
   }
 }
 
