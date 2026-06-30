@@ -265,3 +265,11 @@ export const bookDelhiveryB2BAppointment = async (payload) => {
   }
   return data
 }
+
+export const createDelhiveryB2BPickupRequest = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/pickup-request', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to create Delhivery B2B pickup request')
+  }
+  return data
+}

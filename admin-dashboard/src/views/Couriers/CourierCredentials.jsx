@@ -27,6 +27,7 @@ import {
   useDelhiveryB2BShipmentCancel,
   useDelhiveryB2BLogin,
   useDelhiveryB2BLogout,
+  useDelhiveryB2BPickupRequestCreate,
   useDelhiveryB2BServiceability,
   useDelhiveryB2BShipmentTrack,
   useDelhiveryB2BTat,
@@ -241,6 +242,11 @@ const DEFAULT_B2B_TEST_INPUTS = {
   appointmentPoNumbers: '2273410057461',
   appointmentId: '',
   appointmentPoExpiryDate: '31/12/2026',
+  pickupRequestWarehouse: 'test',
+  pickupRequestDate: '2026-12-31',
+  pickupRequestStartTime: '05:00:00',
+  pickupRequestExpectedPackageCount: '1',
+  pickupRequestId: '',
 }
 
 const CourierCredentials = () => {
@@ -263,6 +269,7 @@ const CourierCredentials = () => {
   const b2bShipmentCancelMutation = useDelhiveryB2BShipmentCancel()
   const b2bShipmentTrackMutation = useDelhiveryB2BShipmentTrack()
   const b2bAppointmentBookMutation = useDelhiveryB2BAppointmentBook()
+  const b2bPickupRequestCreateMutation = useDelhiveryB2BPickupRequestCreate()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -693,6 +700,26 @@ const CourierCredentials = () => {
       {
         success: 'Delhivery B2B appointment booked',
         error: 'Delhivery B2B appointment booking failed',
+      },
+    )
+  }
+
+  const handlePickupRequestCreate = (account) => {
+    handleB2BAction(
+      b2bPickupRequestCreateMutation,
+      {
+        ...buildB2BAccountPayload(account),
+        client_warehouse: b2bTestInputs.pickupRequestWarehouse,
+        pickup_date: b2bTestInputs.pickupRequestDate,
+        start_time: b2bTestInputs.pickupRequestStartTime,
+        expected_package_count: Number(b2bTestInputs.pickupRequestExpectedPackageCount || 0),
+        ...(String(b2bTestInputs.pickupRequestId || '').trim()
+          ? { requestId: String(b2bTestInputs.pickupRequestId || '').trim() }
+          : {}),
+      },
+      {
+        success: 'Delhivery B2B pickup request created',
+        error: 'Delhivery B2B pickup request failed',
       },
     )
   }
@@ -1580,6 +1607,75 @@ const CourierCredentials = () => {
                         }
                       >
                         Book Last-Mile Appointment
+                      </Button>
+
+                      <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                        <FormControl>
+                          <FormLabel>Pickup Warehouse</FormLabel>
+                          <Input
+                            value={b2bTestInputs.pickupRequestWarehouse}
+                            onChange={(e) =>
+                              updateB2BTestInput('pickupRequestWarehouse', e.target.value)
+                            }
+                            placeholder="Registered client warehouse name"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Pickup Date</FormLabel>
+                          <Input
+                            value={b2bTestInputs.pickupRequestDate}
+                            onChange={(e) =>
+                              updateB2BTestInput('pickupRequestDate', e.target.value)
+                            }
+                            placeholder="YYYY-MM-DD"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Start Time</FormLabel>
+                          <Input
+                            value={b2bTestInputs.pickupRequestStartTime}
+                            onChange={(e) =>
+                              updateB2BTestInput('pickupRequestStartTime', e.target.value)
+                            }
+                            placeholder="HH:MM:SS"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Expected Package Count</FormLabel>
+                          <Input
+                            value={b2bTestInputs.pickupRequestExpectedPackageCount}
+                            onChange={(e) =>
+                              updateB2BTestInput(
+                                'pickupRequestExpectedPackageCount',
+                                e.target.value,
+                              )
+                            }
+                            placeholder="1"
+                          />
+                        </FormControl>
+                        <FormControl gridColumn={{ base: 'auto', md: '1 / -1' }}>
+                          <FormLabel>X-Request-Id</FormLabel>
+                          <Input
+                            value={b2bTestInputs.pickupRequestId}
+                            onChange={(e) => updateB2BTestInput('pickupRequestId', e.target.value)}
+                            placeholder="Optional unique request id"
+                          />
+                        </FormControl>
+                      </Grid>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handlePickupRequestCreate(account)}
+                        isLoading={b2bPickupRequestCreateMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken ||
+                          !String(b2bTestInputs.pickupRequestWarehouse || '').trim() ||
+                          !String(b2bTestInputs.pickupRequestDate || '').trim() ||
+                          !String(b2bTestInputs.pickupRequestStartTime || '').trim() ||
+                          !String(b2bTestInputs.pickupRequestExpectedPackageCount || '').trim()
+                        }
+                      >
+                        Create Pickup Request
                       </Button>
                     </Stack>
                   </>

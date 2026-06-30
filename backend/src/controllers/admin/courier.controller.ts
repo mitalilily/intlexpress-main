@@ -48,6 +48,7 @@ import {
 } from '../../models/services/delhiveryCredentials.service'
 import {
   bookDelhiveryB2BAppointment,
+  createDelhiveryB2BPickupRequest,
   cancelDelhiveryB2BShipment,
   checkDelhiveryB2BServiceability,
   createDelhiveryB2BClientWarehouse,
@@ -1152,6 +1153,36 @@ export const bookDelhiveryB2BAppointmentController = async (req: Request, res: R
     respondWithDelhiveryB2BResult(res, 'Delhivery B2B appointment booked', result)
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to book Delhivery B2B appointment')
+  }
+}
+
+export const createDelhiveryB2BPickupRequestController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const {
+      accountCode: _accountCode,
+      token: _token,
+      apiBase: _apiBase,
+      requestId,
+      request_id,
+      xRequestId,
+      x_request_id,
+      ...payload
+    } = req.body || {}
+    const result = await createDelhiveryB2BPickupRequest({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      payload,
+      requestId: String(requestId || request_id || xRequestId || x_request_id || '').trim(),
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B pickup request created', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to create Delhivery B2B pickup request')
   }
 }
 
