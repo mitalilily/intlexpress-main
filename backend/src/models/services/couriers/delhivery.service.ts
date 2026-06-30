@@ -7,6 +7,7 @@ import {
 } from '../../../utils/delhiveryCourier'
 import {
   type DelhiveryAccountConfig,
+  persistDelhiveryAccountRuntimeDetails,
   resolveDelhiveryCredentials,
 } from '../delhiveryCredentials.service'
 import { ShipmentParams } from '../shiprocket.service'
@@ -41,6 +42,60 @@ const extractProviderErrorMessage = (value: unknown): string | null => {
   }
 
   return null
+}
+
+const normalizeDelhiveryManifestRemarks = (remarks: unknown): string[] => {
+  if (!remarks) return []
+  if (Array.isArray(remarks)) {
+    return remarks
+      .flatMap((entry) => normalizeDelhiveryManifestRemarks(entry))
+      .filter((entry) => entry.trim().length > 0)
+  }
+  if (typeof remarks === 'string') {
+    return [remarks.trim()].filter(Boolean)
+  }
+  if (typeof remarks === 'object') {
+    return Object.values(remarks as Record<string, unknown>)
+      .flatMap((entry) => normalizeDelhiveryManifestRemarks(entry))
+      .filter((entry) => entry.trim().length > 0)
+  }
+  return [String(remarks).trim()].filter(Boolean)
+}
+
+const extractDelhiveryManifestFailureReason = (value: any): string => {
+  const packages: any[] = Array.isArray(value?.packages)
+    ? value.packages
+    : value?.packages
+      ? [value.packages]
+      : []
+
+  const packageFailureReason = packages
+    .filter(
+      (pkg) =>
+        String(pkg?.status || '').trim().toLowerCase() === 'fail' ||
+        pkg?.serviceable === false ||
+        !pkg?.waybill,
+    )
+    .map((pkg) => {
+      const joinedRemarks = normalizeDelhiveryManifestRemarks(pkg?.remarks).join(' | ')
+      return (
+        joinedRemarks ||
+        extractProviderErrorMessage(pkg?.message) ||
+        extractProviderErrorMessage(pkg?.reason) ||
+        extractProviderErrorMessage(pkg?.rmk) ||
+        `status=${pkg?.status ?? 'unknown'}`
+      )
+    })
+    .filter(Boolean)
+    .join(' | ')
+
+  return (
+    packageFailureReason ||
+    extractProviderErrorMessage(value?.message) ||
+    extractProviderErrorMessage(value?.status_message) ||
+    normalizeDelhiveryManifestRemarks(value?.rmk).join(' | ') ||
+    'Delhivery reported a failure during shipment creation.'
+  )
 }
 
 const isTimeoutError = (err: any) => {
@@ -1110,6 +1165,121 @@ export class DelhiveryService {
     this.resolvedAccount = credentials
   }
 
+  private async persistResolvedAccountDetails({
+    clientName,
+    pickupLocationName,
+    pickupLocationId,
+  }: {
+    clientName?: string | null
+    pickupLocationName?: string | null
+    pickupLocationId?: string | null
+  }) {
+    if (!this.resolvedAccount?.accountCode) return
+
+    await persistDelhiveryAccountRuntimeDetails({
+      accountCode: this.resolvedAccount.accountCode,
+      clientName,
+      pickupLocationId:
+        pickupLocationId || this.resolutionContext.pickupLocationId || null,
+      pickupLocationName:
+        pickupLocationName || this.resolutionContext.pickupLocationName || null,
+    })
+  }
+
+  private async ensureManifestWarehouseRegistered({
+    pickup,
+    sellerName,
+  }: {
+    pickup: ShipmentParams['pickup']
+    sellerName: string
+  }) {
+    await this.ensureCredentials()
+
+    const pickupLocationName = String(pickup?.warehouse_name || '').trim()
+    const pickupAddress = [pickup?.address, pickup?.address_2]
+      .map((part) => String(part || '').trim())
+      .filter(Boolean)
+      .join(', ')
+    const alreadyKnown =
+      Boolean(String(this.clientName || '').trim()) &&
+      Boolean(pickupLocationName) &&
+      Boolean(
+        this.resolvedAccount?.pickupLocationNames?.some(
+          (entry) => String(entry || '').trim().toLowerCase() === pickupLocationName.toLowerCase(),
+        ),
+      )
+
+    if (alreadyKnown) {
+      return
+    }
+
+    try {
+      const registration = await this.createWarehouse({
+        name: pickupLocationName || sellerName || 'Default Warehouse',
+        registered_name: sellerName || pickup?.name || 'Shiplifi',
+        phone: String(pickup?.phone || '').trim(),
+        email: undefined,
+        address: pickupAddress || String(pickup?.address || '').trim(),
+        city: String(pickup?.city || '').trim(),
+        pin: String(pickup?.pincode || '').trim(),
+        country: String(pickup?.country || 'India').trim() || 'India',
+        return_address: pickupAddress || String(pickup?.address || '').trim(),
+        return_city: String(pickup?.city || '').trim(),
+        return_pin: String(pickup?.pincode || '').trim(),
+        return_state: String(pickup?.state || '').trim(),
+        return_country: String(pickup?.country || 'India').trim() || 'India',
+      })
+
+      const resolvedClientName = String(
+        registration?.data?.client ||
+          registration?.client ||
+          registration?.data?.registered_name ||
+          this.clientName ||
+          '',
+      ).trim()
+
+      if (resolvedClientName) {
+        this.clientName = resolvedClientName
+      }
+
+      await this.persistResolvedAccountDetails({
+        clientName: resolvedClientName || this.clientName,
+        pickupLocationName,
+      })
+
+      console.log('ℹ️ Delhivery warehouse ensured before manifest', {
+        pickup_location: pickupLocationName || null,
+        client_name: resolvedClientName || this.clientName || null,
+      })
+    } catch (err: any) {
+      const providerMessage = String(
+        err?.response?.data?.error?.[0] ||
+          err?.response?.data?.message ||
+          err?.message ||
+          '',
+      )
+        .trim()
+        .toLowerCase()
+
+      const duplicateWarehouse =
+        providerMessage.includes('already exists') ||
+        providerMessage.includes('client-warehouse of client')
+
+      if (duplicateWarehouse) {
+        await this.persistResolvedAccountDetails({
+          clientName: this.clientName,
+          pickupLocationName,
+        })
+        console.warn('ℹ️ Delhivery warehouse already exists; continuing with manifest', {
+          pickup_location: pickupLocationName || null,
+        })
+        return
+      }
+
+      throw err
+    }
+  }
+
   async getResolvedAccount() {
     await this.ensureCredentials()
     return this.resolvedAccount
@@ -1405,6 +1575,11 @@ export class DelhiveryService {
         throw new HttpError(400, 'Valid pickup phone is required for Delhivery manifests.')
       }
 
+      await this.ensureManifestWarehouseRegistered({
+        pickup,
+        sellerName,
+      })
+
       const orderDate =
         params.order_date instanceof Date
           ? params.order_date.toISOString().split('T')[0]
@@ -1619,23 +1794,6 @@ export class DelhiveryService {
           : []
 
       const normalizedStatus = (value?: string) => (value || '').toLowerCase()
-      const normalizeRemarks = (remarks: unknown): string[] => {
-        if (!remarks) return []
-        if (Array.isArray(remarks)) {
-          return remarks
-            .flatMap((entry) => normalizeRemarks(entry))
-            .filter((entry) => entry.trim().length > 0)
-        }
-        if (typeof remarks === 'string') {
-          return [remarks.trim()].filter(Boolean)
-        }
-        if (typeof remarks === 'object') {
-          return Object.values(remarks as Record<string, unknown>)
-            .flatMap((entry) => normalizeRemarks(entry))
-            .filter((entry) => entry.trim().length > 0)
-        }
-        return [String(remarks).trim()].filter(Boolean)
-      }
       const overallStatus = normalizedStatus(responseData?.status)
       const packageFailures = packages.filter(
         (pkg) =>
@@ -1643,7 +1801,7 @@ export class DelhiveryService {
       )
       const packageFailuresWithRemarks = packageFailures.map((pkg) => ({
         ...pkg,
-        remarks: normalizeRemarks(pkg?.remarks),
+        remarks: normalizeDelhiveryManifestRemarks(pkg?.remarks),
       }))
       const successPackage = packages.find(
         (pkg) =>
@@ -1662,24 +1820,7 @@ export class DelhiveryService {
           packageFailures: packageFailuresWithRemarks,
         })
 
-        const failureReason =
-          responseData?.message ||
-          responseData?.status_message ||
-          normalizeRemarks(responseData?.rmk).join(' | ') ||
-          packageFailuresWithRemarks
-            .map((pkg) => {
-              const joinedRemarks = pkg.remarks.join(' | ')
-              return (
-                joinedRemarks ||
-                pkg?.message ||
-                pkg?.reason ||
-                pkg?.rmk ||
-                `status=${pkg?.status ?? 'unknown'}`
-              )
-            })
-            .filter(Boolean)
-            .join(' | ') ||
-          'Delhivery reported a failure during shipment creation.'
+        const failureReason = extractDelhiveryManifestFailureReason(responseData)
         throw new DelhiveryManifestError(502, failureReason, responseData)
       }
 
@@ -1715,6 +1856,12 @@ export class DelhiveryService {
       return responseData
     } catch (err: any) {
       console.error('Delhivery shipment error:', err.response?.data || err.message)
+      if (err instanceof DelhiveryManifestError && err.details) {
+        const failureReason = extractDelhiveryManifestFailureReason(err.details)
+        if (failureReason && failureReason !== err.message) {
+          throw new DelhiveryManifestError(err.statusCode, failureReason, err.details)
+        }
+      }
       if (err instanceof HttpError) {
         throw err
       }

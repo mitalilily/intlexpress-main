@@ -288,6 +288,89 @@ export const getDelhiveryAccounts = async (): Promise<DelhiveryAccountConfig[]> 
 export const getDelhiveryCredentials = async (): Promise<DelhiveryCredentials> =>
   resolveDelhiveryCredentials()
 
+export const persistDelhiveryAccountRuntimeDetails = async ({
+  accountCode,
+  clientName,
+  pickupLocationId,
+  pickupLocationName,
+}: {
+  accountCode: string
+  clientName?: string | null
+  pickupLocationId?: string | null
+  pickupLocationName?: string | null
+}) => {
+  const normalizedAccountCode = normalize(accountCode)
+  if (!normalizedAccountCode) return
+
+  const [existingRow] = await db
+    .select({
+      apiBase: courier_credentials.apiBase,
+      clientName: courier_credentials.clientName,
+      apiKey: courier_credentials.apiKey,
+      username: courier_credentials.username,
+      password: courier_credentials.password,
+      metadata: courier_credentials.metadata,
+    })
+    .from(courier_credentials)
+    .where(eq(courier_credentials.provider, 'delhivery'))
+    .limit(1)
+
+  if (!existingRow) return
+
+  const normalizedClientName = normalize(clientName)
+  const normalizedPickupLocationId = normalize(pickupLocationId)
+  const normalizedPickupLocationName = normalize(pickupLocationName)
+  const accounts = normalizeAccounts(existingRow)
+
+  const nextAccounts = accounts.map((account) => {
+    if (account.accountCode !== normalizedAccountCode) {
+      return account
+    }
+
+    const pickupLocationIds = Array.from(
+      new Set(
+        [...account.pickupLocationIds, normalizedPickupLocationId]
+          .map((entry) => normalize(entry))
+          .filter(Boolean),
+      ),
+    )
+    const pickupLocationNames = Array.from(
+      new Set(
+        [...account.pickupLocationNames, normalizedPickupLocationName]
+          .map((entry) => normalize(entry))
+          .filter(Boolean),
+      ),
+    )
+
+    return {
+      ...account,
+      clientName: normalizedClientName || account.clientName,
+      pickupLocationIds,
+      pickupLocationNames,
+    }
+  })
+
+  const primaryAccount =
+    nextAccounts.find((account) => account.isDefault) ||
+    nextAccounts.find((account) => account.isActive && account.isConfigured) ||
+    nextAccounts[0]
+
+  const nextMetadata = {
+    ...(existingRow.metadata && typeof existingRow.metadata === 'object' ? existingRow.metadata : {}),
+    delhiveryAccounts: serializeDelhiveryAccountsForMetadata(nextAccounts),
+    delhiveryAccountsVersion: 2,
+  }
+
+  await db
+    .update(courier_credentials)
+    .set({
+      clientName: primaryAccount?.clientName || existingRow.clientName || '',
+      metadata: nextMetadata,
+      updatedAt: new Date(),
+    })
+    .where(eq(courier_credentials.provider, 'delhivery'))
+}
+
 export const resolveDelhiveryCredentials = async (
   context: DelhiveryResolutionContext = {},
 ): Promise<DelhiveryCredentials> => {
