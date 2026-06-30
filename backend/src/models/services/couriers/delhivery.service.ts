@@ -1032,6 +1032,51 @@ export const generateDelhiveryB2BDocument = async ({
   }
 }
 
+export const getDelhiveryB2BDocumentStatus = async ({
+  token,
+  apiBase,
+  docType,
+  jobId,
+  requestId,
+}: {
+  token: string
+  apiBase?: string | null
+  docType: string
+  jobId: string
+  requestId?: string | null
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const normalizedDocType = String(docType || '').trim()
+  const normalizedJobId = String(jobId || '').trim()
+  const normalizedRequestId = String(requestId || '').trim()
+
+  if (!normalizedDocType) {
+    throw new HttpError(400, 'doc_type is required for Delhivery B2B document status.')
+  }
+
+  if (!normalizedJobId) {
+    throw new HttpError(400, 'job_id is required for Delhivery B2B document status.')
+  }
+
+  const response = await axios.get(
+    `${resolvedApiBase}/generate/${encodeURIComponent(normalizedDocType)}/status/${encodeURIComponent(normalizedJobId)}`,
+    {
+      headers: {
+        ...buildDelhiveryB2BAuthHeaders(normalizedToken),
+        ...(normalizedRequestId ? { 'X-Request-Id': normalizedRequestId } : {}),
+      },
+      timeout: 30000,
+    },
+  )
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
 export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''

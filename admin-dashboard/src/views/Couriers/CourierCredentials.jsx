@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   useCourierCredentials,
   useDelhiveryB2BAppointmentBook,
+  useDelhiveryB2BDocumentStatus,
   useDelhiveryB2BDocumentGenerate,
   useDelhiveryB2BLabelUrls,
   useDelhiveryB2BLrCopy,
@@ -266,6 +267,8 @@ const DEFAULT_B2B_TEST_INPUTS = {
   documentCallbackMethod: 'POST',
   documentCallbackAuthorization: 'Bearer Token',
   documentRequestId: '',
+  documentJobId: '',
+  documentStatusRequestId: '',
 }
 
 const CourierCredentials = () => {
@@ -293,6 +296,7 @@ const CourierCredentials = () => {
   const b2bLabelUrlsMutation = useDelhiveryB2BLabelUrls()
   const b2bLrCopyMutation = useDelhiveryB2BLrCopy()
   const b2bDocumentGenerateMutation = useDelhiveryB2BDocumentGenerate()
+  const b2bDocumentStatusMutation = useDelhiveryB2BDocumentStatus()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -855,6 +859,9 @@ const CourierCredentials = () => {
       {
         onSuccess: (response) => {
           const nextJobId = String(response?.data?.jobId || '').trim()
+          if (nextJobId) {
+            updateB2BTestInput('documentJobId', nextJobId)
+          }
           toast({
             title: 'Delhivery B2B document generation submitted',
             description: nextJobId
@@ -872,6 +879,24 @@ const CourierCredentials = () => {
             status: 'error',
           })
         },
+      },
+    )
+  }
+
+  const handleDocumentStatus = (account) => {
+    handleB2BAction(
+      b2bDocumentStatusMutation,
+      {
+        ...buildB2BAccountPayload(account),
+        docType: b2bTestInputs.documentDocType,
+        jobId: b2bTestInputs.documentJobId,
+        ...(String(b2bTestInputs.documentStatusRequestId || '').trim()
+          ? { requestId: String(b2bTestInputs.documentStatusRequestId || '').trim() }
+          : {}),
+      },
+      {
+        success: 'Delhivery B2B document status fetched',
+        error: 'Delhivery B2B document status failed',
       },
     )
   }
@@ -2027,6 +2052,40 @@ const CourierCredentials = () => {
                         }
                       >
                         Generate Document
+                      </Button>
+
+                      <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                        <FormControl>
+                          <FormLabel>Document Job ID</FormLabel>
+                          <Input
+                            value={b2bTestInputs.documentJobId}
+                            onChange={(e) => updateB2BTestInput('documentJobId', e.target.value)}
+                            placeholder="job_id returned from document generation"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Status X-Request-Id</FormLabel>
+                          <Input
+                            value={b2bTestInputs.documentStatusRequestId}
+                            onChange={(e) =>
+                              updateB2BTestInput('documentStatusRequestId', e.target.value)
+                            }
+                            placeholder="Optional unique request id"
+                          />
+                        </FormControl>
+                      </Grid>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleDocumentStatus(account)}
+                        isLoading={b2bDocumentStatusMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken ||
+                          !String(b2bTestInputs.documentDocType || '').trim() ||
+                          !String(b2bTestInputs.documentJobId || '').trim()
+                        }
+                      >
+                        Check Document Status
                       </Button>
                     </Stack>
                   </>

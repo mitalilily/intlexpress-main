@@ -307,3 +307,11 @@ export const generateDelhiveryB2BDocument = async (payload) => {
   }
   return data
 }
+
+export const getDelhiveryB2BDocumentStatus = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/generate-document-status', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to fetch Delhivery B2B document status')
+  }
+  return data
+}

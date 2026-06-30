@@ -20,6 +20,7 @@ import {
   fetchServiceProviders,
   fetchShippingRates,
   getDelhiveryB2BFreightCharges,
+  getDelhiveryB2BDocumentStatus,
   getDelhiveryB2BLabelUrls,
   getDelhiveryB2BLrCopy,
   generateDelhiveryB2BDocument,
@@ -260,6 +261,11 @@ export const useDelhiveryB2BLrCopy = () =>
 export const useDelhiveryB2BDocumentGenerate = () =>
   useMutation({
     mutationFn: generateDelhiveryB2BDocument,
+  })
+
+export const useDelhiveryB2BDocumentStatus = () =>
+  useMutation({
+    mutationFn: getDelhiveryB2BDocumentStatus,
   })
 
 export const useShippingRates = (filters = {}) => {

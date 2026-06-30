@@ -61,6 +61,7 @@ import {
   getDelhiveryB2BFreightCharges,
   getDelhiveryB2BLabelUrls,
   getDelhiveryB2BLrCopy,
+  getDelhiveryB2BDocumentStatus,
   getDelhiveryB2BShipmentStatus,
   getDelhiveryB2BShipmentUpdateStatus,
   loginDelhiveryB2B,
@@ -1294,6 +1295,33 @@ export const generateDelhiveryB2BDocumentController = async (req: Request, res: 
     })
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to generate Delhivery B2B document')
+  }
+}
+
+export const getDelhiveryB2BDocumentStatusController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const result = await getDelhiveryB2BDocumentStatus({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      docType: String(req.body?.docType || req.body?.doc_type || '').trim(),
+      jobId: String(req.body?.jobId || req.body?.job_id || '').trim(),
+      requestId: String(
+        req.body?.requestId ||
+          req.body?.request_id ||
+          req.body?.xRequestId ||
+          req.body?.x_request_id ||
+          '',
+      ).trim(),
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B document status fetched', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B document status')
   }
 }
 
