@@ -21,6 +21,7 @@ import {
   getDelhiveryB2BShipmentUpdateStatus,
   loginDelhiveryB2B,
   logoutDelhiveryB2B,
+  trackDelhiveryB2BShipment,
   triggerDelhiveryForgotPassword,
   updateDelhiveryCredentials,
   updateCourierStatus,
@@ -218,6 +219,11 @@ export const useDelhiveryB2BShipmentUpdateStatus = () =>
 export const useDelhiveryB2BShipmentCancel = () =>
   useMutation({
     mutationFn: cancelDelhiveryB2BShipment,
+  })
+
+export const useDelhiveryB2BShipmentTrack = () =>
+  useMutation({
+    mutationFn: trackDelhiveryB2BShipment,
   })
 
 export const useShippingRates = (filters = {}) => {

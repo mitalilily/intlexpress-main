@@ -59,6 +59,7 @@ import {
   getDelhiveryB2BShipmentUpdateStatus,
   loginDelhiveryB2B,
   logoutDelhiveryB2B,
+  trackDelhiveryB2BShipment,
   triggerDelhiveryForgotPassword,
   updateDelhiveryB2BClientWarehouse,
   updateDelhiveryB2BShipment,
@@ -1112,6 +1113,27 @@ export const cancelDelhiveryB2BShipmentController = async (req: Request, res: Re
     respondWithDelhiveryB2BResult(res, 'Delhivery B2B shipment cancelled', result)
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to cancel Delhivery B2B shipment')
+  }
+}
+
+export const trackDelhiveryB2BShipmentController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const result = await trackDelhiveryB2BShipment({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      lrn: String(req.body?.lrn || req.body?.lrnum || '').trim(),
+      allWbns: typeof req.body?.allWbns === 'boolean'
+        ? req.body.allWbns
+        : typeof req.body?.all_wbns === 'boolean'
+          ? req.body.all_wbns
+          : undefined,
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B shipment tracking fetched', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B shipment tracking')
   }
 }
 

@@ -249,3 +249,11 @@ export const cancelDelhiveryB2BShipment = async (payload) => {
   }
   return data
 }
+
+export const trackDelhiveryB2BShipment = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/shipment-track', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to fetch Delhivery B2B shipment tracking')
+  }
+  return data
+}

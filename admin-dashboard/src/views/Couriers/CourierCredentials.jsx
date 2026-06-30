@@ -27,6 +27,7 @@ import {
   useDelhiveryB2BLogin,
   useDelhiveryB2BLogout,
   useDelhiveryB2BServiceability,
+  useDelhiveryB2BShipmentTrack,
   useDelhiveryB2BTat,
   useDelhiveryB2BFreightEstimate,
   useDelhiveryB2BFreightCharges,
@@ -231,6 +232,8 @@ const DEFAULT_B2B_TEST_INPUTS = {
   ),
   shipmentUpdateJobId: '',
   shipmentCancelLrn: '220110457',
+  shipmentTrackLrn: '220110457',
+  shipmentTrackAllWbns: false,
 }
 
 const CourierCredentials = () => {
@@ -251,6 +254,7 @@ const CourierCredentials = () => {
   const b2bShipmentUpdateMutation = useDelhiveryB2BShipmentUpdate()
   const b2bShipmentUpdateStatusMutation = useDelhiveryB2BShipmentUpdateStatus()
   const b2bShipmentCancelMutation = useDelhiveryB2BShipmentCancel()
+  const b2bShipmentTrackMutation = useDelhiveryB2BShipmentTrack()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -644,6 +648,21 @@ const CourierCredentials = () => {
       {
         success: 'Delhivery B2B shipment cancelled',
         error: 'Delhivery B2B shipment cancellation failed',
+      },
+    )
+  }
+
+  const handleShipmentTrack = (account) => {
+    handleB2BAction(
+      b2bShipmentTrackMutation,
+      {
+        ...buildB2BAccountPayload(account),
+        lrn: b2bTestInputs.shipmentTrackLrn,
+        allWbns: b2bTestInputs.shipmentTrackAllWbns,
+      },
+      {
+        success: 'Delhivery B2B shipment tracking fetched',
+        error: 'Delhivery B2B shipment tracking failed',
       },
     )
   }
@@ -1430,6 +1449,37 @@ const CourierCredentials = () => {
                         }
                       >
                         Cancel Shipment
+                      </Button>
+
+                      <FormControl>
+                        <FormLabel>Shipment Track LRN</FormLabel>
+                        <Input
+                          value={b2bTestInputs.shipmentTrackLrn}
+                          onChange={(e) => updateB2BTestInput('shipmentTrackLrn', e.target.value)}
+                          placeholder="Manifested LRN to track"
+                        />
+                      </FormControl>
+
+                      <Flex align="center" justify="space-between">
+                        <Text fontSize="sm">Track all child waybills</Text>
+                        <Switch
+                          isChecked={b2bTestInputs.shipmentTrackAllWbns}
+                          onChange={(e) =>
+                            updateB2BTestInput('shipmentTrackAllWbns', e.target.checked)
+                          }
+                        />
+                      </Flex>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleShipmentTrack(account)}
+                        isLoading={b2bShipmentTrackMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken ||
+                          !String(b2bTestInputs.shipmentTrackLrn || '').trim()
+                        }
+                      >
+                        Track Shipment
                       </Button>
                     </Stack>
                   </>

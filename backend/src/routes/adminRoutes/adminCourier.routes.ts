@@ -7,6 +7,7 @@ import {
   createDelhiveryB2BShipmentController,
   getDelhiveryB2BShipmentStatusController,
   getDelhiveryB2BShipmentUpdateStatusController,
+  trackDelhiveryB2BShipmentController,
   estimateDelhiveryB2BFreightController,
   estimateDelhiveryB2BTatController,
   getDelhiveryB2BFreightChargesController,
@@ -142,6 +143,12 @@ router.delete(
   requireAuth,
   isAdminMiddleware,
   cancelDelhiveryB2BShipmentController,
+)
+router.post(
+  '/credentials/delhivery/shipment-track',
+  requireAuth,
+  isAdminMiddleware,
+  trackDelhiveryB2BShipmentController,
 )
 router.put(
   '/credentials/ekart',
