@@ -9,6 +9,8 @@ const DELHIVERY_ACCOUNT_LABELS = [
   'Delhivery B2B Account',
   'Delhivery Backup Account',
 ] as const
+export const HARDCODED_DELHIVERY_API_KEY =
+  '7ebb0a19e281620bc670053bcde0c31746bc5f7f'
 
 type DelhiveryAccountCode = (typeof DELHIVERY_ACCOUNT_CODES)[number]
 
@@ -39,6 +41,17 @@ export interface DelhiveryResolutionContext {
 }
 
 const normalize = (value?: unknown) => String(value ?? '').trim()
+const resolveDelhiveryApiKey = (...values: unknown[]) => {
+  const hardcoded = normalize(HARDCODED_DELHIVERY_API_KEY)
+  if (hardcoded) return hardcoded
+
+  for (const value of values) {
+    const normalized = normalize(value)
+    if (normalized) return normalized
+  }
+
+  return ''
+}
 
 const parseRecord = (value: unknown): Record<string, any> => {
   if (!value) return {}
@@ -85,7 +98,7 @@ const buildEmptyAccount = (index: number): DelhiveryAccountConfig => ({
   accountLabel: DELHIVERY_ACCOUNT_LABELS[index] || `Delhivery Account ${index + 1}`,
   apiBase: DEFAULT_DELHIVERY_API_BASE,
   clientName: '',
-  apiKey: '',
+  apiKey: resolveDelhiveryApiKey(),
   username: '',
   password: '',
   b2bAuthToken: '',
@@ -94,7 +107,7 @@ const buildEmptyAccount = (index: number): DelhiveryAccountConfig => ({
   isDefault: index === 0,
   pickupLocationIds: [],
   pickupLocationNames: [],
-  isConfigured: false,
+  isConfigured: Boolean(resolveDelhiveryApiKey()),
 })
 
 const maskApiKey = (value: string) =>
@@ -112,7 +125,7 @@ const normalizeAccount = (
   const accountCode = DELHIVERY_ACCOUNT_CODES[index]
   const apiBase = normalize(raw.apiBase || fallback?.apiBase) || DEFAULT_DELHIVERY_API_BASE
   const clientName = normalize(raw.clientName || fallback?.clientName)
-  const apiKey = normalize(raw.apiKey || fallback?.apiKey)
+  const apiKey = resolveDelhiveryApiKey(raw.apiKey, fallback?.apiKey)
   const username = normalize(raw.username || fallback?.username)
   const password = normalize(raw.password || fallback?.password)
   const b2bAuthToken = normalize(raw.b2bAuthToken || raw.b2b_auth_token)
