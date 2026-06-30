@@ -193,3 +193,11 @@ export const getDelhiveryB2BFreightCharges = async (payload) => {
   if (!data?.success) throw new Error(data?.message || 'Failed to fetch Delhivery B2B freight charges')
   return data
 }
+
+export const createDelhiveryB2BClientWarehouse = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/client-warehouse', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to create Delhivery B2B client warehouse')
+  }
+  return data
+}

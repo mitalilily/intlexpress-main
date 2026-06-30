@@ -29,6 +29,7 @@ import {
   useDelhiveryB2BTat,
   useDelhiveryB2BFreightEstimate,
   useDelhiveryB2BFreightCharges,
+  useDelhiveryB2BClientWarehouseCreate,
   useDelhiveryForgotPassword,
   useUpdateDelhiveryCredentials,
 } from 'hooks/useCouriers'
@@ -130,6 +131,22 @@ const DEFAULT_B2B_TEST_INPUTS = {
   freightMode: 'fod',
   freightRovInsurance: true,
   freightChargesLrns: '',
+  warehouseName: 'Delhivery142',
+  warehousePinCode: '400059',
+  warehouseCity: 'Gurgaon',
+  warehouseState: 'Haryana',
+  warehouseCountry: 'India',
+  warehouseAddress: 'Gurgaon',
+  warehouseContactPerson: 'contact_person',
+  warehousePhoneNumber: '9186676788',
+  warehouseBusinessDay: 'TUE',
+  warehouseBusinessStart: '07:00',
+  warehouseBusinessClose: '08:30',
+  warehousePickupStart: '13:00',
+  warehousePickupClose: '16:00',
+  warehouseReturnPin: '721657',
+  warehouseReturnAddress: 'test',
+  warehouseSameAsForwardAddress: false,
 }
 
 const CourierCredentials = () => {
@@ -143,6 +160,7 @@ const CourierCredentials = () => {
   const b2bTatMutation = useDelhiveryB2BTat()
   const b2bFreightEstimateMutation = useDelhiveryB2BFreightEstimate()
   const b2bFreightChargesMutation = useDelhiveryB2BFreightCharges()
+  const b2bClientWarehouseCreateMutation = useDelhiveryB2BClientWarehouseCreate()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -340,6 +358,46 @@ const CourierCredentials = () => {
     freight_mode: b2bTestInputs.freightMode,
     rov_insurance: b2bTestInputs.freightRovInsurance,
   })
+
+  const buildClientWarehousePayload = (account) => {
+    const businessDay = String(b2bTestInputs.warehouseBusinessDay || 'TUE').trim().toUpperCase()
+
+    return {
+      ...buildB2BAccountPayload(account),
+      pin_code: b2bTestInputs.warehousePinCode,
+      city: b2bTestInputs.warehouseCity,
+      state: b2bTestInputs.warehouseState,
+      country: b2bTestInputs.warehouseCountry,
+      name: b2bTestInputs.warehouseName,
+      address_details: {
+        address: b2bTestInputs.warehouseAddress,
+        contact_person: b2bTestInputs.warehouseContactPerson,
+        phone_number: b2bTestInputs.warehousePhoneNumber,
+      },
+      business_hours: {
+        [businessDay]: {
+          start_time: b2bTestInputs.warehouseBusinessStart,
+          close_time: b2bTestInputs.warehouseBusinessClose,
+        },
+      },
+      pick_up_hours: {
+        [businessDay]: {
+          start_time: b2bTestInputs.warehousePickupStart,
+          close_time: b2bTestInputs.warehousePickupClose,
+        },
+      },
+      pick_up_days: [businessDay],
+      business_days: [businessDay],
+      ...(b2bTestInputs.warehouseSameAsForwardAddress
+        ? { same_as_fwd_add: true }
+        : {
+            ret_address: {
+              pin: b2bTestInputs.warehouseReturnPin,
+              address: b2bTestInputs.warehouseReturnAddress,
+            },
+          }),
+    }
+  }
 
   if (isLoading) return <Spinner size="md" />
 
@@ -821,6 +879,172 @@ const CourierCredentials = () => {
                         isDisabled={!account.hasB2BAuthToken}
                       >
                         Test Freight Charges
+                      </Button>
+
+                      <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                        <FormControl>
+                          <FormLabel>Warehouse Name</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehouseName}
+                            onChange={(e) => updateB2BTestInput('warehouseName', e.target.value)}
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Warehouse Pin Code</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehousePinCode}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehousePinCode', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Warehouse City</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehouseCity}
+                            onChange={(e) => updateB2BTestInput('warehouseCity', e.target.value)}
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Warehouse State</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehouseState}
+                            onChange={(e) => updateB2BTestInput('warehouseState', e.target.value)}
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Warehouse Country</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehouseCountry}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehouseCountry', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Contact Person</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehouseContactPerson}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehouseContactPerson', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Phone Number</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehousePhoneNumber}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehousePhoneNumber', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Business Day</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehouseBusinessDay}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehouseBusinessDay', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Business Start</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehouseBusinessStart}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehouseBusinessStart', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Business Close</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehouseBusinessClose}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehouseBusinessClose', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Pickup Start</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehousePickupStart}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehousePickupStart', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Pickup Close</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehousePickupClose}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehousePickupClose', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl gridColumn={{ base: 'auto', md: '1 / -1' }}>
+                          <FormLabel>Warehouse Address</FormLabel>
+                          <Textarea
+                            rows={2}
+                            value={b2bTestInputs.warehouseAddress}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehouseAddress', e.target.value)
+                            }
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Return Pin</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehouseReturnPin}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehouseReturnPin', e.target.value)
+                            }
+                            isDisabled={b2bTestInputs.warehouseSameAsForwardAddress}
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Return Address</FormLabel>
+                          <Input
+                            value={b2bTestInputs.warehouseReturnAddress}
+                            onChange={(e) =>
+                              updateB2BTestInput('warehouseReturnAddress', e.target.value)
+                            }
+                            isDisabled={b2bTestInputs.warehouseSameAsForwardAddress}
+                          />
+                        </FormControl>
+                      </Grid>
+
+                      <Flex align="center" justify="space-between">
+                        <Text fontSize="sm">Return address same as forward</Text>
+                        <Switch
+                          isChecked={b2bTestInputs.warehouseSameAsForwardAddress}
+                          onChange={(e) =>
+                            updateB2BTestInput(
+                              'warehouseSameAsForwardAddress',
+                              e.target.checked,
+                            )
+                          }
+                        />
+                      </Flex>
+
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          handleB2BAction(
+                            b2bClientWarehouseCreateMutation,
+                            buildClientWarehousePayload(account),
+                            {
+                              success: 'Delhivery B2B client warehouse created',
+                              error: 'Delhivery B2B client warehouse creation failed',
+                            },
+                          )
+                        }
+                        isLoading={b2bClientWarehouseCreateMutation.isPending}
+                        isDisabled={!account.hasB2BAuthToken}
+                      >
+                        Create Client Warehouse
                       </Button>
                     </Stack>
                   </>
