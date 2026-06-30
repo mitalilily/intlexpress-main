@@ -1,5 +1,6 @@
 import * as bcrypt from 'bcryptjs'
 import fileType from 'file-type'
+import { getBucketName as resolveBucketName } from '../config/storage'
 
 import dotenv from 'dotenv'
 import sharp from 'sharp'
@@ -69,14 +70,7 @@ export function buildPatch<T extends Record<string, unknown>>(existing: T, merge
 }
 
 export const getBucketName = () => {
-  switch (process.env.NODE_ENV) {
-    case 'production':
-      return process.env.PROD_BUCKET!
-    case 'staging':
-      return process.env.STAGING_BUCKET!
-    default:
-      return process.env.DEV_BUCKET!
-  }
+  return resolveBucketName()
 }
 
 export const sanitizeFilename = (filename: string) => {

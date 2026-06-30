@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv'
 import path from 'path'
 import { server } from './app'
 import './crons'
+import { validateStorageConfig } from './config/storage'
 import { testDatabaseConnection } from './models/client'
 import { ensureAuthBillingSchemaCompatibility } from './models/services/authBillingSchemaCompatibility.service'
 import { ensureDefaultAdminBootstrap } from './models/services/defaultAdminBootstrap.service'
@@ -14,6 +15,13 @@ dotenv.config({ path: path.resolve(__dirname, `../.env.${env}`) })
 const PORT = process.env.PORT || 4000
 
 async function startServer() {
+  const storageConfig = validateStorageConfig()
+  console.log('R2 storage configured', {
+    bucket: storageConfig.bucket,
+    endpoint: storageConfig.endpoint,
+    accessKeyId: storageConfig.accessKeyIdPreview,
+  })
+
   console.log('Testing database connection...')
   const dbConnected = await testDatabaseConnection()
 
