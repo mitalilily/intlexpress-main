@@ -257,3 +257,11 @@ export const trackDelhiveryB2BShipment = async (payload) => {
   }
   return data
 }
+
+export const bookDelhiveryB2BAppointment = async (payload) => {
+  const { data } = await api.post('/admin/couriers/credentials/delhivery/appointment', payload)
+  if (!data?.success) {
+    throw new Error(data?.message || 'Failed to book Delhivery B2B appointment')
+  }
+  return data
+}

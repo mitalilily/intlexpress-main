@@ -2,6 +2,7 @@
 import { useToast } from '@chakra-ui/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  bookDelhiveryB2BAppointment,
   cancelDelhiveryB2BShipment,
   checkDelhiveryB2BServiceability,
   createDelhiveryB2BClientWarehouse,
@@ -224,6 +225,11 @@ export const useDelhiveryB2BShipmentCancel = () =>
 export const useDelhiveryB2BShipmentTrack = () =>
   useMutation({
     mutationFn: trackDelhiveryB2BShipment,
+  })
+
+export const useDelhiveryB2BAppointmentBook = () =>
+  useMutation({
+    mutationFn: bookDelhiveryB2BAppointment,
   })
 
 export const useShippingRates = (filters = {}) => {

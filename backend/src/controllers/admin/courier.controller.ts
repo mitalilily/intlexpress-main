@@ -47,6 +47,7 @@ import {
   type DelhiveryAccountConfig,
 } from '../../models/services/delhiveryCredentials.service'
 import {
+  bookDelhiveryB2BAppointment,
   cancelDelhiveryB2BShipment,
   checkDelhiveryB2BServiceability,
   createDelhiveryB2BClientWarehouse,
@@ -1134,6 +1135,23 @@ export const trackDelhiveryB2BShipmentController = async (req: Request, res: Res
     respondWithDelhiveryB2BResult(res, 'Delhivery B2B shipment tracking fetched', result)
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B shipment tracking')
+  }
+}
+
+export const bookDelhiveryB2BAppointmentController = async (req: Request, res: Response) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const { accountCode: _accountCode, token: _token, apiBase: _apiBase, ...payload } = req.body || {}
+    const result = await bookDelhiveryB2BAppointment({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      payload,
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B appointment booked', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to book Delhivery B2B appointment')
   }
 }
 

@@ -792,6 +792,29 @@ export const trackDelhiveryB2BShipment = async ({
   }
 }
 
+export const bookDelhiveryB2BAppointment = async ({
+  token,
+  apiBase,
+  payload,
+}: {
+  token: string
+  apiBase?: string | null
+  payload: Record<string, any>
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const response = await axios.post(`${resolvedApiBase}/v2/appointments/lm`, payload, {
+    headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+    timeout: 30000,
+  })
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
 export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''

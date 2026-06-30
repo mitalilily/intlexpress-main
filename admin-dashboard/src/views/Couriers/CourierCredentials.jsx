@@ -23,6 +23,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import {
   useCourierCredentials,
+  useDelhiveryB2BAppointmentBook,
   useDelhiveryB2BShipmentCancel,
   useDelhiveryB2BLogin,
   useDelhiveryB2BLogout,
@@ -234,6 +235,12 @@ const DEFAULT_B2B_TEST_INPUTS = {
   shipmentCancelLrn: '220110457',
   shipmentTrackLrn: '220110457',
   shipmentTrackAllWbns: false,
+  appointmentLrn: '220192589',
+  appointmentDate: '31/12/2026',
+  appointmentSlot: '12:00 PM-03:00 PM',
+  appointmentPoNumbers: '2273410057461',
+  appointmentId: '',
+  appointmentPoExpiryDate: '31/12/2026',
 }
 
 const CourierCredentials = () => {
@@ -255,6 +262,7 @@ const CourierCredentials = () => {
   const b2bShipmentUpdateStatusMutation = useDelhiveryB2BShipmentUpdateStatus()
   const b2bShipmentCancelMutation = useDelhiveryB2BShipmentCancel()
   const b2bShipmentTrackMutation = useDelhiveryB2BShipmentTrack()
+  const b2bAppointmentBookMutation = useDelhiveryB2BAppointmentBook()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -663,6 +671,28 @@ const CourierCredentials = () => {
       {
         success: 'Delhivery B2B shipment tracking fetched',
         error: 'Delhivery B2B shipment tracking failed',
+      },
+    )
+  }
+
+  const handleAppointmentBooking = (account) => {
+    const poNumbers = normalizeArrayInput(b2bTestInputs.appointmentPoNumbers).slice(0, 5)
+    handleB2BAction(
+      b2bAppointmentBookMutation,
+      {
+        ...buildB2BAccountPayload(account),
+        lrn: b2bTestInputs.appointmentLrn,
+        date: b2bTestInputs.appointmentDate,
+        appointment_slot: b2bTestInputs.appointmentSlot,
+        po_number: poNumbers.length ? poNumbers : ['NotApplicable'],
+        ...(String(b2bTestInputs.appointmentId || '').trim()
+          ? { appointment_id: String(b2bTestInputs.appointmentId || '').trim() }
+          : {}),
+        po_expiry_date: b2bTestInputs.appointmentPoExpiryDate,
+      },
+      {
+        success: 'Delhivery B2B appointment booked',
+        error: 'Delhivery B2B appointment booking failed',
       },
     )
   }
@@ -1480,6 +1510,76 @@ const CourierCredentials = () => {
                         }
                       >
                         Track Shipment
+                      </Button>
+
+                      <Grid templateColumns={{ base: '1fr', md: '1fr 1fr' }} gap={3}>
+                        <FormControl>
+                          <FormLabel>Appointment LRN</FormLabel>
+                          <Input
+                            value={b2bTestInputs.appointmentLrn}
+                            onChange={(e) => updateB2BTestInput('appointmentLrn', e.target.value)}
+                            placeholder="LRN for last-mile appointment"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Appointment Date</FormLabel>
+                          <Input
+                            value={b2bTestInputs.appointmentDate}
+                            onChange={(e) => updateB2BTestInput('appointmentDate', e.target.value)}
+                            placeholder="DD/MM/YYYY"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>Appointment Slot</FormLabel>
+                          <Input
+                            value={b2bTestInputs.appointmentSlot}
+                            onChange={(e) => updateB2BTestInput('appointmentSlot', e.target.value)}
+                            placeholder="12:00 PM-03:00 PM"
+                          />
+                        </FormControl>
+                        <FormControl>
+                          <FormLabel>PO Expiry Date</FormLabel>
+                          <Input
+                            value={b2bTestInputs.appointmentPoExpiryDate}
+                            onChange={(e) =>
+                              updateB2BTestInput('appointmentPoExpiryDate', e.target.value)
+                            }
+                            placeholder="DD/MM/YYYY"
+                          />
+                        </FormControl>
+                        <FormControl gridColumn={{ base: 'auto', md: '1 / -1' }}>
+                          <FormLabel>PO Numbers</FormLabel>
+                          <Input
+                            value={b2bTestInputs.appointmentPoNumbers}
+                            onChange={(e) =>
+                              updateB2BTestInput('appointmentPoNumbers', e.target.value)
+                            }
+                            placeholder="Comma separated PO numbers, or NotApplicable"
+                          />
+                        </FormControl>
+                        <FormControl gridColumn={{ base: 'auto', md: '1 / -1' }}>
+                          <FormLabel>Appointment ID</FormLabel>
+                          <Input
+                            value={b2bTestInputs.appointmentId}
+                            onChange={(e) => updateB2BTestInput('appointmentId', e.target.value)}
+                            placeholder="Optional appointment ID"
+                          />
+                        </FormControl>
+                      </Grid>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleAppointmentBooking(account)}
+                        isLoading={b2bAppointmentBookMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken ||
+                          !String(b2bTestInputs.appointmentLrn || '').trim() ||
+                          !String(b2bTestInputs.appointmentDate || '').trim() ||
+                          !String(b2bTestInputs.appointmentSlot || '').trim() ||
+                          !String(b2bTestInputs.appointmentPoExpiryDate || '').trim()
+                        }
+                      >
+                        Book Last-Mile Appointment
                       </Button>
                     </Stack>
                   </>
