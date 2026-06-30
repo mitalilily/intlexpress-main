@@ -4,6 +4,11 @@ import { courier_credentials } from '../schema/courierCredentials'
 
 const DEFAULT_DELHIVERY_API_BASE = 'https://track.delhivery.com'
 const DELHIVERY_ACCOUNT_CODES = ['account_1', 'account_2', 'account_3'] as const
+const DELHIVERY_ACCOUNT_LABELS = [
+  'Delhivery B2C Account',
+  'Delhivery B2B Account',
+  'Delhivery Backup Account',
+] as const
 
 type DelhiveryAccountCode = (typeof DELHIVERY_ACCOUNT_CODES)[number]
 
@@ -73,7 +78,7 @@ const normalizeStringArray = (value: unknown) => {
 
 const buildEmptyAccount = (index: number): DelhiveryAccountConfig => ({
   accountCode: DELHIVERY_ACCOUNT_CODES[index],
-  accountLabel: `Delhivery Account ${index + 1}`,
+  accountLabel: DELHIVERY_ACCOUNT_LABELS[index] || `Delhivery Account ${index + 1}`,
   apiBase: DEFAULT_DELHIVERY_API_BASE,
   clientName: '',
   apiKey: '',
@@ -100,7 +105,8 @@ const normalizeAccount = (
   const apiBase = normalize(raw.apiBase || fallback?.apiBase) || DEFAULT_DELHIVERY_API_BASE
   const clientName = normalize(raw.clientName || fallback?.clientName)
   const apiKey = normalize(raw.apiKey || fallback?.apiKey)
-  const accountLabel = normalize(raw.accountLabel) || `Delhivery Account ${index + 1}`
+  const accountLabel =
+    normalize(raw.accountLabel) || DELHIVERY_ACCOUNT_LABELS[index] || `Delhivery Account ${index + 1}`
   const isActive = raw.isActive === undefined ? index === 0 || Boolean(apiKey) : raw.isActive === true
   const isDefault = raw.isDefault === true
   const pickupLocationIds = normalizeStringArray(raw.pickupLocationIds || raw.pickup_location_ids)

@@ -475,6 +475,13 @@ const buildDelhiveryCredentialResponse = (accounts: DelhiveryAccountConfig[]) =>
   })),
 })
 
+const getDefaultDelhiveryAccountLabel = (index: number) => {
+  if (index === 0) return 'Delhivery B2C Account'
+  if (index === 1) return 'Delhivery B2B Account'
+  if (index === 2) return 'Delhivery Backup Account'
+  return `Delhivery Account ${index + 1}`
+}
+
 const sanitizeDelhiveryAccountsPayload = (
   payloadAccounts: unknown,
   existingAccounts: DelhiveryAccountConfig[],
@@ -490,7 +497,9 @@ const sanitizeDelhiveryAccountsPayload = (
     return {
       accountCode,
       accountLabel:
-        String(record.accountLabel || '').trim() || existing?.accountLabel || `Delhivery Account ${index + 1}`,
+        String(record.accountLabel || '').trim() ||
+        existing?.accountLabel ||
+        getDefaultDelhiveryAccountLabel(index),
       apiBase:
         String(record.apiBase || '').trim() ||
         existing?.apiBase ||
@@ -588,7 +597,8 @@ export const updateDelhiveryCredentialsController = async (req: Request, res: Re
       : sanitizeDelhiveryAccountsPayload(
           [
             {
-              accountLabel: existingAccounts[0]?.accountLabel || 'Delhivery Account 1',
+              accountLabel:
+                existingAccounts[0]?.accountLabel || getDefaultDelhiveryAccountLabel(0),
               apiBase,
               clientName,
               apiKey,

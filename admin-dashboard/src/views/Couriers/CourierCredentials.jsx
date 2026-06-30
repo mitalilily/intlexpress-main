@@ -27,10 +27,27 @@ import {
 } from 'hooks/useCouriers'
 
 const ACCOUNT_CODES = ['account_1', 'account_2', 'account_3']
+const ACCOUNT_PRESETS = [
+  {
+    title: 'Delhivery B2C Credentials',
+    defaultLabel: 'Delhivery B2C Account',
+    description: 'Primary Delhivery account for B2C bookings and warehouse mappings.',
+  },
+  {
+    title: 'Delhivery B2B Credentials',
+    defaultLabel: 'Delhivery B2B Account',
+    description: 'Use this card for Delhivery B2B credentials and B2B-specific pickup mappings.',
+  },
+  {
+    title: 'Delhivery Backup Credentials',
+    defaultLabel: 'Delhivery Backup Account',
+    description: 'Optional spare or overflow Delhivery account.',
+  },
+]
 
 const buildEmptyAccount = (index) => ({
   accountCode: ACCOUNT_CODES[index],
-  accountLabel: `Delhivery Account ${index + 1}`,
+  accountLabel: ACCOUNT_PRESETS[index]?.defaultLabel || `Delhivery Account ${index + 1}`,
   apiBase: 'https://track.delhivery.com',
   clientName: '',
   apiKey: '',
@@ -194,7 +211,8 @@ const CourierCredentials = () => {
           Delhivery Accounts
         </Text>
         <Text color="gray.500">
-          Configure up to three Delhivery accounts and map pickup locations to the right account.
+          Configure Delhivery B2C, B2B, and optional backup credentials, then map pickup
+          locations to the right account.
         </Text>
       </Stack>
 
@@ -269,9 +287,14 @@ const CourierCredentials = () => {
               <VStack spacing={4} align="stretch" h="100%">
                 <Flex justify="space-between" align="center">
                   <Stack spacing={0}>
-                    <Text fontWeight="semibold">{`Account ${index + 1}`}</Text>
+                    <Text fontWeight="semibold">
+                      {ACCOUNT_PRESETS[index]?.title || `Account ${index + 1}`}
+                    </Text>
                     <Text fontSize="sm" color="gray.500">
                       {account.accountCode}
+                    </Text>
+                    <Text fontSize="xs" color="gray.500">
+                      {ACCOUNT_PRESETS[index]?.description || 'Delhivery account configuration'}
                     </Text>
                   </Stack>
                   <Badge
@@ -286,7 +309,9 @@ const CourierCredentials = () => {
                   <Input
                     value={account.accountLabel}
                     onChange={(e) => updateAccount(index, { accountLabel: e.target.value })}
-                    placeholder={`Delhivery Account ${index + 1}`}
+                    placeholder={
+                      ACCOUNT_PRESETS[index]?.defaultLabel || `Delhivery Account ${index + 1}`
+                    }
                   />
                 </FormControl>
 
