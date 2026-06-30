@@ -53,8 +53,9 @@ import {
   extractDelhiveryB2BJobId,
   estimateDelhiveryB2BFreight,
   estimateDelhiveryB2BTat,
-  getDelhiveryB2BShipmentStatus,
   getDelhiveryB2BFreightCharges,
+  getDelhiveryB2BShipmentStatus,
+  getDelhiveryB2BShipmentUpdateStatus,
   loginDelhiveryB2B,
   logoutDelhiveryB2B,
   triggerDelhiveryForgotPassword,
@@ -1061,10 +1062,39 @@ export const updateDelhiveryB2BShipmentController = async (req: Request, res: Re
       lrn: String(lrn || lrn_number || '').trim(),
       payload,
     })
+    const jobId = extractDelhiveryB2BJobId(result.data)
 
-    respondWithDelhiveryB2BResult(res, 'Delhivery B2B shipment updated', result)
+    res.json({
+      success: true,
+      message: 'Delhivery B2B shipment update submitted',
+      data: {
+        apiBase: result.apiBase,
+        status: result.status,
+        jobId,
+        providerResponse: result.data,
+      },
+    })
   } catch (err: any) {
     handleDelhiveryB2BAdminError(res, err, 'Failed to update Delhivery B2B shipment')
+  }
+}
+
+export const getDelhiveryB2BShipmentUpdateStatusController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const accountCode = String(req.body?.accountCode || 'account_2').trim()
+    const account = await resolveDelhiveryB2BAccountForAdmin(accountCode)
+    const result = await getDelhiveryB2BShipmentUpdateStatus({
+      token: resolveDelhiveryB2BTokenForAdmin(req, account),
+      apiBase: String(req.body?.apiBase || account?.apiBase || '').trim(),
+      jobId: String(req.body?.jobId || req.body?.job_id || '').trim(),
+    })
+
+    respondWithDelhiveryB2BResult(res, 'Delhivery B2B shipment update status fetched', result)
+  } catch (err: any) {
+    handleDelhiveryB2BAdminError(res, err, 'Failed to fetch Delhivery B2B shipment update status')
   }
 }
 

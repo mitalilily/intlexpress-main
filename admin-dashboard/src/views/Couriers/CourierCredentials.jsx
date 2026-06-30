@@ -34,6 +34,7 @@ import {
   useDelhiveryB2BShipmentCreate,
   useDelhiveryB2BShipmentStatus,
   useDelhiveryB2BShipmentUpdate,
+  useDelhiveryB2BShipmentUpdateStatus,
   useDelhiveryForgotPassword,
   useUpdateDelhiveryCredentials,
 } from 'hooks/useCouriers'
@@ -227,6 +228,7 @@ const DEFAULT_B2B_TEST_INPUTS = {
     null,
     2,
   ),
+  shipmentUpdateJobId: '',
 }
 
 const CourierCredentials = () => {
@@ -245,6 +247,7 @@ const CourierCredentials = () => {
   const b2bShipmentCreateMutation = useDelhiveryB2BShipmentCreate()
   const b2bShipmentStatusMutation = useDelhiveryB2BShipmentStatus()
   const b2bShipmentUpdateMutation = useDelhiveryB2BShipmentUpdate()
+  const b2bShipmentUpdateStatusMutation = useDelhiveryB2BShipmentUpdateStatus()
   const [accounts, setAccounts] = useState(() => normalizeAccounts([]))
   const [b2bTestInputs, setB2BTestInputs] = useState(DEFAULT_B2B_TEST_INPUTS)
 
@@ -581,14 +584,30 @@ const CourierCredentials = () => {
         lrn: b2bTestInputs.shipmentUpdateLrn,
         ...JSON.parse(b2bTestInputs.shipmentUpdatePayloadText),
       }
-      handleB2BAction(
-        b2bShipmentUpdateMutation,
-        payload,
-        {
-          success: 'Delhivery B2B shipment updated',
-          error: 'Delhivery B2B shipment update failed',
+      b2bShipmentUpdateMutation.mutate(payload, {
+        onSuccess: (response) => {
+          const nextJobId = String(response?.data?.jobId || '').trim()
+          if (nextJobId) {
+            updateB2BTestInput('shipmentUpdateJobId', nextJobId)
+          }
+          toast({
+            title: 'Delhivery B2B shipment update submitted',
+            description: nextJobId
+              ? `Job ID ${nextJobId}`
+              : response?.data?.status
+                ? `Provider status ${response.data.status}`
+                : response?.message,
+            status: 'success',
+          })
         },
-      )
+        onError: (err) => {
+          toast({
+            title: 'Delhivery B2B shipment update failed',
+            description: err?.message,
+            status: 'error',
+          })
+        },
+      })
     } catch (err) {
       toast({
         title: 'Invalid shipment update payload JSON',
@@ -596,6 +615,20 @@ const CourierCredentials = () => {
         status: 'error',
       })
     }
+  }
+
+  const handleShipmentUpdateStatus = (account) => {
+    handleB2BAction(
+      b2bShipmentUpdateStatusMutation,
+      {
+        ...buildB2BAccountPayload(account),
+        jobId: b2bTestInputs.shipmentUpdateJobId,
+      },
+      {
+        success: 'Delhivery B2B shipment update status fetched',
+        error: 'Delhivery B2B shipment update status failed',
+      },
+    )
   }
 
   if (isLoading) return <Spinner size="md" />
@@ -1336,6 +1369,29 @@ const CourierCredentials = () => {
                         }
                       >
                         Update Manifested Shipment
+                      </Button>
+
+                      <FormControl>
+                        <FormLabel>Shipment Update Job ID</FormLabel>
+                        <Input
+                          value={b2bTestInputs.shipmentUpdateJobId}
+                          onChange={(e) =>
+                            updateB2BTestInput('shipmentUpdateJobId', e.target.value)
+                          }
+                          placeholder="job_id returned from shipment update"
+                        />
+                      </FormControl>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => handleShipmentUpdateStatus(account)}
+                        isLoading={b2bShipmentUpdateStatusMutation.isPending}
+                        isDisabled={
+                          !account.hasB2BAuthToken ||
+                          !String(b2bTestInputs.shipmentUpdateJobId || '').trim()
+                        }
+                      >
+                        Check Shipment Update Status
                       </Button>
                     </Stack>
                   </>

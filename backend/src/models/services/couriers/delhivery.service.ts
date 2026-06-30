@@ -701,6 +701,35 @@ export const updateDelhiveryB2BShipment = async ({
   }
 }
 
+export const getDelhiveryB2BShipmentUpdateStatus = async ({
+  token,
+  apiBase,
+  jobId,
+}: {
+  token: string
+  apiBase?: string | null
+  jobId: string
+}) => {
+  const normalizedToken = ensureDelhiveryB2BToken(token)
+  const normalizedJobId = String(jobId || '').trim()
+  if (!normalizedJobId) {
+    throw new HttpError(400, 'job_id is required for Delhivery B2B shipment update status.')
+  }
+
+  const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
+  const response = await axios.get(`${resolvedApiBase}/lrn/update/status`, {
+    headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+    params: { job_id: normalizedJobId },
+    timeout: 30000,
+  })
+
+  return {
+    apiBase: resolvedApiBase,
+    status: response.status,
+    data: response.data,
+  }
+}
+
 export class DelhiveryService {
   private apiBase = 'https://track.delhivery.com'
   private token = ''

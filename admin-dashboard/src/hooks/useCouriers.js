@@ -17,6 +17,7 @@ import {
   fetchShippingRates,
   getDelhiveryB2BFreightCharges,
   getDelhiveryB2BShipmentStatus,
+  getDelhiveryB2BShipmentUpdateStatus,
   loginDelhiveryB2B,
   logoutDelhiveryB2B,
   triggerDelhiveryForgotPassword,
@@ -206,6 +207,11 @@ export const useDelhiveryB2BShipmentStatus = () =>
 export const useDelhiveryB2BShipmentUpdate = () =>
   useMutation({
     mutationFn: updateDelhiveryB2BShipment,
+  })
+
+export const useDelhiveryB2BShipmentUpdateStatus = () =>
+  useMutation({
+    mutationFn: getDelhiveryB2BShipmentUpdateStatus,
   })
 
 export const useShippingRates = (filters = {}) => {
