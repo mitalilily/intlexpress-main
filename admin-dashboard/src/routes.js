@@ -210,7 +210,7 @@ const dashRoutes = [
       },
       {
         path: '/courier-credentials',
-        name: 'Delhivery Credentials',
+        name: 'Courier Credentials',
         icon: <IconKey />,
         component: () => (
           <AdminRoute>
