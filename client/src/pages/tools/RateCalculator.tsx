@@ -170,7 +170,7 @@ export function RateCalculator() {
       // convert actual weight from kg → grams
       const actualWeightGrams = actualWeightKg * 1000
       // applicable weight in grams
-      const applicableWeightGrams = Math.max(
+      const applicableWeightForB2CGrams = Math.max(
         actualWeightGrams,
         volumetricWeightGrams,
         B2C_MIN_CHARGEABLE_WEIGHT_GRAMS,
@@ -182,7 +182,7 @@ export function RateCalculator() {
         pickupPincode: formData.pickupPincode,
         deliveryPincode: formData.deliveryPincode,
         // Send declared weight; backend computes chargeable weight and slab consistently.
-        weight: shipmentType === 'b2c' ? actualWeightGrams : applicableWeightGrams,
+        weight: shipmentType === 'b2c' ? applicableWeightForB2CGrams : actualWeightKg,
         cod: formData.paymentType === 'cod' ? Math.max(orderAmountValue, 1) : 0,
         length,
         breadth,

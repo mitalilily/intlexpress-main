@@ -861,7 +861,10 @@ export const fetchAvailableCouriersToUser = async (req: Request, res: Response) 
 
     let couriers
     if (shipment_type === 'b2b') {
-      couriers = await fetchAvailableCouriersWithRatesB2B(serviceParams, userId)
+      couriers = await fetchAvailableCouriersWithRatesB2B(serviceParams, {
+        userId,
+        planFallbackName: 'Basic',
+      })
     } else {
       couriers = await fetchB2CCouriersWithLocalFallback(serviceParams, userId)
       couriers = await applyGstToB2CCouriers(couriers ?? [], payment_type)
