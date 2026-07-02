@@ -23,6 +23,7 @@ import {
   Text,
   Tooltip,
   useColorModeValue,
+  useToast,
   VStack,
 } from '@chakra-ui/react'
 import B2BForm from 'components/Tools/RateCalculator/B2BForm'
@@ -33,7 +34,6 @@ import { usePlans } from 'hooks/usePlans'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BiRupee, BiTachometer } from 'react-icons/bi'
 import { TbDiscountCheck } from 'react-icons/tb'
-import { b2bAdminService } from 'services/b2bAdmin.service'
 import { getExactLocation, normalizePincodeInput } from 'services/location.service'
 import { GenericTable } from 'views/Dashboard/Tables/components/GenericTable'
 
@@ -195,9 +195,10 @@ function CommonFields({
 }
 
 export default function RateCalculatorPage() {
+  const toast = useToast()
   const { mutateAsync, isPending, isError, error } = useAvailableCouriersMutation()
   const { data: plans, isLoading: loadingPlans } = usePlans()
-  const { data: courierCatalog = [] } = useCouriers()
+  const { data: courierCatalog = [] } = useCouriers({ businessType: 'b2b' })
   const couriersRef = useRef(null)
 
   const [shipmentType, setShipmentType] = useState('b2c')
@@ -360,60 +361,39 @@ export default function RateCalculatorPage() {
     try {
       if (shipmentType === 'b2b') {
         setIsCalculatingB2B(true)
-        const courierMeta = courierCatalog.find(
-          (c) => c.id?.toString() === selectedB2BCourier?.toString(),
-        )
-
         const payload = {
-          originPincode: formData.pickupPincode,
-          destinationPincode: formData.deliveryPincode,
-          weightKg: Number(formData.totalWeight || formData.weight || 0),
-          paymentMode: formData.paymentType === 'cod' ? 'COD' : 'PREPAID',
-          invoiceValue: formData.orderAmount ? Number(formData.orderAmount) : undefined,
-          courierId: selectedB2BCourier ? Number(selectedB2BCourier) : undefined,
-          serviceProvider:
-            courierMeta?.serviceProvider ?? courierMeta?.service_provider ?? undefined,
+          pickupPincode: formData.pickupPincode,
+          deliveryPincode: formData.deliveryPincode,
+          weight: Number(formData.totalWeight || formData.weight || 0),
+          paymentType: formData.paymentType,
+          orderAmount: formData.orderAmount ? Number(formData.orderAmount) : undefined,
+          shipmentType,
           planId: formData.planId || undefined,
-          // Dimensions for volumetric weight calculation
           length: formData.length ? Number(formData.length) : undefined,
-          width: formData.width ? Number(formData.width) : undefined,
+          breadth: formData.width ? Number(formData.width) : undefined,
           height: formData.height ? Number(formData.height) : undefined,
-          // Piece count for single piece handling
-          pieceCount: formData.pieceCount ? Number(formData.pieceCount) : undefined,
-          isSinglePiece: formData.pieceCount === '1',
-          // Delivery address for CSD detection
-          deliveryAddress: formData.deliveryAddress || undefined,
-          // Delivery time for time-specific delivery charge
-          // Format: "before HH:mm", "after HH:mm", "HH:mm", or "HH:mm-HH:mm" for timeframe
-          deliveryTime: (() => {
-            if (!formData.deliveryTimeType || !formData.deliveryTime) return undefined
-            if (formData.deliveryTimeType === 'timeframe' && formData.deliveryTimeEnd) {
-              return `${formData.deliveryTime}-${formData.deliveryTimeEnd}`
-            }
-            if (formData.deliveryTimeType === 'before' || formData.deliveryTimeType === 'after') {
-              return formData.deliveryTime // Already includes prefix
-            }
-            return formData.deliveryTime
-          })(),
-          // Pickup date for holiday charge
-          pickupDate: formData.pickupDate || undefined,
-          // Order ID or AWB for tracking events (demurrage, reattempt)
-          orderId: formData.orderId || undefined,
-          awbNumber: formData.awbNumber || undefined,
+          context: 'rate_calculator',
+          isCalculator: true,
         }
 
-        const result = await b2bAdminService.calculateRate(payload)
+        const result = normalizeCourierResults(await mutateAsync(payload))
+        const filteredResult = selectedB2BCourier
+          ? result.filter((courier) => courier?.id?.toString() === selectedB2BCourier?.toString())
+          : result
 
-        setAvailableCouriers([
-          {
-            id: selectedB2BCourier || 'global',
-            name: courierMeta?.name || 'Global Rate',
-            charges: result.charges,
-            origin: result.origin,
-            destination: result.destination,
-            rate: result.rate,
-          },
-        ])
+        setAvailableCouriers(filteredResult)
+
+        if (!filteredResult.length) {
+          toast({
+            title: 'No B2B couriers found',
+            description: selectedB2BCourier
+              ? 'The selected courier has no matching B2B rate for this route and weight.'
+              : 'No enabled B2B courier matched this route and weight.',
+            status: 'warning',
+            duration: 4000,
+          })
+          return
+        }
 
         if (couriersRef.current) {
           setTimeout(() => {
@@ -462,14 +442,15 @@ export default function RateCalculatorPage() {
               0,
             )
             const demurrageCharge = Number(entry?.charges?.demurrage ?? 0)
-            const totalWithDemurrage = Number(entry?.charges?.total ?? 0) + demurrageCharge
+            const totalWithDemurrage = Number(entry?.charges?.total ?? entry?.rate ?? 0) + demurrageCharge
             return {
               sno: idx + 1,
-              name: entry?.name,
+              name: entry?.displayName || entry?.name,
               originZone: entry?.origin?.zoneCode ?? entry?.origin?.zoneName ?? '-',
               destinationZone: entry?.destination?.zoneCode ?? entry?.destination?.zoneName ?? '-',
-              billableWeight: entry?.calculation?.billableWeight ?? '-',
-              baseFreight: Number(entry?.charges?.baseFreight ?? 0),
+              billableWeight:
+                entry?.calculation?.billableWeight ?? entry?.chargeable_weight ?? '-',
+              baseFreight: Number(entry?.charges?.baseFreight ?? entry?.rate ?? 0),
               overhead: overheadTotal,
               demurrage: demurrageCharge,
               total: totalWithDemurrage,

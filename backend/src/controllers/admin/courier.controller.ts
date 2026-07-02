@@ -17,7 +17,10 @@ import {
   normalizeRateCardRow,
   parseRateCardCsvText,
 } from '../../models/services/rateCardImport.service'
-import { fetchAvailableCouriersWithRatesAdmin } from '../../models/services/shiprocket.service'
+import {
+  fetchAvailableCouriersWithRatesAdmin,
+  fetchAvailableCouriersWithRatesB2B,
+} from '../../models/services/shiprocket.service'
 import { courier_credentials } from '../../models/schema/courierCredentials'
 import { couriers } from '../../models/schema/couriers'
 import { getAllZones } from '../../models/services/zone.service'
@@ -107,23 +110,28 @@ export const fetchAvailableCouriersForAdmin = async (req: Request, res: Response
       })
     }
 
-    const couriers = await fetchAvailableCouriersWithRatesAdmin(
-      {
-        origin: Number(origin),
-        destination: Number(destination),
-        payment_type: payment_type,
-        order_amount: order_amount,
-        shipment_type: shipment_type,
-        weight: Number(weight),
-        length: Number(length),
-        breadth: Number(breadth),
-        height: Number(height),
-        isCalculator: isCalculator === true || context === 'rate_calculator',
-        shadowfax_forward_mode: shadowfax_forward_mode ?? shadowfaxForwardMode,
-        shadowfax_service_mode: shadowfax_service_mode ?? shadowfaxServiceMode,
-      },
-      plan_id,
-    )
+    const serviceabilityParams = {
+      origin: Number(origin),
+      destination: Number(destination),
+      payment_type: payment_type,
+      order_amount: order_amount,
+      shipment_type: shipment_type,
+      weight: Number(weight),
+      length: Number(length),
+      breadth: Number(breadth),
+      height: Number(height),
+      isCalculator: isCalculator === true || context === 'rate_calculator',
+      shadowfax_forward_mode: shadowfax_forward_mode ?? shadowfaxForwardMode,
+      shadowfax_service_mode: shadowfax_service_mode ?? shadowfaxServiceMode,
+    }
+
+    const couriers =
+      shipment_type === 'b2b'
+        ? await fetchAvailableCouriersWithRatesB2B(serviceabilityParams, {
+            planIdOverride: plan_id ?? null,
+            planFallbackName: 'Basic',
+          })
+        : await fetchAvailableCouriersWithRatesAdmin(serviceabilityParams, plan_id)
 
     return res.json({ success: true, data: couriers ?? [] })
   } catch (err: any) {

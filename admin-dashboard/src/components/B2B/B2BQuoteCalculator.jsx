@@ -18,8 +18,8 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { useCouriers } from '../../hooks/useCouriers'
 import { b2bAdminService } from '../../services/b2bAdmin.service'
 import Card from '../Card/Card'
 import CardBody from '../Card/CardBody'
@@ -42,10 +42,7 @@ const B2BQuoteCalculator = ({ planId }) => {
   const [quoteResult, setQuoteResult] = useState(null)
   const [isCalculating, setIsCalculating] = useState(false)
 
-  const { data: couriers = [] } = useQuery({
-    queryKey: ['couriers'],
-    queryFn: () => fetch('/api/couriers').then((r) => r.json()),
-  })
+  const { data: couriers = [] } = useCouriers({ businessType: 'b2b' })
 
   const handleCalculate = async () => {
     if (!formData.originPincode || !formData.destinationPincode || !formData.weightKg) {
