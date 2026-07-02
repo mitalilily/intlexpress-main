@@ -33,6 +33,7 @@ export type Invoice = {
   invoiceDate: string
   invoiceValue: number
   invoiceFileUrl?: string
+  invoiceFileKey?: string
 }
 
 // Main Form Data
@@ -148,6 +149,7 @@ export default function B2BOrderForm({ onClose }: { onClose?: () => void }) {
           invoiceDate: '',
           invoiceValue: 0,
           invoiceFileUrl: '',
+          invoiceFileKey: '',
         },
       ],
       weight: 0,
@@ -260,6 +262,7 @@ export default function B2BOrderForm({ onClose }: { onClose?: () => void }) {
             invoiceDate: invoice.invoiceDate,
             invoiceValue: Number(invoice.invoiceValue || 0),
             invoiceFileUrl: invoice.invoiceFileUrl || undefined,
+            invoiceFileKey: invoice.invoiceFileKey || undefined,
           })) ?? [],
         courier_id: Number(data.courierPartnerId),
         courier_partner: data.courierPartner,

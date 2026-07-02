@@ -2,6 +2,7 @@ import { Alert, Box, Button, Grid, IconButton, Paper, Stack, Typography } from '
 import { useState } from 'react'
 import { Controller, useFieldArray, useFormContext } from 'react-hook-form'
 import { AiOutlineDelete } from 'react-icons/ai'
+import { getPresignedDownloadUrls } from '../../../api/upload.api'
 import { validateInvoiceContent } from '../../../api/b2b.api'
 import CustomInput from '../../UI/inputs/CustomInput'
 import FileUploader, { type UploadedFileInfo } from '../../UI/uploader/FileUploader'
@@ -13,6 +14,7 @@ export default function B2BInvoicesForm() {
 
   // State to track invoice content validation warnings
   const [invoiceWarnings, setInvoiceWarnings] = useState<Record<number, string>>({})
+  const [invoicePreviewUrls, setInvoicePreviewUrls] = useState<Record<number, string>>({})
 
   const {
     fields: invoiceFields,
@@ -66,6 +68,29 @@ export default function B2BInvoicesForm() {
       invoiceDate: '',
       invoiceValue: 0,
       invoiceFileUrl: '',
+      invoiceFileKey: '',
+    })
+  }
+
+  const handleRemoveInvoice = (index: number) => {
+    removeInvoice(index)
+    setInvoiceWarnings((prev) => {
+      const next: Record<number, string> = {}
+      Object.entries(prev).forEach(([key, value]) => {
+        const numericKey = Number(key)
+        if (numericKey < index) next[numericKey] = value
+        if (numericKey > index) next[numericKey - 1] = value
+      })
+      return next
+    })
+    setInvoicePreviewUrls((prev) => {
+      const next: Record<number, string> = {}
+      Object.entries(prev).forEach(([key, value]) => {
+        const numericKey = Number(key)
+        if (numericKey < index) next[numericKey] = value
+        if (numericKey > index) next[numericKey - 1] = value
+      })
+      return next
     })
   }
 
@@ -101,7 +126,7 @@ export default function B2BInvoicesForm() {
                   <IconButton
                     color="error"
                     size="small"
-                    onClick={() => removeInvoice(index)}
+                    onClick={() => handleRemoveInvoice(index)}
                     sx={{ position: 'absolute', top: 8, right: 8 }}
                   >
                     <AiOutlineDelete />
@@ -370,6 +395,7 @@ export default function B2BInvoicesForm() {
                                 'Dangerous file types (.exe, .js, .php, .html, .zip, .rar, .bat, .sh) are not permitted.',
                             })
                             setValue(`invoices.${index}.invoiceFileUrl`, '')
+                            setValue(`invoices.${index}.invoiceFileKey`, '')
                             return
                           }
 
@@ -383,6 +409,7 @@ export default function B2BInvoicesForm() {
                               message: 'Only PDF, JPG, JPEG, and PNG files are allowed.',
                             })
                             setValue(`invoices.${index}.invoiceFileUrl`, '')
+                            setValue(`invoices.${index}.invoiceFileKey`, '')
                             return
                           }
 
@@ -394,14 +421,25 @@ export default function B2BInvoicesForm() {
                               message: 'File size exceeds 5 MB limit.',
                             })
                             setValue(`invoices.${index}.invoiceFileUrl`, '')
+                            setValue(`invoices.${index}.invoiceFileKey`, '')
                             return
                           }
 
                           // Clear any previous errors
                           clearErrors(`invoices.${index}.invoiceFileUrl`)
 
-                          // Set the file URL
-                          setValue(`invoices.${index}.invoiceFileUrl`, file.url)
+                          const presignedPreviewUrl =
+                            (await getPresignedDownloadUrls(file.key).catch(() => null)) || file.url
+                          const resolvedPreviewUrl =
+                            typeof presignedPreviewUrl === 'string' ? presignedPreviewUrl : file.url
+
+                          // Keep the preview URL for the form UI, and the storage key for order persistence
+                          setValue(`invoices.${index}.invoiceFileUrl`, resolvedPreviewUrl)
+                          setValue(`invoices.${index}.invoiceFileKey`, file.key)
+                          setInvoicePreviewUrls((prev) => ({
+                            ...prev,
+                            [index]: resolvedPreviewUrl,
+                          }))
 
                           // Soft validation: Check invoice content (non-blocking)
                           // This would typically call an OCR service to extract invoice data
@@ -411,7 +449,7 @@ export default function B2BInvoicesForm() {
                             // Simulate invoice content validation
                             // In production, this would call: await validateInvoiceContent(file.url, invoiceValue)
                             const invoiceContentWarning = await validateInvoiceContentSoft(
-                              file.url,
+                              resolvedPreviewUrl,
                               invoiceValue,
                             )
                             if (invoiceContentWarning) {
@@ -432,6 +470,12 @@ export default function B2BInvoicesForm() {
                           }
                         } else {
                           setValue(`invoices.${index}.invoiceFileUrl`, '')
+                          setValue(`invoices.${index}.invoiceFileKey`, '')
+                          setInvoicePreviewUrls((prev) => {
+                            const newPreviewUrls = { ...prev }
+                            delete newPreviewUrls[index]
+                            return newPreviewUrls
+                          })
                           setInvoiceWarnings((prev) => {
                             const newWarnings = { ...prev }
                             delete newWarnings[index]
@@ -485,10 +529,10 @@ export default function B2BInvoicesForm() {
                               <Typography variant="caption">{invoiceWarnings[index]}</Typography>
                             </Alert>
                           )}
-                          {field.value && (
+                          {(invoicePreviewUrls[index] || field.value) && (
                             <Box
                               component="a"
-                              href={field.value}
+                              href={invoicePreviewUrls[index] || field.value}
                               target="_blank"
                               rel="noopener noreferrer"
                               sx={{

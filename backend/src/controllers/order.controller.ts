@@ -1,5 +1,8 @@
 // controllers/shipmentController.ts
+import { eq } from 'drizzle-orm'
 import { Request, Response } from 'express'
+import { db } from '../models/client'
+import { b2b_orders } from '../models/schema/b2bOrders'
 import {
   bookExistingB2COrderWithCourierService,
   checkMerchantOrderNumberAvailability,
@@ -247,6 +250,36 @@ export const createB2BShipmentController = async (req: any, res: Response) => {
 
     // Call service to create shipment (local order creation, so is_external_api = false)
     const shipmentData = await createB2BShipmentService(params, userId, false)
+
+    const primaryInvoice = Array.isArray(params?.invoices)
+      ? (params.invoices[0] as
+          | {
+              invoiceFileKey?: string
+              invoice_file_key?: string
+              invoiceFileUrl?: string
+              invoice_file_url?: string
+            }
+          | null)
+      : null
+    const invoiceReference =
+      String(
+        primaryInvoice?.invoiceFileKey ||
+          primaryInvoice?.invoice_file_key ||
+          primaryInvoice?.invoiceFileUrl ||
+          primaryInvoice?.invoice_file_url ||
+          '',
+      ).trim() || null
+    const createdOrderId = String(shipmentData?.order?.id || '').trim()
+
+    if (invoiceReference && createdOrderId) {
+      await db
+        .update(b2b_orders)
+        .set({
+          invoice_link: invoiceReference,
+          updated_at: new Date(),
+        } as any)
+        .where(eq(b2b_orders.id, createdOrderId))
+    }
 
     return res.status(200).json({
       message: 'B2B shipment created successfully',

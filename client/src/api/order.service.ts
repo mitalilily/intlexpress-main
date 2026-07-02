@@ -261,6 +261,7 @@ export type CreateB2BShipmentParams = {
     invoiceDate: string
     invoiceValue: number
     invoiceFileUrl?: string
+    invoiceFileKey?: string
   }>
 
   courier_id: number
