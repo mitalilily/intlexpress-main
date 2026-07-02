@@ -20,6 +20,7 @@ import { useDropzone, type Accept } from 'react-dropzone'
 import { IoCloudUploadOutline } from 'react-icons/io5'
 import { MdClose, MdEdit } from 'react-icons/md' // ← new
 import axiosInstance from '../../../api/axiosInstance'
+import { uploadFileDirectly } from '../../../api/upload.api'
 import { toast } from '../Toast'
 import styles from './uploader.module.css'
 
@@ -203,26 +204,36 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
       try {
         for (const file of arr) {
-          const { data } = await axiosInstance.post('/uploads/presign', {
-            contentType: file.type || 'application/octet-stream',
-            filename: file.name,
-            folder: folderKey,
-          })
+          let uploadedFile: UploadedFileInfo
 
-          // Upload directly to R2 using presigned URL - no credentials needed
-          await axios.put(data.uploadUrl, file, {
-            withCredentials: false, // Don't send credentials for presigned URL uploads
-            headers: { 'Content-Type': file.type },
-            onUploadProgress: (e) => e.total && setProgress(Math.round((e.loaded * 100) / e.total)),
-          })
+          try {
+            const { data } = await axiosInstance.post('/uploads/presign', {
+              contentType: file.type || 'application/octet-stream',
+              filename: file.name,
+              folder: folderKey,
+            })
 
-          uploaded.push({
-            url: data.publicUrl,
-            key: data.key,
-            originalName: file.name,
-            size: file.size,
-            mime: file.type,
-          })
+            // Prefer direct browser-to-R2 upload when bucket CORS allows it.
+            await axios.put(data.uploadUrl, file, {
+              withCredentials: false,
+              headers: { 'Content-Type': file.type || 'application/octet-stream' },
+              onUploadProgress: (e) =>
+                e.total && setProgress(Math.round((e.loaded * 100) / e.total)),
+            })
+
+            uploadedFile = {
+              url: data.publicUrl,
+              key: data.key,
+              originalName: file.name,
+              size: file.size,
+              mime: file.type,
+            }
+          } catch (directUploadError) {
+            console.warn('Direct R2 upload failed, falling back to API upload.', directUploadError)
+            uploadedFile = await uploadFileDirectly(file, folderKey)
+          }
+
+          uploaded.push(uploadedFile)
 
           if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
             setPreviewUrl(URL.createObjectURL(file)) // optional

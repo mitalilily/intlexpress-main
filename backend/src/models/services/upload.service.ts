@@ -18,6 +18,10 @@ interface PresignParams {
   folderKey?: string
 }
 
+interface DirectUploadParams extends PresignParams {
+  fileBuffer: Buffer
+}
+
 const PRESIGN_DOWNLOAD_EXPIRES_IN_SECONDS = 60 * 60 * 24 // 24h
 const PRESIGN_CACHE_SAFETY_BUFFER_MS = 60 * 1000 // refresh 1 min before expiry
 const R2_UPLOAD_TIMEOUT_MS = Number(process.env.R2_UPLOAD_TIMEOUT_MS || 30000)
@@ -59,6 +63,29 @@ export const presignUpload = async ({
 
   const publicUrl = `${process.env.R2_ENDPOINT}/${bucket}/${key}`
   return { uploadUrl, key, publicUrl, bucket }
+}
+
+export const uploadBufferToR2 = async ({
+  filename,
+  contentType,
+  userId,
+  folderKey = 'userPp',
+  fileBuffer,
+}: DirectUploadParams) => {
+  const bucket = getBucketName()
+  const key = `${folderKey}/${userId}/${Date.now()}-${sanitizeFilename(filename)}`
+
+  await r2.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: fileBuffer,
+      ContentType: contentType,
+    }),
+  )
+
+  const publicUrl = `${process.env.R2_ENDPOINT}/${bucket}/${key}`
+  return { key, publicUrl, bucket }
 }
 
 /**
