@@ -17,9 +17,19 @@ const api = axios.create({
 })
 
 let refreshPromise = null
+const AUTH_BYPASS_PATHS = ['/auth/admin/login', '/auth/refresh-token', '/auth/logout']
+
+const matchesBypassPath = (url = '') => AUTH_BYPASS_PATHS.some((path) => String(url).includes(path))
 
 // Request interceptor: attach access token
 api.interceptors.request.use((config) => {
+  if (matchesBypassPath(config.url)) {
+    if (config.headers?.Authorization) {
+      delete config.headers.Authorization
+    }
+    return config
+  }
+
   const token = localStorage.getItem('accessToken')
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`
@@ -37,7 +47,8 @@ api.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      localStorage.getItem('refreshToken')
+      localStorage.getItem('refreshToken') &&
+      !matchesBypassPath(originalRequest?.url)
     ) {
       originalRequest._retry = true
 

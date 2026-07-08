@@ -56,13 +56,23 @@ function SignIn() {
   const toast = useToast()
   const history = useHistory()
   const login = useAuthStore((state) => state.login)
+  const logout = useAuthStore((state) => state.logout)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      const data = await loginAdmin(email, password)
+      const normalizedEmail = email.trim().toLowerCase()
+      const nextPassword = password.trim()
+
+      logout()
+
+      const data = await loginAdmin(normalizedEmail, nextPassword)
+      if (!data?.token || !data?.refreshToken) {
+        throw new Error('Admin login response is missing tokens')
+      }
+
       login(data.token, data?.user?.id, data.refreshToken)
 
       toast({
@@ -74,9 +84,14 @@ function SignIn() {
 
       history.push('/admin/dashboard')
     } catch (err) {
+      console.error('[Admin SignIn] Login failed', err)
       toast({
         title: 'Login failed',
-        description: err.response?.data?.error || 'Something went wrong',
+        description:
+          err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          err?.message ||
+          'Unable to complete admin login right now.',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -92,8 +107,13 @@ function SignIn() {
 
     if (accessToken && refreshToken && isTokenValid(refreshToken)) {
       history.replace('/admin/dashboard')
+      return
     }
-  }, [history])
+
+    if (accessToken || refreshToken) {
+      logout()
+    }
+  }, [history, logout])
 
   return (
     <Flex minH="100vh" bg={pageBg} px={{ base: 3, md: 4 }} py={{ base: 3, md: 4 }}>
