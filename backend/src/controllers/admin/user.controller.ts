@@ -1,4 +1,7 @@
 import { Request, Response } from 'express'
+import { eq } from 'drizzle-orm'
+import { db } from '../../models/client'
+import { users } from '../../models/schema/users'
 import {
   getBankAccountsByUserId,
   updateBankAccountStatusById,
@@ -393,6 +396,13 @@ export const approveKyc = async (req: any, res: Response) => {
   try {
     const user = await findUserById(req.params.id)
     await updateKycStatus(req.params.id, 'verified')
+    await db
+      .update(users)
+      .set({
+        accountVerified: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, req.params.id))
 
     if (user?.email) {
       sendKycStatusEmail({

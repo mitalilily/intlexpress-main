@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import { db, pool } from '../models/client'
 import { kyc } from '../models/schema/kyc'
 import { userProfiles } from '../models/schema/userProfile'
+import { users } from '../models/schema/users'
 import { ensureUserBootstrapRecords, findUserByEmail, updateUserApprovalStatus } from '../models/services/userService'
 import { updateKycStatus } from '../models/services/kyc.service'
 
@@ -65,6 +66,13 @@ async function approveKycByEmail() {
   }
 
   await updateUserApprovalStatus(user.id, true)
+  await db
+    .update(users)
+    .set({
+      accountVerified: true,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id))
 
   const [updatedKyc] = await db.select().from(kyc).where(eq(kyc.userId, user.id)).limit(1)
 
@@ -72,6 +80,7 @@ async function approveKycByEmail() {
     email,
     userId: user.id,
     kycStatus: updatedKyc?.status ?? null,
+    accountVerified: true,
   })
 }
 
