@@ -73,9 +73,11 @@ jobs:
             --exclude '.DS_Store' \
             --exclude 'backend/.env.production' \
             --exclude 'backend/node_modules' \
+            --exclude 'landing/node_modules' \
             --exclude 'courier-cart-client/node_modules' \
             --exclude 'admin-dashboard/node_modules' \
             --exclude 'backend/dist' \
+            --exclude 'landing/dist' \
             --exclude 'courier-cart-client/dist' \
             --exclude 'admin-dashboard/build' \
             ./ "${{ secrets.SHIPLIFI_USER }}@${{ secrets.SHIPLIFI_HOST }}:/srv/shiplifi/current/"
