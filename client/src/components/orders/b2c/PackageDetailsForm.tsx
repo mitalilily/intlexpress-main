@@ -167,8 +167,15 @@ const PackageDetailsForm = ({
                 <Controller
                   name={`products.${index}.hsnCode` as const}
                   control={control}
-                  render={({ field }) => (
-                    <CustomInput label="HSN Code (Optional)" topMargin={false} dense {...field} />
+                  render={({ field, fieldState }) => (
+                    <CustomInput
+                      label="HSN Code"
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
+                      topMargin={false}
+                      dense
+                      {...field}
+                    />
                   )}
                 />
               </Grid>

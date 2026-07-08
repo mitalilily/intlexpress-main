@@ -1492,6 +1492,21 @@ export class DelhiveryService {
         if (value === undefined || value === null) return ''
         return String(value).trim()
       }
+      const mergeAddressLines = (primary?: string | null, secondary?: string | null) => {
+        const first = sanitizeString(primary)
+        const second = sanitizeString(secondary)
+        if (!first) return second
+        if (!second) return first
+        if (first.toLowerCase().includes(second.toLowerCase())) return first
+        return `${first}, ${second}`
+      }
+      const hasSuspiciousLocationValue = (value?: string | null) => {
+        const normalized = sanitizeString(value)
+        if (!normalized) return true
+        if (/^\?+$/.test(normalized)) return true
+        if (normalized.replace(/\?/g, '').trim().length === 0) return true
+        return normalized.includes('�')
+      }
       const sanitizeBoolean = (value?: boolean | string | number | null) => {
         if (value === undefined || value === null) return undefined
         if (typeof value === 'boolean') return value
@@ -1505,11 +1520,20 @@ export class DelhiveryService {
 
       const pickup = params.pickup || ({} as ShipmentParams['pickup'])
       const consignee = params.consignee || ({} as ShipmentParams['consignee'])
+      const normalizedPickup: ShipmentParams['pickup'] = {
+        ...pickup,
+        address: sanitizeString(pickup.address),
+        address_2: sanitizeString(pickup.address_2) || undefined,
+        city: sanitizeString(pickup.city),
+        state: sanitizeString(pickup.state),
+        pincode: sanitizeString(pickup.pincode),
+        phone: sanitizeString(pickup.phone),
+      }
       const boxes = Array.isArray(params.boxes) ? params.boxes : []
       const orderNumber = sanitizeString(params.order_number)
       const invoiceNumber = sanitizeString(params.invoice_number)
-      const pickupDate = sanitizeString(params.pickup_date || pickup.pickup_date)
-      const pickupTime = sanitizeString(params.pickup_time || pickup.pickup_time)
+      const pickupDate = sanitizeString(params.pickup_date || normalizedPickup.pickup_date)
+      const pickupTime = sanitizeString(params.pickup_time || normalizedPickup.pickup_time)
       const resolvedInvoiceNumber = invoiceNumber || orderNumber
       const orderAmount = Number(params.order_amount ?? 0)
       const orderItems = Array.isArray(params.order_items) ? params.order_items : []
@@ -1547,17 +1571,34 @@ export class DelhiveryService {
           'order_amount is required and must be a positive number when booking with Delhivery.',
         )
       }
-      const pickupAddressParts = [
-        sanitizeString(pickup.address),
-        sanitizeString(pickup.address_2),
-      ].filter((part) => part.length > 0)
-      const pickupAddress =
-        pickupAddressParts.length > 0
-          ? pickupAddressParts.join(', ')
-          : sanitizeString(pickup.warehouse_name)
 
-      const sellerName = sanitizeString(params.company?.name || pickup.name || 'IntleExpress')
-      const sellerGst = sanitizeString(params.company?.gst || pickup.gst_number || '')
+      if (normalizedPickup.pincode && hasSuspiciousLocationValue(normalizedPickup.city)) {
+        try {
+          const pickupServiceability = await this.checkB2CServiceability(normalizedPickup.pincode)
+          const postalCode = pickupServiceability?.delivery_codes?.[0]?.postal_code
+          const resolvedPickupCity = sanitizeString(postalCode?.city)
+          if (resolvedPickupCity) {
+            normalizedPickup.city = resolvedPickupCity
+            console.log('ℹ️ Delhivery pickup city normalized from pincode serviceability', {
+              pincode: normalizedPickup.pincode,
+              warehouse_name: sanitizeString(normalizedPickup.warehouse_name) || null,
+              city: resolvedPickupCity,
+            })
+          }
+        } catch (pickupResolutionError: any) {
+          console.warn('⚠️ Failed to normalize Delhivery pickup city from serviceability', {
+            pincode: normalizedPickup.pincode,
+            message: pickupResolutionError?.message || pickupResolutionError,
+          })
+        }
+      }
+
+      const pickupAddress =
+        mergeAddressLines(normalizedPickup.address, normalizedPickup.address_2) ||
+        sanitizeString(normalizedPickup.warehouse_name)
+
+      const sellerName = sanitizeString(params.company?.name || normalizedPickup.name || 'IntleExpress')
+      const sellerGst = sanitizeString(params.company?.gst || normalizedPickup.gst_number || '')
       const productNames = orderItems
         .map((item) => sanitizeString(item?.name))
         .filter((name) => name.length > 0)
@@ -1570,13 +1611,13 @@ export class DelhiveryService {
           'Consignee phone must contain at least 10 digits for Delhivery shipments.',
         )
       }
-      const pickupPhone = sanitizePhone(pickup.phone)
+      const pickupPhone = sanitizePhone(normalizedPickup.phone)
       if (!pickupPhone) {
         throw new HttpError(400, 'Valid pickup phone is required for Delhivery manifests.')
       }
 
       await this.ensureManifestWarehouseRegistered({
-        pickup,
+        pickup: normalizedPickup,
         sellerName,
       })
 
@@ -1623,19 +1664,19 @@ export class DelhiveryService {
         shipment_height: defaultShipmentHeight,
         seller_name: sellerName,
         seller_add: pickupAddress,
-        seller_city: sanitizeString(pickup.city),
-        seller_state: sanitizeString(pickup.state),
-        seller_pin: sanitizePincode(pickup.pincode),
+        seller_city: sanitizeString(normalizedPickup.city),
+        seller_state: sanitizeString(normalizedPickup.state),
+        seller_pin: sanitizePincode(normalizedPickup.pincode),
         seller_phone: pickupPhone,
         seller_gst_tin: sellerGst,
         seller_inv: resolvedInvoiceNumber,
         invoice_reference: resolvedInvoiceNumber,
         invoice_date: invoiceDate,
-        pickup_location: sanitizeString(pickup.warehouse_name) || 'Default Warehouse',
+        pickup_location: sanitizeString(normalizedPickup.warehouse_name) || 'Default Warehouse',
         pickup_address: pickupAddress,
-        pickup_city: sanitizeString(pickup.city),
-        pickup_state: sanitizeString(pickup.state),
-        pickup_pin: sanitizePincode(pickup.pincode),
+        pickup_city: sanitizeString(normalizedPickup.city),
+        pickup_state: sanitizeString(normalizedPickup.state),
+        pickup_pin: sanitizePincode(normalizedPickup.pincode),
         pickup_phone: pickupPhone,
         pickup_country: sanitizeString(params.country) || 'India',
         pickup_date: pickupDate || undefined,
@@ -1678,7 +1719,7 @@ export class DelhiveryService {
         params.rto && params.is_rto_different === 'yes'
           ? params.rto
           : paymentMode === 'REPL'
-            ? (params.rto ?? params.pickup)
+            ? (params.rto ?? normalizedPickup)
             : null
 
       if (resolvedReturnAddress) {
@@ -1765,7 +1806,7 @@ export class DelhiveryService {
       const payload = {
         shipments,
         pickup_location: {
-          name: sanitizeString(pickup.warehouse_name) || 'Default Warehouse',
+          name: sanitizeString(normalizedPickup.warehouse_name) || 'Default Warehouse',
         },
       }
 

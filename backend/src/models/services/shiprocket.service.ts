@@ -2754,15 +2754,9 @@ function buildPickupFromWarehouse(
   fallbackDate?: string,
   fallbackTime?: string,
 ): ShipmentParams['pickup'] {
-  const addressSegments = [warehouse.addressLine1, warehouse.addressLine2].filter(
-    (segment) => typeof segment === 'string' && segment.trim().length,
-  )
-  const formattedAddress =
-    addressSegments.length > 0 ? addressSegments.join(', ') : warehouse.addressLine1
-
   return {
     warehouse_name: warehouse.addressNickname || warehouse.contactName || 'Warehouse',
-    address: formattedAddress,
+    address: warehouse.addressLine1?.trim() || warehouse.addressLine2?.trim() || '',
     address_2: warehouse.addressLine2 ?? undefined,
     city: warehouse.city,
     state: warehouse.state,
@@ -7092,12 +7086,12 @@ export const createB2CShipmentService = async (
   const hsnCodes = orderItems
     .map((item) => (item?.hsn || item?.hsnCode || '').toString().trim())
     .filter((code) => code.length > 0)
-  // if (hsnCodes.length === 0) {
-  //   throw new HttpError(
-  //     400,
-  //     'At least one HSN code is required for Delhivery shipments (per official API requirements). Please include HSN/SAC for your products.',
-  //   )
-  // }
+  if (effectiveIntegrationType === 'delhivery' && hsnCodes.length === 0) {
+    throw new HttpError(
+      400,
+      'At least one HSN code is required for Delhivery shipments. Please add HSN/SAC for your product before booking.',
+    )
+  }
 
   // Fill seller/company metadata from user profile (if not explicitly provided).
   // Delhivery UI uses this for "Seller Details" and GST visibility.

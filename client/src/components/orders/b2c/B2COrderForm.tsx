@@ -275,6 +275,25 @@ export default function B2COrderFormSteps({ onClose }: { onClose?: () => void })
         return
       }
 
+      if (data.integrationType === 'delhivery') {
+        const firstProductWithoutHsnIndex = data.products.findIndex(
+          (product) => !String(product.hsnCode ?? '').trim(),
+        )
+
+        if (firstProductWithoutHsnIndex >= 0) {
+          methods.setError(`products.${firstProductWithoutHsnIndex}.hsnCode`, {
+            type: 'manual',
+            message: 'HSN/SAC is required for Delhivery bookings',
+          })
+          setCurrentStep(0)
+          toast.open({
+            message: 'HSN/SAC is required for Delhivery bookings. Please update the product first.',
+            severity: 'error',
+          })
+          return
+        }
+      }
+
       let amazonRequestToken = data.amazonRequestToken ?? undefined
       let amazonRateId = data.amazonRateId ?? undefined
       let amazonServiceId = data.amazonServiceId ?? undefined
