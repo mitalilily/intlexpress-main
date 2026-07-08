@@ -3,11 +3,11 @@ const brand = {
   adminName: 'IntleExpress Admin',
   tagline: 'Global Courier Solutions',
   adminTagline: 'Admin Control Center',
-  website: 'https://intlexpress-client.onrender.com',
+  website: 'https://intlexpress.in',
   supportEmail: 'info@intlexpress.com',
   logoIcon: '/logo/intleexpress-favicon.png',
-  apiBaseUrl: 'https://intlexpress-main-pgvy.onrender.com/api',
-  socketUrl: 'https://intlexpress-main-pgvy.onrender.com',
+  apiBaseUrl: 'https://api.intlexpress.in/api',
+  socketUrl: 'https://api.intlexpress.in',
 }
 
 export default brand

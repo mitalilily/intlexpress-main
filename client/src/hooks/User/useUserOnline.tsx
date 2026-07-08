@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client'
 
-const SOCKET_URL = import.meta.env.VITE_APP_SOCKET_URL || 'https://intlexpress-main-pgvy.onrender.com'
+const SOCKET_URL = import.meta.env.VITE_APP_SOCKET_URL || 'https://api.intlexpress.in'
 const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] })
 
 let pingInterval: number | null = null

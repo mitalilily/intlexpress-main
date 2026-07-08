@@ -1,10 +1,10 @@
 export const brand = {
   name: 'IntleExpress',
   tagline: 'Global Courier Solutions',
-  website: 'https://intlexpress-client.onrender.com',
+  website: 'https://intlexpress.in',
   supportEmail: 'info@intlexpress.com',
-  apiBaseUrl: 'https://intlexpress-main-pgvy.onrender.com/api',
-  socketUrl: 'https://intlexpress-main-pgvy.onrender.com',
+  apiBaseUrl: 'https://api.intlexpress.in/api',
+  socketUrl: 'https://api.intlexpress.in',
   logo: '/brand/intelExpress-logo.png',
   icon: '/brand/intelExpress-favicon.png',
   colors: {

@@ -70,7 +70,7 @@ const AboutUsEditor = () => {
       <h3>Contact</h3>
       <p><strong>Registered Office:</strong> B-76 Shiv Shakti Nagar, Jagatpura Road, Malviya Nagar, Jaipur, Rajasthan, India 302017</p>
       <p><strong>Email:</strong> info@intlexpress.com</p>
-      <p><strong>Website:</strong> intlexpress-client.onrender.com</p>
+      <p><strong>Website:</strong> intlexpress.in</p>
     `
 
     const blocksFromHTML = convertFromHTML(templateHtml)

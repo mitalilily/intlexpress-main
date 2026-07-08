@@ -82,10 +82,10 @@ const CompanyDetails = () => {
             <Chip
               clickable
               component={Link}
-              href="https://intlexpress-client.onrender.com"
+              href="https://intlexpress.in"
               target="_blank"
               rel="noreferrer"
-              label="intlexpress-client.onrender.com"
+              label="intlexpress.in"
               color="secondary"
               variant="filled"
               icon={<FiGlobe size={16} />}

@@ -129,12 +129,17 @@ const allowedOrigins = new Set([
   'https://www.intlexpress.com',
   'https://app.intlexpress.com',
   'https://admin.intlexpress.com',
+  'https://intlexpress.in',
+  'https://www.intlexpress.in',
+  'https://app.intlexpress.in',
+  'https://admin.intlexpress.in',
+  'https://api.intlexpress.in',
   ...configuredAllowedOrigins,
 ])
 
 const isLocalOrigin = (origin: string) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
 const isFirstPartyOrigin = (origin: string) =>
-  /^https:\/\/([a-z0-9-]+\.)*(shiplifi|intlexpress)\.com$/.test(origin)
+  /^https:\/\/([a-z0-9-]+\.)*(shiplifi|intlexpress)\.(com|in)$/.test(origin)
 
 const isAllowedOrigin = (origin: string) => {
   const normalizedOrigin = normalizeOrigin(origin)

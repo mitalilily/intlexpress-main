@@ -24,7 +24,7 @@ export default function Footer() {
         <Text as="span">All rights reserved - </Text>
         <Link
           color={linkColor}
-          href="https://intlexpress-client.onrender.com"
+          href="https://intlexpress.in"
           target="_blank"
           fontWeight="semibold"
         >

@@ -10,7 +10,7 @@
 set +e
 
 # VPS configuration
-VPS_TARGET_PATH="/var/www/meracourierwala/admin-dashboard/build"
+VPS_TARGET_PATH="/srv/intlexpress/current/admin-dashboard/build"
 
 # Get VPS connection details from argument or environment variables
 if [ -n "$1" ]; then
@@ -45,8 +45,8 @@ echo "🔨 Running build with production environment variables..."
 
 # Set production API URL
 # React apps need REACT_APP_ prefix for environment variables
-export REACT_APP_API_BASE_URL="https://api.shiplifi.com/api"
-export REACT_APP_SOCKET_URL="https://api.shiplifi.com"
+export REACT_APP_API_BASE_URL="https://api.intlexpress.in/api"
+export REACT_APP_SOCKET_URL="https://api.intlexpress.in"
 
 echo "📡 Using production API URL: ${REACT_APP_API_BASE_URL}"
 echo ""
@@ -82,11 +82,10 @@ fi
 echo "✅ Build directory ready: ${VPS_TARGET_PATH}"
 
 # Use rsync to upload build folder contents
-# NO --delete flag = nothing will be deleted on VPS, all existing files are kept
-# Only files from local build/ folder will be uploaded/updated
+# `--delete` is safe here because the target is the generated build directory only.
 echo "📤 Uploading build files..."
-echo "   (This will add/update build files and keep ALL existing files on VPS)"
-rsync -avz --progress build/ "${VPS_CONNECTION}:${VPS_TARGET_PATH}/"
+echo "   (This will replace stale build assets with the current build output)"
+rsync -avz --delete --progress build/ "${VPS_CONNECTION}:${VPS_TARGET_PATH}/"
 RSYNC_EXIT_CODE=$?
 
 if [ $RSYNC_EXIT_CODE -eq 0 ]; then

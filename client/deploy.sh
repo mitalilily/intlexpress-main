@@ -10,7 +10,7 @@
 set +e
 
 # VPS configuration
-VPS_TARGET_PATH="/var/www/meracourierwala/courier-cart-client/dist"
+VPS_TARGET_PATH="/srv/intlexpress/current/client/dist"
 
 # Get VPS connection details from argument or environment variables
 if [ -n "$1" ]; then
@@ -45,8 +45,8 @@ echo "🔨 Running build with production environment variables..."
 
 # Set production environment variables
 # Vite uses VITE_ prefix for environment variables
-export VITE_API_URL="https://api.meracourierwala.com/api"
-export VITE_APP_SOCKET_URL="https://api.meracourierwala.com"
+export VITE_API_URL="https://api.intlexpress.in/api"
+export VITE_APP_SOCKET_URL="https://api.intlexpress.in"
 
 # Keep other environment variables from .env if needed (Shopify, Google OAuth, etc.)
 # These can be overridden here if you have different production values
@@ -88,11 +88,10 @@ fi
 echo "✅ Dist directory ready: ${VPS_TARGET_PATH}"
 
 # Use rsync to upload dist folder contents
-# NO --delete flag = nothing will be deleted on VPS, all existing files are kept
-# Only files from local dist/ folder will be uploaded/updated
+# `--delete` is safe here because the target is the generated dist directory only.
 echo "📤 Uploading dist files..."
-echo "   (This will add/update dist files and keep ALL existing files on VPS)"
-rsync -avz --progress dist/ "${VPS_CONNECTION}:${VPS_TARGET_PATH}/"
+echo "   (This will replace stale dist assets with the current build output)"
+rsync -avz --delete --progress dist/ "${VPS_CONNECTION}:${VPS_TARGET_PATH}/"
 RSYNC_EXIT_CODE=$?
 
 if [ $RSYNC_EXIT_CODE -eq 0 ]; then
@@ -107,4 +106,3 @@ else
   exit 1
 fi
 echo ""
-

@@ -64,7 +64,7 @@ Banned Restricted Products and Services
 IntleExpress
 Head Office: B-76 Shiv Shakti Nagar, Jagatpura Road, Malviya Nagar, Jaipur, Rajasthan, India 302017
 📧 Email: info@intlexpress.com
-🌐 Website: intlexpress-client.onrender.com
+🌐 Website: intlexpress.in
 
 Refund & Cancellation Policy
 • You may cancel your account at any time by emailing us at info@intlexpress.com.
