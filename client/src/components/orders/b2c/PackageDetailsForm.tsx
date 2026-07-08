@@ -169,7 +169,7 @@ const PackageDetailsForm = ({
                   control={control}
                   render={({ field, fieldState }) => (
                     <CustomInput
-                      label="HSN Code"
+                      label="HSN Code (Optional)"
                       error={!!fieldState.error}
                       helperText={fieldState.error?.message}
                       topMargin={false}

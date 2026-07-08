@@ -7086,12 +7086,6 @@ export const createB2CShipmentService = async (
   const hsnCodes = orderItems
     .map((item) => (item?.hsn || item?.hsnCode || '').toString().trim())
     .filter((code) => code.length > 0)
-  if (effectiveIntegrationType === 'delhivery' && hsnCodes.length === 0) {
-    throw new HttpError(
-      400,
-      'At least one HSN code is required for Delhivery shipments. Please add HSN/SAC for your product before booking.',
-    )
-  }
 
   // Fill seller/company metadata from user profile (if not explicitly provided).
   // Delhivery UI uses this for "Seller Details" and GST visibility.
