@@ -3,8 +3,6 @@ import {
   FormControlLabel,
   Link,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
 } from '@mui/material'
 import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
@@ -18,7 +16,6 @@ import CustomInput from '../UI/inputs/CustomInput'
 import CustomModal from '../UI/modal/CustomModal'
 import { toast } from '../UI/Toast'
 import OtpForm from './OtpForm'
-import PasswordLoginForm from './PasswordLoginForm'
 
 const BRAND_ORANGE = '#333d81'
 const BRAND_DARK = '#141414'
@@ -43,7 +40,6 @@ const secondaryButtonStyles = {
 export default function PhoneForm() {
   const activeEmail = sessionStorage.getItem('activeEmail')
   const [step, setStep] = useState<number>(0)
-  const [preferredLoginMethod, setPreferredLoginMethod] = useState<'phone' | 'password'>('phone')
   const [email, setEmail] = useState('')
   const [termsChecked, setTermsChecked] = useState(false)
   const [openTerms, setOpenTerms] = useState(false)
@@ -71,7 +67,6 @@ export default function PhoneForm() {
         return
       }
 
-      setPreferredLoginMethod('phone')
       sessionStorage.setItem('preferredMethod', 'phone')
 
       sendOtpRequest(email.toLowerCase().trim(), {
@@ -88,7 +83,8 @@ export default function PhoneForm() {
           }
         },
         onError: (err: any) => {
-          const msg = err?.response?.data?.error || 'OTP request failed'
+          const msg =
+            err?.response?.data?.error || 'Failed to generate on-screen demo OTP. Please try again.'
           toast.open({
             message: msg,
             severity: 'error',
@@ -223,7 +219,7 @@ export default function PhoneForm() {
             textAlign: 'center',
           }}
         >
-          Choose how you want to sign in
+          Sign in with on-screen demo OTP
         </Typography>
       </Stack>
 
@@ -233,55 +229,8 @@ export default function PhoneForm() {
           background: '#fff',
         }}
       >
-        <Box
-          sx={{
-            px: 1.2,
-            py: 1.2,
-            borderBottom: '1px solid rgba(17,17,19,0.08)',
-            background: '#f7f1ed',
-          }}
-        >
-          <ToggleButtonGroup
-            value={preferredLoginMethod}
-            exclusive
-            onChange={(_, value) => {
-              if (!value) return
-              setPreferredLoginMethod(value)
-              setStep(0)
-            }}
-            fullWidth
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              gap: 1,
-              '& .MuiToggleButton-root': {
-                textTransform: 'none',
-                fontWeight: 800,
-                border: '1px solid rgba(17,17,19,0.08) !important',
-                color: '#6f6a67',
-                px: 1.4,
-                py: 1.15,
-                justifyContent: 'center',
-                backgroundColor: '#fffaf7',
-                '&.Mui-selected': {
-                  color: BRAND_DARK,
-                  backgroundColor: '#ffffff',
-                  boxShadow: 'inset 0 0 0 1px rgba(51,61,129,0.18)',
-                },
-              },
-            }}
-          >
-            <ToggleButton value="phone">Console OTP</ToggleButton>
-            <ToggleButton value="password">Email + Password</ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-
         <Box sx={{ p: { xs: 1.3, sm: 1.6 } }}>
-          {preferredLoginMethod === 'phone' ? (
-            renderOtpEntry()
-          ) : (
-            <PasswordLoginForm step={step} setOpenTerms={setOpenTerms} setStep={setStep} />
-          )}
+          {renderOtpEntry()}
         </Box>
       </Box>
 
