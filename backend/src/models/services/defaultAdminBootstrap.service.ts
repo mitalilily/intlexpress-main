@@ -6,7 +6,7 @@ import { users } from '../schema/users'
 import { findUserByEmail } from './userService'
 
 const DEFAULT_ADMIN_EMAIL = 'admin@intlexpress.com'
-const DEFAULT_ADMIN_PASSWORD = 'Admin@12345!'
+const DEFAULT_ADMIN_PASSWORD = 'admin@1234'
 const DEFAULT_ADMIN_PHONE = '+916283315911'
 
 export const normalizeAdminEmail = (email: string) => String(email || '').trim().toLowerCase()
