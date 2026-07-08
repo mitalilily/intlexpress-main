@@ -3,7 +3,6 @@ set -euo pipefail
 
 APP_ROOT="/var/www/shiplifi"
 BACKEND_DIR="$APP_ROOT/backend"
-LANDING_DIR="$APP_ROOT/landing"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -19,7 +18,7 @@ if ! command -v pm2 >/dev/null 2>&1; then
   npm install -g pm2
 fi
 
-mkdir -p "$BACKEND_DIR" "$LANDING_DIR"
+mkdir -p "$BACKEND_DIR"
 
 cp "$APP_ROOT/deploy/nginx/shiplifi.conf" /etc/nginx/sites-available/shiplifi
 ln -sf /etc/nginx/sites-available/shiplifi /etc/nginx/sites-enabled/shiplifi
@@ -34,10 +33,6 @@ npm ci
 npm run build
 pm2 startOrReload ecosystem.config.cjs
 pm2 save
-
-cd "$LANDING_DIR"
-npm ci
-npm run build
 
 echo "Initial VPS setup complete."
 echo "Next: run certbot --nginx -d shiplifi.com -d www.shiplifi.com"

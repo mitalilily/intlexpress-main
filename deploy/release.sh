@@ -95,10 +95,6 @@ npm run build
 NODE_ENV=production PORT=5003 pm2 startOrReload ecosystem.config.cjs
 pm2 save
 
-cd "$APP_ROOT/landing"
-fresh_npm_ci
-npm run build
-
 cd "$APP_ROOT/courier-cart-client"
 fresh_npm_ci
 node <<'NODE'
