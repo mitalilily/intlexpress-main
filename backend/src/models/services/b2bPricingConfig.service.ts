@@ -143,36 +143,38 @@ export const getAdditionalCharges = async (params: {
     { courierId: undefined, serviceProvider: serviceProvider ?? undefined },
     null,
   ]
+  const planIdsToTry = params.planId ? [params.planId, null] : [null]
 
   for (const scope of scopes) {
     const { courierId: cId, serviceProvider: sProvider } = normalizeCourierScope(scope ?? undefined)
 
-    const conditions: any[] = []
-    if (cId) {
-      conditions.push(eq(b2bAdditionalCharges.courier_id, cId))
-    } else {
-      conditions.push(isNull(b2bAdditionalCharges.courier_id))
-    }
-    if (sProvider) {
-      conditions.push(eq(b2bAdditionalCharges.service_provider, sProvider))
-    } else {
-      conditions.push(isNull(b2bAdditionalCharges.service_provider))
-    }
+    for (const planId of planIdsToTry) {
+      const conditions: any[] = []
+      if (cId) {
+        conditions.push(eq(b2bAdditionalCharges.courier_id, cId))
+      } else {
+        conditions.push(isNull(b2bAdditionalCharges.courier_id))
+      }
+      if (sProvider) {
+        conditions.push(eq(b2bAdditionalCharges.service_provider, sProvider))
+      } else {
+        conditions.push(isNull(b2bAdditionalCharges.service_provider))
+      }
 
-    // Add plan_id filter
-    if (params.planId) {
-      conditions.push(eq(b2bAdditionalCharges.plan_id, params.planId))
-    } else {
-      conditions.push(isNull(b2bAdditionalCharges.plan_id))
+      if (planId) {
+        conditions.push(eq(b2bAdditionalCharges.plan_id, planId))
+      } else {
+        conditions.push(isNull(b2bAdditionalCharges.plan_id))
+      }
+
+      const [charges] = await db
+        .select()
+        .from(b2bAdditionalCharges)
+        .where(and(...conditions))
+        .limit(1)
+
+      if (charges) return charges
     }
-
-    const [charges] = await db
-      .select()
-      .from(b2bAdditionalCharges)
-      .where(and(...conditions))
-      .limit(1)
-
-    if (charges) return charges
   }
 
   // Return null if nothing found - frontend will handle empty form
