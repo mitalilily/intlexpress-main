@@ -59,6 +59,22 @@ const normalizeCourierScope = (scope?: CourierScope) => {
   return { courierId, serviceProvider }
 }
 
+const DEFAULT_B2B_CFT_FACTOR = 5000
+
+const normalizeB2BCftFactor = (value: unknown) => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_B2B_CFT_FACTOR
+  }
+
+  // Legacy configurations stored "5" to represent a 5000 cm3/kg volumetric divisor.
+  if (parsed <= 10) {
+    return parsed * 1000
+  }
+
+  return parsed
+}
+
 // -----------------------------
 // Zones
 // -----------------------------
@@ -1609,7 +1625,7 @@ export const calculateB2BRate = async (params: {
   // CFT Factor - ALWAYS used in weight calculation
   // Formula: volumetricWeight = (L × B × H) / cftFactor
   // chargeableWeight = max(volumetricWeight, actualWeight)
-  const cftFactor = Number(additionalCharges.cft_factor || 5000) // Default to 5000 if not configured
+  const cftFactor = normalizeB2BCftFactor(additionalCharges.cft_factor)
 
   // Use shared helper for weight calculation
   const { billableWeight, volumetricWeight } = calculateB2BChargeableWeight({
@@ -2440,6 +2456,7 @@ export const calculateB2BRate = async (params: {
       actualWeight: params.weightKg,
       volumetricWeight,
       billableWeight,
+      cftFactor,
       volumetricDivisor: cftFactor,
       usedVolumetric: volumetricWeight > params.weightKg,
     },
@@ -2464,7 +2481,7 @@ export const calculateB2BRate = async (params: {
             rovFixedAmount: Number(additionalCharges.rov_fixed_amount || 100),
             rovPercentage: Number(additionalCharges.rov_percentage || 0.5),
             liabilityLimit: Number(additionalCharges.liability_limit || 5000),
-            cftFactor: Number(additionalCharges.cft_factor || 5),
+            cftFactor,
           }
         : null,
       volumetricDivisor: cftFactor, // Uses CFT factor from additional charges configuration

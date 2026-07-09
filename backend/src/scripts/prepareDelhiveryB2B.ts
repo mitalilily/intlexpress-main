@@ -305,6 +305,19 @@ const ensureZoneStatesAndPincodes = async (zoneIdByCode: Map<string, string>) =>
   }
 }
 
+const normalizeDelhiveryB2BCftFactors = async () => {
+  await runWithRetry('normalize Delhivery B2B CFT factors', () =>
+    db.execute(sql`
+      UPDATE shiplifi_b2b_additional_charges
+      SET cft_factor = cft_factor * 1000,
+          updated_at = NOW()
+      WHERE service_provider = 'delhivery'
+        AND cft_factor > 0
+        AND cft_factor <= 10
+    `),
+  )
+}
+
 const getAuditSummary = async () => {
   const [credentialRows, chargeRows, zoneStateRows, zoneRateRows, b2bZoneRows, b2bPincodeRows, courierRows] =
     await runWithRetry('load audit summary', () =>
@@ -374,6 +387,7 @@ async function prepareDelhiveryB2B() {
       courierScope: { serviceProvider: 'delhivery' },
     }),
   )
+  await normalizeDelhiveryB2BCftFactors()
 
   const summary = await getAuditSummary()
 

@@ -160,7 +160,7 @@ export const b2bAdditionalCharges = createTable('b2b_additional_charges', {
   awb_charges: decimal('awb_charges', { precision: 12, scale: 2 }).default('0'),
 
   // 2. CFT Factor - condition: "Higher of volumetric vs actual weight"
-  cft_factor: decimal('cft_factor', { precision: 6, scale: 2 }).default('5'),
+  cft_factor: decimal('cft_factor', { precision: 6, scale: 2 }).default('5000'),
 
   // 3. Minimum Chargeable - condition: "Rs OR Kg" (admin-selectable method)
   minimum_chargeable_amount: decimal('minimum_chargeable_amount', {
@@ -307,7 +307,7 @@ export const b2bVolumetricRules = createTable('b2b_volumetric_rules', {
   courier_id: integer('courier_id'),
   service_provider: varchar('service_provider', { length: 100 }),
   volumetric_divisor: decimal('volumetric_divisor', { precision: 10, scale: 2 }).default('5000'), // L*W*H / divisor
-  cft_factor: decimal('cft_factor', { precision: 6, scale: 2 }).default('5'), // CFT conversion factor
+  cft_factor: decimal('cft_factor', { precision: 6, scale: 2 }).default('5000'), // Volumetric divisor in cm3/kg
   minimum_volumetric_weight: decimal('minimum_volumetric_weight', {
     precision: 10,
     scale: 2,

@@ -8,6 +8,8 @@ type CourierScope = {
   serviceProvider?: string | null
 }
 
+const DEFAULT_B2B_CFT_FACTOR = 5000
+
 const normalizeCourierScope = (scope?: CourierScope) => {
   if (!scope || typeof scope !== 'object') {
     return { courierId: null, serviceProvider: null }
@@ -15,6 +17,42 @@ const normalizeCourierScope = (scope?: CourierScope) => {
   const courierId = scope.courierId != null ? Number(scope.courierId) : null
   const serviceProvider = scope.serviceProvider ?? null
   return { courierId, serviceProvider }
+}
+
+const normalizeCftFactorValue = (value: unknown) => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_B2B_CFT_FACTOR
+  }
+
+  // Older admin data stored the divisor in "thousands" (5 meaning 5000 cm3/kg).
+  if (parsed <= 10) {
+    return parsed * 1000
+  }
+
+  return parsed
+}
+
+const normalizeAdditionalChargesRecord = <T extends { cft_factor?: unknown } | null>(record: T): T => {
+  if (!record) {
+    return record
+  }
+
+  return {
+    ...record,
+    cft_factor: normalizeCftFactorValue(record.cft_factor).toString(),
+  }
+}
+
+const normalizeVolumetricRulesRecord = <T extends { cft_factor?: unknown } | null>(record: T): T => {
+  if (!record) {
+    return record
+  }
+
+  return {
+    ...record,
+    cft_factor: normalizeCftFactorValue(record.cft_factor).toString(),
+  }
 }
 
 // -----------------------------
@@ -173,7 +211,7 @@ export const getAdditionalCharges = async (params: {
         .where(and(...conditions))
         .limit(1)
 
-      if (charges) return charges
+      if (charges) return normalizeAdditionalChargesRecord(charges)
     }
   }
 
@@ -202,7 +240,7 @@ export const seedDefaultAdditionalCharges = async (params: {
   // Default values for B2B overhead charges (with dual-value fields and methods)
   const defaultCharges = {
     awb_charges: '0',
-    cft_factor: '5',
+    cft_factor: DEFAULT_B2B_CFT_FACTOR.toString(),
     minimum_chargeable_amount: '0',
     minimum_chargeable_weight: '0',
     minimum_chargeable_method: 'whichever_is_higher',
@@ -251,7 +289,7 @@ export const seedDefaultAdditionalCharges = async (params: {
     })
     .returning()
 
-  return created
+  return normalizeAdditionalChargesRecord(created)
 }
 
 export const upsertAdditionalCharges = async (
@@ -318,7 +356,8 @@ export const upsertAdditionalCharges = async (
 
   // Map all overhead charge fields (with dual-value fields)
   if (payload.awbCharges !== undefined) updateData.awb_charges = payload.awbCharges.toString()
-  if (payload.cftFactor !== undefined) updateData.cft_factor = payload.cftFactor.toString()
+  if (payload.cftFactor !== undefined)
+    updateData.cft_factor = normalizeCftFactorValue(payload.cftFactor).toString()
   if (payload.minimumChargeableAmount !== undefined)
     updateData.minimum_chargeable_amount = payload.minimumChargeableAmount.toString()
   if (payload.minimumChargeableWeight !== undefined)
@@ -417,7 +456,7 @@ export const upsertAdditionalCharges = async (
       .set(updateData)
       .where(eq(b2bAdditionalCharges.id, existing.id))
       .returning()
-    return updated
+    return normalizeAdditionalChargesRecord(updated)
   }
 
   const [created] = await db
@@ -430,7 +469,7 @@ export const upsertAdditionalCharges = async (
     })
     .returning()
 
-  return created
+  return normalizeAdditionalChargesRecord(created)
 }
 
 // -----------------------------
@@ -662,7 +701,7 @@ export const getVolumetricRules = async (params: {
       )
       .limit(1)
 
-    if (rules) return rules
+    if (rules) return normalizeVolumetricRulesRecord(rules)
   }
 
   return null
@@ -683,7 +722,8 @@ export const upsertVolumetricRules = async (
 
   if (payload.volumetricDivisor !== undefined)
     updateData.volumetric_divisor = payload.volumetricDivisor.toString()
-  if (payload.cftFactor !== undefined) updateData.cft_factor = payload.cftFactor.toString()
+  if (payload.cftFactor !== undefined)
+    updateData.cft_factor = normalizeCftFactorValue(payload.cftFactor).toString()
   if (payload.minimumVolumetricWeight !== undefined)
     updateData.minimum_volumetric_weight = payload.minimumVolumetricWeight.toString()
 
@@ -708,7 +748,7 @@ export const upsertVolumetricRules = async (
       .set(updateData)
       .where(eq(b2bVolumetricRules.id, existing.id))
       .returning()
-    return updated
+    return normalizeVolumetricRulesRecord(updated)
   }
 
   const [created] = await db
@@ -720,5 +760,5 @@ export const upsertVolumetricRules = async (
     })
     .returning()
 
-  return created
+  return normalizeVolumetricRulesRecord(created)
 }

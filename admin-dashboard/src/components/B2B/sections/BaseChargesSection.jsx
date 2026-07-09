@@ -39,7 +39,7 @@ const BaseChargesSection = memo(({ formData, onFieldChange }) => {
 
         <FormControl>
           <FormLabel fontSize="sm" fontWeight="medium">
-            CFT Factor
+            Volumetric Divisor
           </FormLabel>
           <NumberInput
             value={formData.cftFactor}
@@ -48,7 +48,9 @@ const BaseChargesSection = memo(({ formData, onFieldChange }) => {
           >
             <NumberInputField />
           </NumberInput>
-          <FormHelperText fontSize="xs">Higher of volumetric vs actual weight</FormHelperText>
+          <FormHelperText fontSize="xs">
+            Used in (L x B x H) / divisor, for example 5000 cm3/kg
+          </FormHelperText>
         </FormControl>
       </SimpleGrid>
 
