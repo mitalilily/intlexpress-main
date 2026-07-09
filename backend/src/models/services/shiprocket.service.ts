@@ -71,8 +71,8 @@ import { plans } from '../schema/plans'
 import { shippingRates } from '../schema/shippingRates'
 import { userPlans } from '../schema/userPlans'
 import { userProfiles } from '../schema/userProfile'
-import { b2bPincodes, b2bZoneToZoneRates, zones } from '../schema/zones'
-import { calculateB2BRate } from './b2bAdmin.service'
+import { b2bZoneToZoneRates, zones } from '../schema/zones'
+import { calculateB2BRate, findZoneForPincode } from './b2bAdmin.service'
 import {
   computeEffectiveB2CCodCharge,
   computeB2CRateCardCharge,
@@ -5349,27 +5349,26 @@ export const fetchAvailableCouriersWithRatesB2B = async (
       if (pickupRow?.pincode) {
         originPincode = pickupRow.pincode
 
-        // Lookup zone from b2bPincodes
-        const [originZoneRow] = await db
-          .select({ zoneId: b2bPincodes.zone_id })
-          .from(b2bPincodes)
-          .where(eq(b2bPincodes.pincode, originPincode))
-          .limit(1)
+        const originZone = await findZoneForPincode(
+          originPincode,
+          { courierId: null, serviceProvider: null },
+          { allowAnyScopeFallback: true },
+        )
 
-        originZoneId = originZoneRow?.zoneId ?? null
+        originZoneId = originZone?.zoneId ?? null
       }
     } else {
       // Fallback: use origin pincode directly if pickupId not provided
       originPincode = normalizePincode(params.source_pincode) ?? normalizePincode(params.origin)
 
       if (originPincode) {
-        const [originZoneRow] = await db
-          .select({ zoneId: b2bPincodes.zone_id })
-          .from(b2bPincodes)
-          .where(eq(b2bPincodes.pincode, originPincode))
-          .limit(1)
+        const originZone = await findZoneForPincode(
+          originPincode,
+          { courierId: null, serviceProvider: null },
+          { allowAnyScopeFallback: true },
+        )
 
-        originZoneId = originZoneRow?.zoneId ?? null
+        originZoneId = originZone?.zoneId ?? null
       }
     }
 
@@ -5380,13 +5379,13 @@ export const fetchAvailableCouriersWithRatesB2B = async (
     let destinationZoneId: string | null = null
 
     if (destinationPincode) {
-      const [destZoneRow] = await db
-        .select({ zoneId: b2bPincodes.zone_id })
-        .from(b2bPincodes)
-        .where(eq(b2bPincodes.pincode, destinationPincode))
-        .limit(1)
+      const destinationZone = await findZoneForPincode(
+        destinationPincode,
+        { courierId: null, serviceProvider: null },
+        { allowAnyScopeFallback: true },
+      )
 
-      destinationZoneId = destZoneRow?.zoneId ?? null
+      destinationZoneId = destinationZone?.zoneId ?? null
     }
 
     // Step 3: Validate we have both zones

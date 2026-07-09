@@ -2488,6 +2488,7 @@ export type ZoneLookupResult = {
 export const findZoneForPincode = async (
   pincode: string,
   scope: { courierId: number | null; serviceProvider: string | null },
+  options: { allowAnyScopeFallback?: boolean } = {},
 ): Promise<ZoneLookupResult | null> => {
   const prioritizedScopes: (CourierScope | null)[] = [
     {
@@ -2527,6 +2528,42 @@ export const findZoneForPincode = async (
             : isNull(b2bPincodes.service_provider),
         ),
       )
+      .limit(1)
+
+    if (row) {
+      return {
+        zoneId: row.zoneId,
+        zoneCode: row.zoneCode,
+        zoneName: row.zoneName,
+        isOda: row.isOda,
+        isRemote: row.isRemote,
+        isMall: row.isMall,
+        isSez: row.isSez,
+        isAirport: row.isAirport,
+        isHighSecurity: row.isHighSecurity,
+        isCsd: row.isCsd,
+      }
+    }
+  }
+
+  if (options.allowAnyScopeFallback) {
+    const [row] = await db
+      .select({
+        id: b2bPincodes.id,
+        zoneId: b2bPincodes.zone_id,
+        isOda: b2bPincodes.is_oda,
+        isRemote: b2bPincodes.is_remote,
+        isMall: b2bPincodes.is_mall,
+        isSez: b2bPincodes.is_sez,
+        isAirport: b2bPincodes.is_airport,
+        isHighSecurity: b2bPincodes.is_high_security,
+        isCsd: b2bPincodes.is_csd,
+        zoneCode: zones.code,
+        zoneName: zones.name,
+      })
+      .from(b2bPincodes)
+      .innerJoin(zones, eq(zones.id, b2bPincodes.zone_id))
+      .where(and(eq(zones.business_type, 'B2B'), eq(b2bPincodes.pincode, pincode)))
       .limit(1)
 
     if (row) {
