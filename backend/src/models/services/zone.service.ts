@@ -17,6 +17,15 @@ const sanitizeStates = (input: any): string[] => {
   return Array.from(unique)
 }
 
+const normalizeStateKey = (value: unknown) =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
 // Zones
 export const createZone = async (data: any, businessType: 'b2b' | 'b2c') => {
   const normalizedBusinessType = businessType?.toUpperCase() === 'B2C' ? 'B2C' : 'B2B'
@@ -486,6 +495,9 @@ const remapB2BPincodesForZone = async (zoneId: string, externalClient?: any) => 
     }
 
     const selectedStates = sanitizeStates(zone.states)
+    const selectedStateKeys = new Set(
+      selectedStates.map((state) => normalizeStateKey(state)).filter(Boolean),
+    )
 
     // Conflict detection: ensure no other zone has overlapping states
     // Since zones are global, check all B2B zones for state conflicts
@@ -500,8 +512,10 @@ const remapB2BPincodesForZone = async (zoneId: string, externalClient?: any) => 
       )
 
     for (const otherZone of conflictingZones) {
-      const otherStates = sanitizeStates(otherZone.states)
-      const overlap = otherStates.filter((state) => selectedStates.includes(state))
+      const otherStateKeys = new Set(
+        sanitizeStates(otherZone.states).map((state) => normalizeStateKey(state)).filter(Boolean),
+      )
+      const overlap = selectedStates.filter((state) => otherStateKeys.has(normalizeStateKey(state)))
       if (overlap.length > 0) {
         throw new Error(
           `State(s) ${overlap.join(', ')} already mapped to zone "${
@@ -520,19 +534,20 @@ const remapB2BPincodesForZone = async (zoneId: string, externalClient?: any) => 
     const existingRows = await tx.select().from(b2bPincodes).where(eq(b2bPincodes.zone_id, zoneId))
 
     for (const row of existingRows) {
-      if (!selectedStates.includes(row.state)) {
+      if (!selectedStateKeys.has(normalizeStateKey(row.state))) {
         await tx.delete(b2bPincodes).where(eq(b2bPincodes.id, row.id))
       }
     }
 
-    if (selectedStates.length === 0) {
+    if (selectedStateKeys.size === 0) {
       return
     }
 
-    const locationRows = await tx
-      .select()
-      .from(locations)
-      .where(inArray(locations.state, selectedStates))
+    // Production location rows can store state names in different casing than the zone config.
+    // Filter in application code so remaps stay stable across imports and manual edits.
+    const locationRows = (await tx.select().from(locations)).filter((location: any) =>
+      selectedStateKeys.has(normalizeStateKey(location.state)),
+    )
 
     for (const location of locationRows) {
       // Since zones are global, pincodes are mapped to zones only (no courier filtering)
