@@ -3293,6 +3293,43 @@ const normalizeServiceabilityWeightToGrams = (value: unknown) => {
   return numericValue > 50 ? Math.round(numericValue) : Math.round(numericValue * 1000)
 }
 
+const normalizeServiceabilityWeightToKilograms = (value: unknown) => {
+  const weightGrams = normalizeServiceabilityWeightToGrams(value)
+  return weightGrams > 0 ? weightGrams / 1000 : 0
+}
+
+const summarizeB2BBoxes = (boxes: any[]) => {
+  return boxes.reduce(
+    (summary, box) => {
+      const quantity = Math.max(1, Number(box?.quantity ?? 1) || 1)
+      const actualWeightKg = Math.max(0, Number(box?.weight ?? box?.weightKg ?? 0) || 0)
+      const lengthCm = Math.max(0, Number(box?.length ?? box?.lengthCm ?? 0) || 0)
+      const breadthCm = Math.max(0, Number(box?.breadth ?? box?.breadthCm ?? 0) || 0)
+      const heightCm = Math.max(0, Number(box?.height ?? box?.heightCm ?? 0) || 0)
+      const volumetricWeightPerPieceKg =
+        lengthCm > 0 && breadthCm > 0 && heightCm > 0
+          ? (lengthCm * breadthCm * heightCm) / 5000
+          : 0
+
+      summary.totalActualWeightKg += actualWeightKg * quantity
+      summary.totalVolumetricWeightKg += volumetricWeightPerPieceKg * quantity
+      summary.totalChargeableWeightKg += Math.max(actualWeightKg, volumetricWeightPerPieceKg) * quantity
+      summary.maxLengthCm = Math.max(summary.maxLengthCm, lengthCm)
+      summary.maxBreadthCm = Math.max(summary.maxBreadthCm, breadthCm)
+      summary.maxHeightCm = Math.max(summary.maxHeightCm, heightCm)
+      return summary
+    },
+    {
+      totalActualWeightKg: 0,
+      totalVolumetricWeightKg: 0,
+      totalChargeableWeightKg: 0,
+      maxLengthCm: 0,
+      maxBreadthCm: 0,
+      maxHeightCm: 0,
+    },
+  )
+}
+
 //ADMIN CALCULATION
 export const fetchAvailableCouriersWithRatesAdmin = async (
   params: NimbusServiceabilityParams,
@@ -5273,6 +5310,7 @@ export const fetchAvailableCouriersWithRatesB2B = async (
   userOrOptions?: FetchCouriersOptions,
 ) => {
   try {
+    const requestedWeightKg = normalizeServiceabilityWeightToKilograms(params.weight)
     // ✅ B2B only
     if (params.shipment_type && params.shipment_type !== 'b2b') {
       throw new Error(
@@ -5579,7 +5617,7 @@ export const fetchAvailableCouriersWithRatesB2B = async (
           const rateResult = await calculateB2BRate({
             originPincode: originPincode || '',
             destinationPincode: destinationPincode || '',
-            weightKg: Number(params.weight ?? 0),
+            weightKg: requestedWeightKg,
             length: Number(params.length ?? 0) || undefined,
             width: Number(params.breadth ?? 0) || undefined,
             height: Number(params.height ?? 0) || undefined,
@@ -5594,23 +5632,29 @@ export const fetchAvailableCouriersWithRatesB2B = async (
             deliveryAddress: '',
             planId: activePlanId ?? undefined,
           })
+          const billableWeightKg = Number(rateResult?.calculation?.billableWeight ?? 0) || null
+          const volumetricWeightKg = Number(rateResult?.calculation?.volumetricWeight ?? 0) || null
+          const billableWeightGrams =
+            billableWeightKg !== null ? Math.round(billableWeightKg * 1000) : null
+          const volumetricWeightGrams =
+            volumetricWeightKg !== null ? Math.round(volumetricWeightKg * 1000) : null
 
           return {
             ...courier,
             rate: rateResult?.charges?.total ?? courier.rate ?? null,
             rateEstimate: rateResult?.charges?.total ?? courier.rateEstimate ?? null,
             courier_cost_estimate: courier.courier_cost_estimate ?? null,
-            chargeable_weight:
-              rateResult?.calculation?.billableWeight ?? courier.chargeable_weight ?? null,
-            volumetric_weight:
-              rateResult?.calculation?.volumetricWeight ?? courier.volumetric_weight ?? null,
+            chargeable_weight: billableWeightGrams ?? courier.chargeable_weight ?? null,
+            volumetric_weight: volumetricWeightGrams ?? courier.volumetric_weight ?? null,
             localRates: {
               ...courier.localRates,
               forward: {
                 ...(courier.localRates?.forward || {}),
                 rate: rateResult?.charges?.total ?? null,
-                billableWeight: rateResult?.calculation?.billableWeight ?? null,
-                volumetricWeight: rateResult?.calculation?.volumetricWeight ?? null,
+                chargeable_weight: billableWeightGrams,
+                volumetric_weight: volumetricWeightGrams,
+                billableWeightKg,
+                volumetricWeightKg,
               },
             },
           }
@@ -9449,6 +9493,7 @@ export const createB2BShipmentService = async (
             box.quantity > 0,
         )
     : []
+  const boxSummary = summarizeB2BBoxes(inferredBoxes)
 
   const normalizedInvoices = Array.isArray(params.invoices)
     ? params.invoices
@@ -9525,15 +9570,37 @@ export const createB2BShipmentService = async (
       .toLowerCase()
   }
 
-  if (effectiveIntegrationType !== 'shadowfax') {
+  let selectedDelhiveryShippingMode: DelhiveryShippingMode | null = null
+  if (effectiveIntegrationType === 'delhivery') {
+    selectedDelhiveryShippingMode = resolveDelhiveryShippingMode({
+      courierId,
+      mode: params.shipping_mode,
+      courierName: params.courier_partner,
+    })
+    if (!selectedDelhiveryShippingMode) {
+      throw new HttpError(
+        400,
+        'Delhivery courier_id is required to lock the selected Air/Express or Surface B2B service.',
+      )
+    }
+    params.shipping_mode = selectedDelhiveryShippingMode
+  }
+
+  if (!['shadowfax', 'delhivery'].includes(effectiveIntegrationType)) {
     throw new HttpError(
       400,
-      'B2B shipment booking is currently implemented for Shadowfax only. Select Shadowfax to continue.',
+      'B2B shipment booking is currently prepared for Delhivery and Shadowfax only. Select one of those providers to continue.',
     )
   }
 
   const invoiceValue = Number(
     primaryInvoice?.invoiceValue ?? params.invoice_amount ?? params.order_amount ?? 0,
+  )
+  const shadowfaxForwardMode = normalizeShadowfaxForwardModeValue(
+    params.shadowfax_forward_mode || 'warehouse',
+  )
+  const shadowfaxServiceMode = normalizeShadowfaxServiceModeValue(
+    params.shadowfax_service_mode || params.shipping_mode || params.transport_speed || 'surface',
   )
 
   let activePlanId: string | null = null
@@ -9578,26 +9645,11 @@ export const createB2BShipmentService = async (
       originPincode: params.pickup?.pincode ?? '',
       destinationPincode: params.consignee.pincode,
       weightKg:
-        inferredBoxes.reduce((sum: number, box: any) => sum + Number(box.weight ?? 0), 0) ||
+        boxSummary.totalChargeableWeightKg ||
         Number(params.package_weight ?? 0),
-      length:
-        (inferredBoxes.length
-          ? Math.max(...inferredBoxes.map((box: any) => Number(box.length ?? 0)))
-          : 0) ||
-        Number(params.package_length ?? 0) ||
-        undefined,
-      width:
-        (inferredBoxes.length
-          ? Math.max(...inferredBoxes.map((box: any) => Number(box.breadth ?? 0)))
-          : 0) ||
-        Number(params.package_breadth ?? 0) ||
-        undefined,
-      height:
-        (inferredBoxes.length
-          ? Math.max(...inferredBoxes.map((box: any) => Number(box.height ?? 0)))
-          : 0) ||
-        Number(params.package_height ?? 0) ||
-        undefined,
+      length: inferredBoxes.length ? undefined : Number(params.package_length ?? 0) || undefined,
+      width: inferredBoxes.length ? undefined : Number(params.package_breadth ?? 0) || undefined,
+      height: inferredBoxes.length ? undefined : Number(params.package_height ?? 0) || undefined,
       invoiceValue,
       paymentMode: (params.payment_type ?? 'prepaid').toUpperCase() === 'COD' ? 'COD' : 'PREPAID',
       courierScope: {
@@ -9670,10 +9722,13 @@ export const createB2BShipmentService = async (
       is_rto_different: params.is_rto_different === 'yes',
       is_external_api: is_external_api ?? false,
       provider_mode:
-        normalizeShadowfaxForwardModeValue(params.shadowfax_forward_mode || 'warehouse'),
-      provider_service: normalizeShadowfaxServiceModeValue(
-        params.shadowfax_service_mode || params.shipping_mode || params.transport_speed || 'surface',
-      ),
+        effectiveIntegrationType === 'shadowfax'
+          ? shadowfaxForwardMode
+          : selectedDelhiveryShippingMode,
+      provider_service:
+        effectiveIntegrationType === 'shadowfax'
+          ? shadowfaxServiceMode
+          : selectedDelhiveryShippingMode,
       provider_last_status: 'pending',
       created_at: new Date(),
       updated_at: new Date(),
@@ -9682,37 +9737,36 @@ export const createB2BShipmentService = async (
 
   const boxes = inferredBoxes
 
-  const totalDeadWeight = boxes.reduce((sum: number, b: any) => sum + Number(b.weight ?? 0), 0)
-  const totalVolumetricWeight = boxes.reduce(
-    (sum: number, b: any) =>
-      sum + (Number(b.length ?? 0) * Number(b.breadth ?? 0) * Number(b.height ?? 0)) / 5000,
-    0,
-  )
+  const totalDeadWeight = boxSummary.totalActualWeightKg
+  const totalVolumetricWeight = boxSummary.totalVolumetricWeightKg
+  const totalChargeableWeight = boxSummary.totalChargeableWeightKg
+  const legacyCombinedWeight = Math.max(totalDeadWeight, totalVolumetricWeight)
 
   const package_weight = Math.max(
     0.5,
     Number(
       (
-        Math.max(totalDeadWeight, totalVolumetricWeight) ||
+        totalChargeableWeight ||
+        legacyCombinedWeight ||
         Number(params.package_weight ?? 0) ||
         0.5
       ).toFixed(2),
     ),
   )
   const package_length = boxes.length
-    ? Math.max(...boxes.map((b: any) => Number(b.length ?? 0)))
+    ? boxSummary.maxLengthCm
     : Number(params.package_length ?? params.length ?? 0)
   const package_breadth = boxes.length
-    ? Math.max(...boxes.map((b: any) => Number(b.breadth ?? 0)))
+    ? boxSummary.maxBreadthCm
     : Number(params.package_breadth ?? params.breadth ?? 0)
   const package_height = boxes.length
-    ? Math.max(...boxes.map((b: any) => Number(b.height ?? 0)))
+    ? boxSummary.maxHeightCm
     : Number(params.package_height ?? params.height ?? 0)
 
   const payload: ShipmentParams = {
     ...params,
     order_number: normalizedOrderNumber,
-    integration_type: 'shadowfax',
+    integration_type: effectiveIntegrationType as ShipmentParams['integration_type'],
     payment_type: params.payment_type === 'prepaid' ? 'prepaid' : 'cod',
     request_auto_pickup: params.request_auto_pickup ?? 'no',
     is_insurance: params.is_insurance ?? 0,
@@ -9730,14 +9784,245 @@ export const createB2BShipmentService = async (
       gst: params.consignee?.gstin || params.company?.gst || '',
     },
   }
-  const shadowfaxForwardMode = normalizeShadowfaxForwardModeValue(
-    params.shadowfax_forward_mode || 'warehouse',
-  )
-  const shadowfaxServiceMode = normalizeShadowfaxServiceModeValue(
-    params.shadowfax_service_mode || params.shipping_mode || params.transport_speed || 'surface',
-  )
+  if (selectedDelhiveryShippingMode) {
+    payload.shipping_mode = selectedDelhiveryShippingMode
+  }
 
   try {
+    if (effectiveIntegrationType === 'delhivery') {
+      const delhivery = new DelhiveryService({
+        pickupLocationId: String(params.pickup_location_id || '').trim() || null,
+        pickupLocationName: String(
+          params.pickup?.warehouse_name || params.pickup_location_alias || params.pickup_location_id || '',
+        ).trim(),
+      })
+      const resolvedDelhiveryAccount = await delhivery.getResolvedAccount()
+      if (!resolvedDelhiveryAccount?.isConfigured) {
+        throw new HttpError(
+          400,
+          'Delhivery credentials are not configured. Save at least one Delhivery account in Admin > Couriers > Credentials before booking B2B shipments.',
+        )
+      }
+
+      const shipmentData = await delhivery.createShipment(payload, payload.waybill)
+      const shipmentPackage = shipmentData?.packages?.[0] || null
+      const delhiveryAwb =
+        String(shipmentPackage?.waybill ?? shipmentData?.awb_number ?? '').trim() || null
+
+      if (!delhiveryAwb) {
+        console.error('âŒ Invalid Delhivery B2B shipment:', shipmentData)
+        throw new HttpError(500, 'Delhivery B2B shipment creation failed')
+      }
+
+      const providerReference =
+        String(
+          shipmentData?.upload_wbn ??
+            shipmentData?.shipment_id ??
+            shipmentData?.provider_reference ??
+            delhiveryAwb,
+        ).trim() || delhiveryAwb
+      const providerRequestId =
+        String(
+          shipmentData?.provider_request_id ??
+            shipmentData?.request_id ??
+            shipmentData?.client_request_id ??
+            delhiveryAwb,
+        ).trim() || delhiveryAwb
+      const responseShippingMode =
+        shipmentData?.shipping_mode ??
+        shipmentPackage?.shipping_mode ??
+        shipmentPackage?.service_mode ??
+        shipmentPackage?.service_type ??
+        shipmentPackage?.mode ??
+        selectedDelhiveryShippingMode
+      const resolvedProviderMode =
+        String(responseShippingMode || selectedDelhiveryShippingMode || '').trim() || null
+      const delhiveryPackages = Array.isArray(shipmentData?.packages)
+        ? shipmentData.packages
+        : shipmentData?.packages
+          ? [shipmentData.packages]
+          : []
+      const persistedWaybills = Array.from(
+        new Set(
+          delhiveryPackages
+            .map((pkg: any) => String(pkg?.waybill || '').trim())
+            .filter(Boolean),
+        ),
+      )
+      if (!persistedWaybills.length && delhiveryAwb) {
+        persistedWaybills.push(delhiveryAwb)
+      }
+      const expectedPackageCount = Math.max(
+        1,
+        delhiveryPackages.length || (Array.isArray(payload.boxes) ? payload.boxes.length : 0) || 1,
+      )
+      const pickupLocationName = String(
+        payload.pickup?.warehouse_name || params.pickup_location_alias || params.pickup_location_id || '',
+      ).trim()
+      const orderDateRaw =
+        payload.order_date instanceof Date ? payload.order_date.toISOString() : payload.order_date
+      const delhiveryPickupSchedule = normalizePickupSchedule({
+        pickupDateRaw:
+          payload.pickup_date ||
+          payload.pickup?.pickup_date ||
+          orderDateRaw ||
+          new Date().toISOString(),
+        pickupTimeRaw:
+          payload.pickup_time || payload.pickup?.pickup_time || getDefaultPickupTime(),
+        isManifestRetry: false,
+      })
+      const updatedPickupDetails = {
+        ...(normalizePickupDetails(pickupDetails) || {}),
+        warehouse_name: pickupLocationName || pickupDetails?.warehouse_name || null,
+        pickup_date: delhiveryPickupSchedule.pickupDate,
+        pickup_time: delhiveryPickupSchedule.pickupTime,
+      }
+      const shipmentMeta: Record<string, any> = {
+        ...shipmentData,
+        shipment_id: shipmentData?.upload_wbn ?? shipmentData?.shipment_id ?? providerReference,
+        awb_number: delhiveryAwb,
+        courier_name: 'Delhivery',
+        courier_id: courierId ?? null,
+        courier_cost:
+          shipmentPackage?.charge ??
+          shipmentPackage?.amount ??
+          shipmentData?.charge ??
+          shipmentData?.amount ??
+          params?.courier_cost ??
+          null,
+        sort_code:
+          shipmentPackage?.sort_code ??
+          shipmentPackage?.sortCode ??
+          shipmentData?.packages?.[0]?.sort_code ??
+          null,
+        provider_reference: providerReference,
+        provider_request_id: providerRequestId,
+        provider_mode: resolvedProviderMode,
+        provider_service: resolvedProviderMode,
+        packages: delhiveryPackages,
+        requested_boxes: Array.isArray(payload.boxes) ? payload.boxes : [],
+        waybills: persistedWaybills,
+        package_count: expectedPackageCount,
+        mps: expectedPackageCount > 1 || payload.mps === true,
+        master_waybill: String(payload.waybill || delhiveryAwb || '').trim() || undefined,
+        delhivery_account_code: resolvedDelhiveryAccount.accountCode,
+        delhivery_account_label: resolvedDelhiveryAccount.accountLabel,
+        delhivery_account: {
+          accountCode: resolvedDelhiveryAccount.accountCode,
+          accountLabel: resolvedDelhiveryAccount.accountLabel,
+          pickupLocationIds: resolvedDelhiveryAccount.pickupLocationIds,
+          pickupLocationNames: resolvedDelhiveryAccount.pickupLocationNames,
+        },
+      }
+
+      let nextOrderStatus = 'shipment_created'
+      let nextProviderLastStatus = 'shipment_created'
+      if (pickupLocationName) {
+        try {
+          const pickupRequest = await delhivery.createPickupRequest({
+            pickup_date: delhiveryPickupSchedule.pickupDate,
+            pickup_time: delhiveryPickupSchedule.pickupTime,
+            pickup_location: pickupLocationName,
+            expected_package_count: expectedPackageCount,
+          })
+          shipmentMeta.pickup_request = {
+            provider: 'delhivery',
+            status: 'accepted',
+            pickup_location: pickupLocationName,
+            pickup_date: delhiveryPickupSchedule.pickupDate,
+            pickup_time: delhiveryPickupSchedule.pickupTime,
+            expected_package_count: expectedPackageCount,
+            recorded_at: new Date().toISOString(),
+            response: pickupRequest,
+          }
+          nextOrderStatus = 'pickup_initiated'
+          nextProviderLastStatus = 'pickup_requested'
+          if (shipmentData && typeof shipmentData === 'object') {
+            shipmentData.pickup_request = pickupRequest
+          }
+        } catch (pickupError: any) {
+          const pickupErrorMessage = getUserFacingManifestError(
+            pickupError,
+            'Pickup request failed after B2B shipment booking.',
+          )
+          shipmentMeta.pickup_request = {
+            provider: 'delhivery',
+            status: 'failed',
+            pickup_location: pickupLocationName,
+            pickup_date: delhiveryPickupSchedule.pickupDate,
+            pickup_time: delhiveryPickupSchedule.pickupTime,
+            expected_package_count: expectedPackageCount,
+            recorded_at: new Date().toISOString(),
+            error: pickupErrorMessage,
+          }
+          if (shipmentData && typeof shipmentData === 'object') {
+            shipmentData.pickup_request_error = pickupErrorMessage
+          }
+          console.warn('âš ï¸ Delhivery B2B shipment booked but pickup request failed', {
+            order_number: normalizedOrderNumber,
+            pickup_location: pickupLocationName,
+            error: pickupErrorMessage,
+          })
+        }
+      }
+
+      await db
+        .update(b2b_orders)
+        .set({
+          integration_type: 'delhivery',
+          order_status: nextOrderStatus,
+          order_id: String(shipmentData?.order_id || '').trim() || null,
+          shipment_id: providerReference,
+          awb_number: delhiveryAwb,
+          courier_partner: 'Delhivery',
+          courier_id: courierId ?? null,
+          courier_cost: shipmentMeta.courier_cost,
+          weight: package_weight,
+          length: package_length || null,
+          breadth: package_breadth || null,
+          height: package_height || null,
+          volumetric_weight: Number(totalVolumetricWeight || 0) || null,
+          charged_weight: package_weight,
+          provider_reference: providerReference,
+          provider_request_id: providerRequestId,
+          provider_mode: resolvedProviderMode,
+          provider_service: resolvedProviderMode,
+          provider_last_status: nextProviderLastStatus,
+          provider_meta: shipmentMeta,
+          pickup_details: updatedPickupDetails as any,
+          updated_at: new Date(),
+        } as any)
+        .where(eq(b2b_orders.id, pendingOrder.id))
+
+      sendWebhookEvent(userId, 'order.created', {
+        order_id: pendingOrder.id,
+        order_number: normalizedOrderNumber,
+        awb_number: delhiveryAwb,
+        status: nextOrderStatus,
+        courier_partner: 'Delhivery',
+        courier_id: courierId ?? null,
+        shipment_id: providerReference,
+        integration_type: 'delhivery',
+        payment_type: params.payment_type,
+        created_at: new Date().toISOString(),
+        order_type: 'b2b',
+      }).catch((err) => {
+        console.error('Failed to send B2B order.created webhook:', err)
+      })
+
+      console.log(`B2B Order ${pendingOrder.id} successfully booked with Delhivery shipment.`)
+      return {
+        order: {
+          id: pendingOrder.id,
+          order_number: normalizedOrderNumber,
+          awb_number: delhiveryAwb,
+          provider_reference: providerReference,
+          provider_request_id: providerRequestId,
+        },
+        shipment: shipmentData,
+      }
+    }
+
     const shadowfax = new ShadowfaxService()
     const booking = await shadowfax.createForwardShipmentWithFallback(payload, {
       origin: String(params.pickup?.pincode || ''),
@@ -9846,7 +10131,7 @@ export const createB2BShipmentService = async (
     await db
       .update(b2b_orders)
       .set({
-        integration_type: 'shadowfax',
+        integration_type: effectiveIntegrationType,
         order_status: 'failed',
         provider_last_status: 'booking_failed',
         provider_meta: {
