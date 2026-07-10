@@ -4,7 +4,7 @@ import { users } from './users'
 export const b2b_orders = pgTable(
   'b2b_orders',
   {
-    id: uuid('id').primaryKey(),
+    id: uuid('id').primaryKey().defaultRandom(),
 
   // 🔹 User reference
   user_id: uuid('user_id')

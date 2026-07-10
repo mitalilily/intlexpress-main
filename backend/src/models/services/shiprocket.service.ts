@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { randomUUID } from 'crypto'
 import {
   and,
   asc,
@@ -5631,6 +5632,11 @@ export const fetchAvailableCouriersWithRatesB2B = async (
             pickupDate: (params as any).pickup_date,
             deliveryAddress: '',
             planId: activePlanId ?? undefined,
+            isInsurance:
+              (params as any).is_insurance === 1 ||
+              (params as any).is_insurance === true ||
+              String((params as any).is_insurance || '').toLowerCase() === '1' ||
+              String((params as any).is_insurance || '').toLowerCase() === 'true',
           })
           const billableWeightKg = Number(rateResult?.calculation?.billableWeight ?? 0) || null
           const volumetricWeightKg = Number(rateResult?.calculation?.volumetricWeight ?? 0) || null
@@ -9659,6 +9665,7 @@ export const createB2BShipmentService = async (
       pickupDate: params.pickup?.pickup_date,
       deliveryAddress: params.consignee.address,
       planId: activePlanId ?? undefined,
+      isInsurance: params.is_insurance === 1,
     })
 
     if (rateResult?.charges) {
@@ -9678,6 +9685,7 @@ export const createB2BShipmentService = async (
   const [pendingOrder] = await db
     .insert(b2b_orders)
     .values({
+      id: randomUUID(),
       order_number: normalizedOrderNumber,
       order_date: params?.order_date,
       order_amount: params?.order_amount,

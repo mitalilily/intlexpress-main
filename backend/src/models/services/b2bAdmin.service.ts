@@ -1568,6 +1568,7 @@ export const calculateB2BRate = async (params: {
   deliveryTime?: string // Optional: Delivery time window (e.g., "11AM", "9AM-11AM", "before 11AM") - if provided, applies time-specific delivery charge
   deliveryAddress?: string // Optional: Delivery address - used to detect CSD locations via keywords
   planId?: string // Optional: Plan ID to fetch plan-specific additional charges
+  isInsurance?: boolean // Optional: apply ROV only when insurance is enabled for the shipment
 }) => {
   const { courierId, serviceProvider } = normalizeCourierScope(params.courierScope)
   const effectiveDate = params.effectiveDate ?? new Date()
@@ -1763,7 +1764,7 @@ export const calculateB2BRate = async (params: {
     isExpress: false, // TODO: Add support for express delivery flag
     isTimeSpecific: params.deliveryTime ? true : false, // Apply if delivery time window is provided from frontend
     isFragile: false, // TODO: Add support for fragile items flag
-    isInsurance: false, // TODO: Add support for insurance flag
+    isInsurance: Boolean(params.isInsurance),
     courierId: courierId || null,
     origin,
     destination,
@@ -2133,7 +2134,7 @@ export const calculateB2BRate = async (params: {
     // Apply ONLY IF: declaredValue > 0, regardless of COD or prepaid
     // Formula: max(rovFixedAmount, declaredValue × (rovPercentage / 100))
     // min or max according to admin configured calculation method
-    if (params.invoiceValue && params.invoiceValue > 0) {
+    if (context.isInsurance && params.invoiceValue && params.invoiceValue > 0) {
       const rovFixedAmount = Number(additionalCharges.rov_fixed_amount || 100)
       const rovPercentage = Number(additionalCharges.rov_percentage || 0.5)
       const rovMethod = additionalCharges.rov_method || 'whichever_is_higher'
