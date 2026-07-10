@@ -39,13 +39,45 @@ interface ShippingRate {
     [zone: string]: {
       forward?: number | string
       rto?: number | string
+      reverse?: number | string
       description?: string
       forward_per_kg?: number | string
       rto_per_kg?: number | string
+      reverse_per_kg?: number | string
       min_weight?: number
     }
   }
 }
+
+type ZoneRateMap = ShippingRate['rates'][string]
+
+const pickZoneRateValue = (
+  zoneRates: ZoneRateMap | undefined,
+  keys: Array<keyof ZoneRateMap>,
+): number | string => {
+  for (const key of keys) {
+    const value = zoneRates?.[key]
+    if (value !== undefined && value !== null && value !== '') {
+      return value
+    }
+  }
+
+  return 'NA'
+}
+
+const getForwardRateValue = (zoneRates: ZoneRateMap | undefined, businessType: 'b2b' | 'b2c') =>
+  pickZoneRateValue(zoneRates, businessType === 'b2b' ? ['forward_per_kg', 'forward'] : ['forward'])
+
+const getRtoRateValue = (zoneRates: ZoneRateMap | undefined, businessType: 'b2b' | 'b2c') =>
+  pickZoneRateValue(zoneRates, businessType === 'b2b' ? ['rto_per_kg', 'rto'] : ['rto'])
+
+const getReverseRateValue = (zoneRates: ZoneRateMap | undefined, businessType: 'b2b' | 'b2c') =>
+  pickZoneRateValue(
+    zoneRates,
+    businessType === 'b2b'
+      ? ['reverse_per_kg', 'reverse', 'rto_per_kg', 'rto']
+      : ['reverse', 'rto'],
+  )
 
 // --- B2C Table ---
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,15 +108,15 @@ const B2CClientTable = ({ data, zones }: { data: ShippingRate[]; zones: any[] })
       (zone: { code: string; description: string; name: string }) =>
         ({
           id: zone.code,
-          label: `${zone.name} (F | RTO)`,
+          label: `${zone.name} (F | RTO | Reverse)`,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           render: (_: any, row: any) => {
-            const rates = row.rates?.[zone.name] || {}
+            const rates = row.rates?.[zone.name]
+            const forward = getForwardRateValue(rates, 'b2c')
+            const rto = getRtoRateValue(rates, 'b2c')
+            const reverse = getReverseRateValue(rates, 'b2c')
 
-            const forward = rates.forward ?? 'NA'
-            const rto = rates.rto ?? 'NA'
-
-            return `₹${forward} | ₹${rto}`
+            return `F: ₹${forward} | RTO: ₹${rto} | Reverse: ₹${reverse}`
           },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
         }) as any,
@@ -144,18 +176,20 @@ const B2BClientTable = ({
                   <TableCell>Zone</TableCell>
                   <TableCell>Forward (Per Kg)</TableCell>
                   <TableCell>RTO (Per Kg)</TableCell>
+                  <TableCell>Reverse (Per Kg)</TableCell>
                   <TableCell>Min Weight</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {zones.map((zone) => {
-                  const rates = courier.rates?.[zone.name] || {}
+                  const rates = courier.rates?.[zone.name]
                   return (
                     <TableRow key={zone.code}>
                       <TableCell>{zone.name}</TableCell>
-                      <TableCell>₹{rates.forward_per_kg ?? 'NA'}</TableCell>
-                      <TableCell>₹{rates.rto_per_kg ?? 'NA'}</TableCell>
-                      <TableCell>{rates.min_weight ?? courier.min_weight ?? 'NA'} kg</TableCell>
+                      <TableCell>₹{getForwardRateValue(rates, 'b2b')}</TableCell>
+                      <TableCell>₹{getRtoRateValue(rates, 'b2b')}</TableCell>
+                      <TableCell>₹{getReverseRateValue(rates, 'b2b')}</TableCell>
+                      <TableCell>{rates?.min_weight ?? courier.min_weight ?? 'NA'} kg</TableCell>
                     </TableRow>
                   )
                 })}
@@ -171,7 +205,7 @@ const B2BClientTable = ({
 // --- Main Component ---
 const RateCard = () => {
   const navigate = useNavigate()
-  const [businessType, setBusinessType] = useState<'b2c' | 'b2b'>('b2c') // 0 = B2C, 1 = B2B
+  const [businessType, setBusinessType] = useState<'b2c' | 'b2b'>('b2c')
   const [filters, setFilters] = useState({
     courier: [] as string[],
     min_weight: '',
@@ -179,41 +213,41 @@ const RateCard = () => {
 
   const { zones } = useZones(businessType)
   const { data: couriers } = useAllCouriers()
-  const { data, isLoading, isError } = useShippingRates({ ...filters, businessType: businessType })
+  const { data, isLoading, isError } = useShippingRates({ ...filters, businessType })
 
   const rates: ShippingRate[] = data || []
 
-  console.log('rates', rates)
-
-  // CSV export
   const handleExportCSV = (): void => {
-    const csvData = rates.map((r) => {
+    const csvData = rates.map((rateRow) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const base: Record<string, any> = {
-        Courier: r.courier_name,
-        Mode: r.mode,
-        'Min Weight': r.min_weight,
+        Courier: rateRow.courier_name,
+        Mode: rateRow.mode,
+        'Min Weight': rateRow.min_weight,
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       zones.forEach((zone: any) => {
-        // NOTE: UI tables use `zone.name` as the key into `rates`, so CSV export
-        // should use the same to avoid returning NA for all values.
-        const zoneRates = r.rates?.[zone.name] || {}
+        const zoneRates = rateRow.rates?.[zone.name]
         if (businessType === 'b2b') {
-          base[`${zone.name} (Per Kg)`] = `F: ₹${zoneRates.forward_per_kg ?? 'NA'} | RTO: ₹${
-            zoneRates.rto_per_kg ?? 'NA'
-          }`
+          base[`${zone.name} (Per Kg)`] = `F: ₹${getForwardRateValue(zoneRates, 'b2b')} | RTO: ₹${getRtoRateValue(
+            zoneRates,
+            'b2b',
+          )} | Reverse: ₹${getReverseRateValue(zoneRates, 'b2b')}`
         } else {
-          base[`${zone.name} (F | RTO)`] = `F: ₹${zoneRates.forward ?? 'NA'} | RTO: ₹${
-            zoneRates.rto ?? 'NA'
-          }`
+          base[`${zone.name} (F | RTO | Reverse)`] = `F: ₹${getForwardRateValue(
+            zoneRates,
+            'b2c',
+          )} | RTO: ₹${getRtoRateValue(zoneRates, 'b2c')} | Reverse: ₹${getReverseRateValue(
+            zoneRates,
+            'b2c',
+          )}`
         }
       })
 
-      base['COD Charges'] = r.cod_charges ?? 'N/A'
-      base['COD %'] = r.cod_percent ?? 'N/A'
-      base['Other Charges'] = r.other_charges ?? 'N/A'
+      base['COD Charges'] = rateRow.cod_charges ?? 'N/A'
+      base['COD %'] = rateRow.cod_percent ?? 'N/A'
+      base['Other Charges'] = rateRow.other_charges ?? 'N/A'
 
       return base
     })
@@ -228,7 +262,6 @@ const RateCard = () => {
     document.body.removeChild(link)
   }
 
-  // Filter fields (courier + min_weight only, business type comes from tab)
   const filterFields: FilterField[] = [
     {
       name: 'courier',
@@ -243,7 +276,7 @@ const RateCard = () => {
     <Box sx={{ px: 2 }}>
       <Stack
         direction={{ xs: 'column', md: 'row' }}
-        justifyContent={'space-between'}
+        justifyContent="space-between"
         alignItems="center"
       >
         <Box>
