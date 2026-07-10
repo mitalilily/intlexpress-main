@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_ROOT="/var/www/shiplifi"
+APP_ROOT="/srv/intlexpress/current"
 BACKEND_DIR="$APP_ROOT/backend"
 LANDING_DIR="$APP_ROOT/landing"
 
@@ -40,4 +40,4 @@ npm ci
 npm run build
 
 echo "Initial VPS setup complete."
-echo "Next: run certbot --nginx -d shiplifi.com -d www.shiplifi.com"
+echo "Next: run certbot --nginx -d intlexpress.in -d www.intlexpress.in -d app.intlexpress.in -d admin.intlexpress.in -d api.intlexpress.in"

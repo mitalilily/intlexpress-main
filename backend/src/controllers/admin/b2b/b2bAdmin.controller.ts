@@ -34,9 +34,19 @@ const parseCourierScope = (req: Request) => {
     return { courierId: undefined, serviceProvider: undefined }
   }
 
-  const courierIdParam = req.query?.courier_id ?? req.body?.courierId ?? req.body?.courier_id
+  const bodyScope = req.body?.courierScope || req.body?.courier_scope || {}
+  const courierIdParam =
+    req.query?.courier_id ??
+    req.body?.courierId ??
+    req.body?.courier_id ??
+    bodyScope?.courierId ??
+    bodyScope?.courier_id
   const serviceProviderParam =
-    req.query?.service_provider ?? req.body?.serviceProvider ?? req.body?.service_provider
+    req.query?.service_provider ??
+    req.body?.serviceProvider ??
+    req.body?.service_provider ??
+    bodyScope?.serviceProvider ??
+    bodyScope?.service_provider
 
   return {
     courierId: courierIdParam != null && courierIdParam !== '' ? Number(courierIdParam) : undefined,
@@ -342,6 +352,7 @@ export const upsertZoneRateController = async (req: Request, res: Response) => {
       destinationZoneId: body.destinationZoneId ?? body.destination_zone_id,
       ratePerKg: Number(body.ratePerKg ?? body.rate_per_kg ?? 0),
       courierScope: parseCourierScope(req),
+      planId: body.planId ?? body.plan_id ?? req.query.planId ?? req.query.plan_id ?? null,
     })
 
     if (!rate) {

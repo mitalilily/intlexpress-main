@@ -43,6 +43,7 @@ import {
 } from '../../models/services/amazonShippingCredentials.service'
 import {
   DEFAULT_DELHIVERY_API_BASE,
+  DEFAULT_DELHIVERY_B2B_API_BASE,
   DELHIVERY_ACCOUNT_CODES,
   getDelhiveryAccounts,
   maskDelhiveryApiKey,
@@ -520,6 +521,32 @@ const getDefaultDelhiveryAccountLabel = (index: number) => {
   return `Delhivery Account ${index + 1}`
 }
 
+const getDefaultDelhiveryAccountApiBase = (index: number) =>
+  index === 1 ? DEFAULT_DELHIVERY_B2B_API_BASE : DEFAULT_DELHIVERY_API_BASE
+
+const shouldAutoActivateDelhiveryAccount = (params: {
+  index: number
+  apiBase: string
+  clientName: string
+  username: string
+  password: string
+  b2bAuthToken: string
+  pickupLocationIds: string[]
+  pickupLocationNames: string[]
+}) => {
+  if (params.index === 0) return true
+
+  return Boolean(
+    params.username ||
+      params.password ||
+      params.b2bAuthToken ||
+      params.clientName ||
+      params.pickupLocationIds.length ||
+      params.pickupLocationNames.length ||
+      params.apiBase.toLowerCase().includes('ltl-clients-api'),
+  )
+}
+
 const sanitizeDelhiveryAccountsPayload = (
   payloadAccounts: unknown,
   existingAccounts: DelhiveryAccountConfig[],
@@ -535,6 +562,35 @@ const sanitizeDelhiveryAccountsPayload = (
     const nextPassword = String(record.password || '').trim()
     const usernameChanged = Boolean(nextUsername) && nextUsername !== (existing?.username || '')
     const passwordChanged = Boolean(nextPassword) && nextPassword !== (existing?.password || '')
+    const apiBase =
+      String(record.apiBase || '').trim() ||
+      existing?.apiBase ||
+      getDefaultDelhiveryAccountApiBase(index)
+    const clientName = String(record.clientName || '').trim() || existing?.clientName || ''
+    const pickupLocationIds = normalizeDelimitedStrings(
+      record.pickupLocationIds ?? record.pickup_location_ids ?? existing?.pickupLocationIds,
+    )
+    const pickupLocationNames = normalizeDelimitedStrings(
+      record.pickupLocationNames ??
+        record.pickup_location_names ??
+        existing?.pickupLocationNames,
+    )
+    const b2bAuthToken = usernameChanged || passwordChanged ? '' : existing?.b2bAuthToken || ''
+    const b2bAuthTokenExpiresAt =
+      usernameChanged || passwordChanged ? '' : existing?.b2bAuthTokenExpiresAt || ''
+    const isActive =
+      typeof record.isActive === 'boolean'
+        ? record.isActive
+        : shouldAutoActivateDelhiveryAccount({
+            index,
+            apiBase,
+            clientName,
+            username: nextUsername || existing?.username || '',
+            password: nextPassword || existing?.password || '',
+            b2bAuthToken,
+            pickupLocationIds,
+            pickupLocationNames,
+          })
 
     return {
       accountCode,
@@ -542,28 +598,17 @@ const sanitizeDelhiveryAccountsPayload = (
         String(record.accountLabel || '').trim() ||
         existing?.accountLabel ||
         getDefaultDelhiveryAccountLabel(index),
-      apiBase:
-        String(record.apiBase || '').trim() ||
-        existing?.apiBase ||
-        DEFAULT_DELHIVERY_API_BASE,
-      clientName: String(record.clientName || '').trim() || existing?.clientName || '',
+      apiBase,
+      clientName,
       username: nextUsername || existing?.username || '',
       apiKey: nextApiKey || existing?.apiKey || '',
       password: nextPassword || existing?.password || '',
-      b2bAuthToken: usernameChanged || passwordChanged ? '' : existing?.b2bAuthToken || '',
-      b2bAuthTokenExpiresAt:
-        usernameChanged || passwordChanged ? '' : existing?.b2bAuthTokenExpiresAt || '',
-      isActive:
-        typeof record.isActive === 'boolean' ? record.isActive : existing?.isActive ?? index === 0,
+      b2bAuthToken,
+      b2bAuthTokenExpiresAt,
+      isActive,
       isDefault: record.isDefault === true,
-      pickupLocationIds: normalizeDelimitedStrings(
-        record.pickupLocationIds ?? record.pickup_location_ids ?? existing?.pickupLocationIds,
-      ),
-      pickupLocationNames: normalizeDelimitedStrings(
-        record.pickupLocationNames ??
-          record.pickup_location_names ??
-          existing?.pickupLocationNames,
-      ),
+      pickupLocationIds,
+      pickupLocationNames,
       isConfigured: Boolean(nextApiKey || existing?.apiKey || ''),
     } as DelhiveryAccountConfig
   })

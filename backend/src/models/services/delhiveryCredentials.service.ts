@@ -3,6 +3,7 @@ import { db } from '../client'
 import { courier_credentials } from '../schema/courierCredentials'
 
 const DEFAULT_DELHIVERY_API_BASE = 'https://track.delhivery.com'
+const DEFAULT_DELHIVERY_B2B_API_BASE = 'https://ltl-clients-api.delhivery.com'
 const DELHIVERY_ACCOUNT_CODES = ['account_1', 'account_2', 'account_3'] as const
 const DELHIVERY_ACCOUNT_LABELS = [
   'Delhivery B2C Account',
@@ -93,17 +94,61 @@ const normalizeStringArray = (value: unknown) => {
     .filter((entry, index, source) => source.indexOf(entry) === index)
 }
 
+const getDefaultDelhiveryAccountApiBase = (index: number) =>
+  index === 1 ? DEFAULT_DELHIVERY_B2B_API_BASE : DEFAULT_DELHIVERY_API_BASE
+
+const inferDelhiveryAccountActive = ({
+  index,
+  apiBase,
+  clientName,
+  username,
+  password,
+  b2bAuthToken,
+  pickupLocationIds,
+  pickupLocationNames,
+}: {
+  index: number
+  apiBase: string
+  clientName: string
+  username: string
+  password: string
+  b2bAuthToken: string
+  pickupLocationIds: string[]
+  pickupLocationNames: string[]
+}) => {
+  if (index === 0) return true
+
+  return Boolean(
+    username ||
+      password ||
+      b2bAuthToken ||
+      clientName ||
+      pickupLocationIds.length ||
+      pickupLocationNames.length ||
+      apiBase.toLowerCase().includes('ltl-clients-api'),
+  )
+}
+
 const buildEmptyAccount = (index: number): DelhiveryAccountConfig => ({
   accountCode: DELHIVERY_ACCOUNT_CODES[index],
   accountLabel: DELHIVERY_ACCOUNT_LABELS[index] || `Delhivery Account ${index + 1}`,
-  apiBase: DEFAULT_DELHIVERY_API_BASE,
+  apiBase: getDefaultDelhiveryAccountApiBase(index),
   clientName: '',
   apiKey: resolveDelhiveryApiKey(),
   username: '',
   password: '',
   b2bAuthToken: '',
   b2bAuthTokenExpiresAt: '',
-  isActive: index === 0,
+  isActive: inferDelhiveryAccountActive({
+    index,
+    apiBase: getDefaultDelhiveryAccountApiBase(index),
+    clientName: '',
+    username: '',
+    password: '',
+    b2bAuthToken: '',
+    pickupLocationIds: [],
+    pickupLocationNames: [],
+  }),
   isDefault: index === 0,
   pickupLocationIds: [],
   pickupLocationNames: [],
@@ -123,7 +168,8 @@ const normalizeAccount = (
   const raw = parseRecord(rawValue)
   const fallback = index === 0 ? fallbackRow : null
   const accountCode = DELHIVERY_ACCOUNT_CODES[index]
-  const apiBase = normalize(raw.apiBase || fallback?.apiBase) || DEFAULT_DELHIVERY_API_BASE
+  const apiBase =
+    normalize(raw.apiBase || fallback?.apiBase) || getDefaultDelhiveryAccountApiBase(index)
   const clientName = normalize(raw.clientName || fallback?.clientName)
   const apiKey = resolveDelhiveryApiKey(raw.apiKey, fallback?.apiKey)
   const username = normalize(raw.username || fallback?.username)
@@ -134,12 +180,24 @@ const normalizeAccount = (
   )
   const accountLabel =
     normalize(raw.accountLabel) || DELHIVERY_ACCOUNT_LABELS[index] || `Delhivery Account ${index + 1}`
-  const isActive = raw.isActive === undefined ? index === 0 || Boolean(apiKey) : raw.isActive === true
   const isDefault = raw.isDefault === true
   const pickupLocationIds = normalizeStringArray(raw.pickupLocationIds || raw.pickup_location_ids)
   const pickupLocationNames = normalizeStringArray(
     raw.pickupLocationNames || raw.pickup_location_names,
   )
+  const isActive =
+    raw.isActive === undefined
+      ? inferDelhiveryAccountActive({
+          index,
+          apiBase,
+          clientName,
+          username,
+          password,
+          b2bAuthToken,
+          pickupLocationIds,
+          pickupLocationNames,
+        })
+      : raw.isActive === true
 
   return {
     accountCode,
@@ -402,4 +460,8 @@ export const resolveDelhiveryCredentials = async (
 }
 
 export const maskDelhiveryApiKey = maskApiKey
-export { DEFAULT_DELHIVERY_API_BASE, DELHIVERY_ACCOUNT_CODES }
+export {
+  DEFAULT_DELHIVERY_API_BASE,
+  DEFAULT_DELHIVERY_B2B_API_BASE,
+  DELHIVERY_ACCOUNT_CODES,
+}

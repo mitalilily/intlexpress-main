@@ -1603,6 +1603,40 @@ export class DelhiveryService {
         .map((item) => sanitizeString(item?.name))
         .filter((name) => name.length > 0)
       const productsDesc = productNames.length ? productNames.join(', ') : 'General Merchandise'
+      const isMpsShipment = Boolean(params.mps || boxes.length > 1)
+
+      const normalizeWaybillList = (value: unknown) => {
+        if (!value) return []
+        if (Array.isArray(value)) {
+          return value.map((entry) => sanitizeString(entry)).filter(Boolean)
+        }
+        return String(value)
+          .split(',')
+          .map((entry) => sanitizeString(entry))
+          .filter(Boolean)
+      }
+
+      const resolveWaybills = async (count: number) => {
+        const explicitWaybills = normalizeWaybillList(waybill || params.waybill)
+        if (explicitWaybills.length > 0) {
+          return explicitWaybills
+        }
+
+        try {
+          const fetchedWaybills = normalizeWaybillList(await this.fetchWaybills(count))
+          if (fetchedWaybills.length > 0) {
+            return fetchedWaybills
+          }
+        } catch (fetchErr: any) {
+          console.warn('⚠️ Delhivery waybill prefetch failed', {
+            order_number: orderNumber,
+            package_count: count,
+            message: fetchErr?.message || fetchErr,
+          })
+        }
+
+        return []
+      }
 
       const consigneePhone = sanitizePhone(consignee.phone)
       if (!consigneePhone) {
@@ -1642,6 +1676,7 @@ export class DelhiveryService {
       const defaultShipmentLength = Number(params.package_length ?? 10)
       const defaultShipmentWidth = Number(params.package_breadth ?? 10)
       const defaultShipmentHeight = Number(params.package_height ?? 10)
+      const resolvedWaybills = await resolveWaybills(isMpsShipment ? Math.max(1, boxes.length) : 1)
 
       const manifestShipment: Record<string, any> = {
         order: orderNumber,
@@ -1685,7 +1720,7 @@ export class DelhiveryService {
         client: this.clientName || sellerName,
         client_name: this.clientName || sellerName,
         client_gst_tin: sellerGst,
-        waybill: waybill || undefined,
+        waybill: resolvedWaybills[0] || sanitizeString(waybill || params.waybill) || undefined,
       }
 
       if (params.transport_speed) {
@@ -1735,7 +1770,6 @@ export class DelhiveryService {
         })
       }
 
-      const isMpsShipment = Boolean(params.mps || boxes.length > 1)
       let shipments: Record<string, any>[] = [manifestShipment]
 
       if (isMpsShipment) {
@@ -1746,6 +1780,8 @@ export class DelhiveryService {
               box?.awb ||
               box?.awb_number ||
               box?.tracking_number ||
+              resolvedWaybills[index] ||
+              resolvedWaybills[0] ||
               (index === 0 ? waybill : ''),
           ),
         )

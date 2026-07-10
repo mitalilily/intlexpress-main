@@ -1,11 +1,11 @@
-# Shiplifi deployment
+# Intlexpress deployment
 
 This repository is set up to deploy:
 
 - `landing/` as a static Vite site served by Nginx
-- `courier-cart-client/` as the app frontend served on `app.shiplifi.com`
-- `admin-dashboard/` as the admin frontend served on `admin.shiplifi.com`
-- `backend/` as a Node.js API managed by PM2 on port `5003` and exposed on `api.shiplifi.com`
+- `client/` as the app frontend served on `app.intlexpress.in`
+- `admin-dashboard/` as the admin frontend served on `admin.intlexpress.in`
+- `backend/` as a Node.js API managed by PM2 on port `5003` and exposed on `api.intlexpress.in`
 
 Key production files:
 
@@ -14,10 +14,10 @@ Key production files:
 
 Expected VPS layout:
 
-- `/srv/shiplifi/current/landing`
-- `/srv/shiplifi/current/courier-cart-client`
-- `/srv/shiplifi/current/admin-dashboard`
-- `/srv/shiplifi/current/backend`
+- `/srv/intlexpress/current/landing`
+- `/srv/intlexpress/current/client`
+- `/srv/intlexpress/current/admin-dashboard`
+- `/srv/intlexpress/current/backend`
 
 The backend reads `backend/.env.production`, which should stay on the server and not be committed to Git.
 GitHub Actions deployment should preserve that file on the VPS.

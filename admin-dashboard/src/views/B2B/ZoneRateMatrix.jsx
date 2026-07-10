@@ -108,6 +108,8 @@ export const ZoneRateMatrix = ({ embedded = false } = {}) => {
         ratePerKg: Number(rateForm.ratePerKg),
         minCharge: rateForm.minCharge ? Number(rateForm.minCharge) : undefined,
         maxWeightLimit: rateForm.maxWeightLimit ? Number(rateForm.maxWeightLimit) : undefined,
+        courier_id: courierScope.courierId,
+        service_provider: courierScope.serviceProvider,
         courierScope,
       },
       {

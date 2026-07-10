@@ -233,7 +233,7 @@ app.use('/api', ndrRoutes)
 app.use('/api', rtoRoutes)
 app.use('/api/v1', externalApiRoutes)
 // Amazon Shipping tracking webhook. The public production URL is:
-// https://api.shiplifi.com/webhooks/amazon-shipping/tracking
+// https://api.intlexpress.in/webhooks/amazon-shipping/tracking
 app.get(AMAZON_SHIPPING_WEBHOOK_PATH, amazonShippingTrackingWebhookHealthHandler)
 app.post(AMAZON_SHIPPING_WEBHOOK_PATH, express.json(), amazonShippingTrackingWebhookHandler)
 app.post('/api/webhook/amazon-shipping/tracking', express.json(), amazonShippingTrackingWebhookHandler)

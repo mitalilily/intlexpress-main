@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_ROOT="/srv/shiplifi/current"
+APP_ROOT="/srv/intlexpress/current"
 export PM2_HOME="${PM2_HOME:-$HOME/.pm2}"
 BUILD_SWAP_FILE="${BUILD_SWAP_FILE:-/swapfile-shiplifi-build}"
 BUILD_SWAP_SIZE="${BUILD_SWAP_SIZE:-4G}"
@@ -99,7 +99,7 @@ cd "$APP_ROOT/landing"
 fresh_npm_ci
 npm run build
 
-cd "$APP_ROOT/courier-cart-client"
+cd "$APP_ROOT/client"
 fresh_npm_ci
 node <<'NODE'
 const fs = require('fs')
@@ -109,17 +109,17 @@ const packagePath = path.resolve(process.cwd(), 'node_modules/typescript/package
 const es2023Path = path.resolve(process.cwd(), 'node_modules/typescript/lib/lib.es2023.d.ts')
 
 if (!fs.existsSync(packagePath)) {
-  throw new Error('courier-cart-client TypeScript package is missing after npm ci')
+  throw new Error('client TypeScript package is missing after npm ci')
 }
 
 const typescriptPackage = JSON.parse(fs.readFileSync(packagePath, 'utf8'))
 if (!fs.existsSync(es2023Path)) {
   throw new Error(
-    `courier-cart-client TypeScript ${typescriptPackage.version} is missing lib.es2023.d.ts after npm ci`,
+    `client TypeScript ${typescriptPackage.version} is missing lib.es2023.d.ts after npm ci`,
   )
 }
 
-console.log('courier-cart-client TypeScript install verified', {
+console.log('client TypeScript install verified', {
   version: typescriptPackage.version,
   es2023Lib: true,
 })
@@ -134,8 +134,8 @@ else
   npm install --legacy-peer-deps --force
 fi
 cat > .env.production <<'EOF'
-REACT_APP_API_BASE_URL=https://api.shiplifi.com/api
-REACT_APP_SOCKET_URL=https://api.shiplifi.com
+REACT_APP_API_BASE_URL=https://api.intlexpress.in/api
+REACT_APP_SOCKET_URL=https://api.intlexpress.in
 EOF
 cp .env.production .env
 cp .env.production .env.local

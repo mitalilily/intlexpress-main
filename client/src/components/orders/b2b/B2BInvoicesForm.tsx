@@ -353,7 +353,7 @@ export default function B2BInvoicesForm() {
                         const invoiceValue = Number(currentInvoiceValue || 0)
 
                         // Required if invoiceValue > 0
-                        if (invoiceValue > 0 && !value) {
+                        if (false && invoiceValue > 0 && !value) {
                           return 'Invoice file is required when invoice value is greater than ₹0'
                         }
 
@@ -364,8 +364,6 @@ export default function B2BInvoicesForm() {
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       const currentInvoiceValue = watch(`invoices.${index}.invoiceValue` as any)
                       const invoiceValue = Number(currentInvoiceValue || 0)
-                      const isRequired = invoiceValue > 0
-
                       const handleFileUploaded = async (files: UploadedFileInfo[]) => {
                         if (files.length > 0) {
                           const file = files[0]
@@ -514,12 +512,8 @@ export default function B2BInvoicesForm() {
                             accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                             maxSizeMb={5}
                             folderKey="invoices"
-                            label={
-                              isRequired
-                                ? 'Invoice File * (PDF, JPG, PNG - Max 5MB)'
-                                : 'Invoice File (Optional - for replacement/sample shipments)'
-                            }
-                            required={isRequired}
+                            label="Invoice File (Optional - PDF, JPG, PNG - Max 5MB)"
+                            required={false}
                             onUploaded={handleFileUploaded}
                             fullWidth
                             error={!!fieldState.error}
@@ -555,7 +549,12 @@ export default function B2BInvoicesForm() {
                               {fieldState.error.message}
                             </Typography>
                           )}
-                          {!fieldState.error && isRequired && !field.value && (
+                          {!fieldState.error && !field.value && (
+                            <Typography variant="caption" color="#4A5568">
+                              Optional. Upload only if you want to attach the invoice document.
+                            </Typography>
+                          )}
+                          {false && !fieldState.error && !field.value && (
                             <Typography variant="caption" color="#4A5568">
                               Required when invoice value is greater than ₹0
                             </Typography>
