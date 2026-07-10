@@ -266,6 +266,7 @@ export default function B2BOrderForm({ onClose }: { onClose?: () => void }) {
           })) ?? [],
         courier_id: Number(data.courierPartnerId),
         courier_partner: data.courierPartner,
+        courier_option_key: data.courierOptionKey,
         is_insurance: !!data.isInsurance,
         is_rto_different: data.isRtoSame === false ? 'yes' : 'no',
         request_auto_pickup: 'no',
@@ -312,7 +313,7 @@ export default function B2BOrderForm({ onClose }: { onClose?: () => void }) {
       createShipmentMutation.mutate(payload, {
         onSuccess: () => {
           if (location.pathname === '/orders/create') {
-            navigate('/orders/list?status=pending')
+            navigate('/orders/list')
           }
         },
       })

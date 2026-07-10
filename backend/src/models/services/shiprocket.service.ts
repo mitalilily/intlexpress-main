@@ -5545,32 +5545,38 @@ export const fetchAvailableCouriersWithRatesB2B = async (
       .orderBy(desc(b2bZoneToZoneRates.effective_from))
 
     // Step 6: Build courier list with rates
-    const courierMap = new Map<number, any>()
+    const courierMap = new Map<string, any>()
 
     for (const rate of zoneToZoneRates) {
       if (!rate.courierId) continue
 
       // Check if courier is enabled
-      const providerKey = (rate.serviceProvider || '').toLowerCase()
+      const providerKey = normalizeProviderKey(rate.serviceProvider)
       const isEnabled = providerKey && systemCourierMap[providerKey]?.has(Number(rate.courierId))
 
       if (!isEnabled) continue
+      const courierRegistryKey = `${Number(rate.courierId)}__${providerKey}`
 
       // Get or create courier entry
-      if (!courierMap.has(rate.courierId)) {
+      if (!courierMap.has(courierRegistryKey)) {
         const [courierRow] = await db
           .select()
           .from(couriers)
-          .where(eq(couriers.id, rate.courierId))
+          .where(
+            and(
+              eq(couriers.id, rate.courierId),
+              eq(couriers.serviceProvider, rate.serviceProvider || ''),
+            ),
+          )
           .limit(1)
 
         if (!courierRow) continue
 
-        courierMap.set(rate.courierId, {
+        courierMap.set(courierRegistryKey, {
           id: courierRow.id,
           name: courierRow.name,
-          integration_type: rate.serviceProvider?.toLowerCase() || 'unknown',
-          serviceProvider: rate.serviceProvider?.toLowerCase(),
+          integration_type: providerKey || 'unknown',
+          serviceProvider: providerKey || null,
           localRates: {},
           approxZone: {
             originZoneId,
@@ -5588,8 +5594,8 @@ export const fetchAvailableCouriersWithRatesB2B = async (
               : null,
           courier_option_key: makeCourierIdentityKey({
             id: courierRow.id,
-            integration_type: rate.serviceProvider?.toLowerCase() || null,
-            serviceProvider: rate.serviceProvider?.toLowerCase() || null,
+            integration_type: providerKey || null,
+            serviceProvider: providerKey || null,
             max_slab_weight: null,
           }),
           createdAt: courierRow.createdAt,
@@ -5597,7 +5603,7 @@ export const fetchAvailableCouriersWithRatesB2B = async (
       }
 
       // Add rate to courier
-      const courier = courierMap.get(rate.courierId)!
+      const courier = courierMap.get(courierRegistryKey)!
       courier.localRates.forward = {
         ratePerKg: rate.ratePerKg,
         volumetricFactor: rate.volumetricFactor,
@@ -5656,6 +5662,16 @@ export const fetchAvailableCouriersWithRatesB2B = async (
               ...courier.localRates,
               forward: {
                 ...(courier.localRates?.forward || {}),
+                base_freight: rateResult?.charges?.baseFreight ?? null,
+                total_charges: rateResult?.charges?.total ?? null,
+                charge_breakdown: rateResult?.charges
+                  ? {
+                      baseFreight: rateResult.charges.baseFreight,
+                      overheads: rateResult.charges.overheads,
+                      demurrage: rateResult.charges.demurrage,
+                      total: rateResult.charges.total,
+                    }
+                  : null,
                 rate: rateResult?.charges?.total ?? null,
                 chargeable_weight: billableWeightGrams,
                 volumetric_weight: volumetricWeightGrams,
@@ -9561,19 +9577,41 @@ export const createB2BShipmentService = async (
       ? Number(params.courier_id)
       : undefined
 
-  let effectiveIntegrationType = String(params.integration_type || '')
-    .trim()
-    .toLowerCase()
+  const providerFromCourierOptionKey = normalizeCourierProviderKey(
+    String(params.courier_option_key || '')
+      .split('__')
+      .slice(1, 2)
+      .join(''),
+  )
+  let effectiveIntegrationType = resolveCourierProviderKeyFromFields(
+    params.integration_type,
+    providerFromCourierOptionKey,
+    params.courier_partner,
+  )
 
   if (!effectiveIntegrationType && courierId) {
-    const [courierRow] = await db
+    const matchingCouriers = await db
       .select({ serviceProvider: couriers.serviceProvider })
       .from(couriers)
-      .where(eq(couriers.id, courierId))
-      .limit(1)
-    effectiveIntegrationType = String(courierRow?.serviceProvider || '')
-      .trim()
-      .toLowerCase()
+      .where(
+        and(
+          eq(couriers.id, courierId),
+          eq(couriers.isEnabled, true),
+          sql`${couriers.businessType} @> '["b2b"]'::jsonb`,
+        ),
+      )
+
+    if (matchingCouriers.length === 1) {
+      effectiveIntegrationType = normalizeCourierProviderKey(matchingCouriers[0]?.serviceProvider)
+    } else if (matchingCouriers.length > 1) {
+      const preferredCourier = matchingCouriers.find(
+        (courierRow) =>
+          normalizeCourierProviderKey(courierRow?.serviceProvider) === providerFromCourierOptionKey,
+      )
+      effectiveIntegrationType = normalizeCourierProviderKey(
+        preferredCourier?.serviceProvider || matchingCouriers[0]?.serviceProvider,
+      )
+    }
   }
 
   let selectedDelhiveryShippingMode: DelhiveryShippingMode | null = null
