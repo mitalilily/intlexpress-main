@@ -4,6 +4,10 @@ import { courier_credentials } from '../schema/courierCredentials'
 
 const DEFAULT_DELHIVERY_API_BASE = 'https://track.delhivery.com'
 const DEFAULT_DELHIVERY_B2B_API_BASE = 'https://ltl-clients-api.delhivery.com'
+const DEFAULT_DELHIVERY_B2C_CLIENT_NAME =
+  String(process.env.DELHIVERY_B2C_CLIENT_NAME || process.env.DELHIVERY_CLIENT_NAME || '').trim() ||
+  'INTLEXPRESS JAIPUR C2C'
+const LEGACY_DELHIVERY_B2C_CLIENT_NAMES = new Set(['INTLEXPRESS'])
 const DELHIVERY_ACCOUNT_CODES = ['account_1', 'account_2', 'account_3'] as const
 const DELHIVERY_ACCOUNT_LABELS = [
   'Delhivery B2C Account',
@@ -42,6 +46,14 @@ export interface DelhiveryResolutionContext {
 }
 
 const normalize = (value?: unknown) => String(value ?? '').trim()
+const normalizeDelhiveryClientName = (value: unknown, index: number) => {
+  const normalized = normalize(value)
+  if (index !== 0) return normalized
+  return LEGACY_DELHIVERY_B2C_CLIENT_NAMES.has(normalized.toUpperCase())
+    ? DEFAULT_DELHIVERY_B2C_CLIENT_NAME
+    : normalized || DEFAULT_DELHIVERY_B2C_CLIENT_NAME
+}
+
 const resolveDelhiveryApiKey = (...values: unknown[]) => {
   const hardcoded = normalize(HARDCODED_DELHIVERY_API_KEY)
   if (hardcoded) return hardcoded
@@ -170,7 +182,7 @@ const normalizeAccount = (
   const accountCode = DELHIVERY_ACCOUNT_CODES[index]
   const apiBase =
     normalize(raw.apiBase || fallback?.apiBase) || getDefaultDelhiveryAccountApiBase(index)
-  const clientName = normalize(raw.clientName || fallback?.clientName)
+  const clientName = normalizeDelhiveryClientName(raw.clientName || fallback?.clientName, index)
   const apiKey = resolveDelhiveryApiKey(raw.apiKey, fallback?.apiKey)
   const username = normalize(raw.username || fallback?.username)
   const password = normalize(raw.password || fallback?.password)
@@ -463,5 +475,6 @@ export const maskDelhiveryApiKey = maskApiKey
 export {
   DEFAULT_DELHIVERY_API_BASE,
   DEFAULT_DELHIVERY_B2B_API_BASE,
+  DEFAULT_DELHIVERY_B2C_CLIENT_NAME,
   DELHIVERY_ACCOUNT_CODES,
 }

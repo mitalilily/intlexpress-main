@@ -131,6 +131,35 @@ const normalizeDelhiveryWeightGrams = (value: unknown, fallbackGrams = 500) => {
   return numericValue > 50 ? Math.round(numericValue) : Math.round(numericValue * 1000)
 }
 
+const normalizeDelhiveryGstin = (value?: string | null) =>
+  String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '')
+
+const resolveDelhiverySellerGstin = (...values: Array<string | null | undefined>) => {
+  for (const value of values) {
+    const normalized = normalizeDelhiveryGstin(value)
+    if (normalized) return normalized
+  }
+
+  // Delhivery requires a GST identifier in the manifest payload. URP is the
+  // safest fallback for unregistered sellers when no GSTIN is available.
+  return 'URP'
+}
+
+const resolveDelhiveryHsnCodes = (orderItems: Array<Record<string, any>>) => {
+  const hsnCodes = Array.from(
+    new Set(
+      orderItems
+        .map((item) => String(item?.hsn || item?.hsnCode || '').trim())
+        .filter((code) => code.length > 0),
+    ),
+  )
+
+  return hsnCodes.length > 0 ? hsnCodes : ['0000']
+}
+
 const delhiveryCancellationResponseText = (value: unknown) => {
   try {
     return JSON.stringify(value || {}).toLowerCase()
@@ -1537,13 +1566,7 @@ export class DelhiveryService {
       const resolvedInvoiceNumber = invoiceNumber || orderNumber
       const orderAmount = Number(params.order_amount ?? 0)
       const orderItems = Array.isArray(params.order_items) ? params.order_items : []
-      const hsnCodes = Array.from(
-        new Set(
-          orderItems
-            .map((item) => (item?.hsn || item?.hsnCode || '').toString().trim())
-            .filter((code) => code.length > 0),
-        ),
-      )
+      const hsnCodes = resolveDelhiveryHsnCodes(orderItems as Array<Record<string, any>>)
 
       if (!orderNumber) {
         throw new HttpError(400, 'order_number is required to create a Delhivery shipment.')
@@ -1597,8 +1620,14 @@ export class DelhiveryService {
         mergeAddressLines(normalizedPickup.address, normalizedPickup.address_2) ||
         sanitizeString(normalizedPickup.warehouse_name)
 
-      const sellerName = sanitizeString(params.company?.name || normalizedPickup.name || 'IntleExpress')
-      const sellerGst = sanitizeString(params.company?.gst || normalizedPickup.gst_number || '')
+      const sellerName = sanitizeString(
+        params.company?.name || normalizedPickup.name || 'IntleExpress',
+      )
+      const sellerGst = resolveDelhiverySellerGstin(
+        params.company?.gst,
+        normalizedPickup.gst_number,
+      )
+      const consigneeGst = normalizeDelhiveryGstin(params.consignee?.gstin)
       const productNames = orderItems
         .map((item) => sanitizeString(item?.name))
         .filter((name) => name.length > 0)
@@ -1720,6 +1749,7 @@ export class DelhiveryService {
         client: this.clientName || sellerName,
         client_name: this.clientName || sellerName,
         client_gst_tin: sellerGst,
+        consignee_gst_tin: consigneeGst || undefined,
         waybill: resolvedWaybills[0] || sanitizeString(waybill || params.waybill) || undefined,
       }
 
@@ -2244,12 +2274,8 @@ export class DelhiveryService {
         params.order_date instanceof Date
           ? params.order_date.toISOString().split('T')[0]
           : sanitizeString(params.order_date) || new Date().toISOString().split('T')[0]
-      const hsnCodes = Array.from(
-        new Set(
-          (params.order_items || [])
-            .map((item) => sanitizeString(item?.hsn || item?.hsnCode))
-            .filter(Boolean),
-        ),
+      const hsnCodes = resolveDelhiveryHsnCodes(
+        (params.order_items || []) as Array<Record<string, any>>,
       )
       const invoiceNumber =
         sanitizeString(params.invoice_number) ||
@@ -2278,7 +2304,7 @@ export class DelhiveryService {
             cod_amount: '0',
             products_desc:
               params.order_items?.map((i) => i.name).join(', ') || 'Reverse Pickup Shipment',
-            hsn_code: hsnCodes.join(', ') || undefined,
+            hsn_code: hsnCodes.join(', '),
             weight: normalizeDelhiveryWeightGrams(params.package_weight),
             shipment_length: Number(params.package_length ?? 10),
             shipment_width: Number(params.package_breadth ?? 10),
@@ -2290,6 +2316,7 @@ export class DelhiveryService {
             seller_state: sanitizeString(params.pickup?.state),
             seller_pin: sanitizeString(params.pickup?.pincode),
             seller_phone: pickupPhone,
+            seller_gst_tin: resolveDelhiverySellerGstin(params.pickup?.gst_number),
             seller_inv: invoiceNumber,
             invoice_reference: invoiceNumber,
             pickup_address: pickupAddress || sanitizeString(params.pickup?.warehouse_name),

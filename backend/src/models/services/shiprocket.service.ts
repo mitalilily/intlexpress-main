@@ -2770,16 +2770,55 @@ function buildPickupFromWarehouse(
   }
 }
 
-const getDefaultPickupDate = () => {
-  const now = new Date()
-  return now.toISOString().split('T')[0]
+const INDIA_TIME_OFFSET_MS = 330 * 60 * 1000
+const DELHIVERY_PICKUP_START_TIME = '10:00:00'
+const DELHIVERY_PICKUP_CUTOFF_MINUTES = 17 * 60 + 30
+
+const formatIndiaDateInput = (timestampMs = Date.now()) =>
+  new Date(timestampMs + INDIA_TIME_OFFSET_MS).toISOString().slice(0, 10)
+
+const formatIndiaTimeInput = (timestampMs = Date.now()) =>
+  new Date(timestampMs + INDIA_TIME_OFFSET_MS).toISOString().slice(11, 19)
+
+const getIndiaDayOfWeek = (timestampMs = Date.now()) =>
+  new Date(timestampMs + INDIA_TIME_OFFSET_MS).getUTCDay()
+
+const parseIndiaScheduleTime = (pickupDate: string, pickupTime: string) =>
+  Date.parse(`${pickupDate}T${pickupTime}+05:30`)
+
+const addIndiaDays = (timestampMs: number, days: number) =>
+  timestampMs + days * 24 * 60 * 60 * 1000
+
+const getNextDelhiveryPickupSlot = (minimumTimestampMs = Date.now() + 60 * 60 * 1000) => {
+  let candidateTimestamp = minimumTimestampMs
+  let pickupDate = formatIndiaDateInput(candidateTimestamp)
+  let pickupTime = formatIndiaTimeInput(candidateTimestamp)
+  let dayOfWeek = getIndiaDayOfWeek(candidateTimestamp)
+
+  const [hours, minutes] = pickupTime.split(':').map((part) => Number(part) || 0)
+  const totalMinutes = hours * 60 + minutes
+
+  if (totalMinutes < 10 * 60) {
+    pickupTime = DELHIVERY_PICKUP_START_TIME
+  }
+
+  if (totalMinutes > DELHIVERY_PICKUP_CUTOFF_MINUTES || dayOfWeek === 0) {
+    do {
+      candidateTimestamp = addIndiaDays(candidateTimestamp, 1)
+      pickupDate = formatIndiaDateInput(candidateTimestamp)
+      dayOfWeek = getIndiaDayOfWeek(candidateTimestamp)
+    } while (dayOfWeek === 0)
+
+    pickupTime = DELHIVERY_PICKUP_START_TIME
+  }
+
+  return { pickupDate, pickupTime }
 }
 
-const getTomorrowPickupDate = () => {
-  const nextDay = new Date()
-  nextDay.setDate(nextDay.getDate() + 1)
-  return nextDay.toISOString().split('T')[0]
-}
+const getDefaultPickupDate = () => getNextDelhiveryPickupSlot().pickupDate
+
+const getTomorrowPickupDate = () =>
+  getNextDelhiveryPickupSlot(addIndiaDays(Date.now(), 1)).pickupDate
 
 const normalizePickupDateForRetry = (pickupDateRaw: unknown, isManifestRetry: boolean) => {
   const fallbackDate = isManifestRetry ? getTomorrowPickupDate() : getDefaultPickupDate()
@@ -2798,23 +2837,8 @@ const normalizePickupDateForRetry = (pickupDateRaw: unknown, isManifestRetry: bo
   return normalizedInput < fallbackDate ? fallbackDate : normalizedInput
 }
 
-const formatLocalDateInput = (value: Date) => {
-  const year = value.getFullYear()
-  const month = String(value.getMonth() + 1).padStart(2, '0')
-  const day = String(value.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 const getDefaultPickupTime = () => {
-  const now = new Date(Date.now() + 60 * 60 * 1000)
-  return now.toTimeString().split(' ')[0]
-}
-
-const formatLocalTimeInput = (value: Date) => {
-  const hours = String(value.getHours()).padStart(2, '0')
-  const minutes = String(value.getMinutes()).padStart(2, '0')
-  const seconds = String(value.getSeconds()).padStart(2, '0')
-  return `${hours}:${minutes}:${seconds}`
+  return getNextDelhiveryPickupSlot().pickupTime
 }
 
 const normalizePickupTimeValue = (pickupTimeRaw: unknown) => {
@@ -2836,15 +2860,13 @@ const normalizePickupSchedule = ({
   let pickupDate = normalizePickupDateForRetry(pickupDateRaw, isManifestRetry)
   let pickupTime = normalizePickupTimeValue(pickupTimeRaw)
 
-  const [hours, minutes, seconds] = pickupTime.split(':').map((part) => Number(part) || 0)
-  const minimumAllowed = new Date(Date.now() + 15 * 60 * 1000)
-  const scheduledAt = new Date(
-    `${pickupDate}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`,
-  )
+  const minimumAllowed = Date.now() + 60 * 60 * 1000
+  const scheduledAt = parseIndiaScheduleTime(pickupDate, pickupTime)
 
-  if (Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() < minimumAllowed.getTime()) {
-    pickupDate = formatLocalDateInput(minimumAllowed)
-    pickupTime = formatLocalTimeInput(minimumAllowed)
+  if (Number.isNaN(scheduledAt) || scheduledAt < minimumAllowed) {
+    const fallbackSlot = getNextDelhiveryPickupSlot(minimumAllowed)
+    pickupDate = fallbackSlot.pickupDate
+    pickupTime = fallbackSlot.pickupTime
   }
 
   return { pickupDate, pickupTime }
