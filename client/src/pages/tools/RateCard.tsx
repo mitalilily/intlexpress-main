@@ -35,8 +35,9 @@ interface ShippingRate {
   cod_charges?: number | string
   cod_percent?: number | string
   other_charges?: number | string
+  b2b_matrix?: boolean
   rates: {
-    [zone: string]: {
+    [zone: string]: any & {
       forward?: number | string
       rto?: number | string
       description?: string
@@ -45,6 +46,40 @@ interface ShippingRate {
       min_weight?: number
     }
   }
+}
+
+type RateZone = { code?: string; id?: string; description?: string; name?: string }
+
+const getZoneLookupKeys = (zone: RateZone) =>
+  [zone.id, zone.code, zone.name].filter((value): value is string => Boolean(value))
+
+const formatRateValue = (value: number | string | undefined | null, suffix = '') => {
+  if (value === undefined || value === null || value === '') return 'NA'
+  return `₹${value}${suffix}`
+}
+
+const getRateByZoneKey = (rates: ShippingRate['rates'] | undefined, zone: RateZone) => {
+  for (const key of getZoneLookupKeys(zone)) {
+    if (rates?.[key]) return rates[key]
+  }
+  return {}
+}
+
+const getB2BLaneRate = (
+  rates: ShippingRate['rates'] | undefined,
+  originZone: RateZone,
+  destinationZone: RateZone,
+) => {
+  for (const originKey of getZoneLookupKeys(originZone)) {
+    const originRates = rates?.[originKey]
+    if (!originRates || typeof originRates !== 'object') continue
+
+    for (const destinationKey of getZoneLookupKeys(destinationZone)) {
+      if (originRates[destinationKey]) return originRates[destinationKey]
+    }
+  }
+
+  return null
 }
 
 // --- B2C Table ---
@@ -118,7 +153,7 @@ const B2BClientTable = ({
   zones,
 }: {
   data: ShippingRate[]
-  zones: { code: string; id: string; description: string; name: string }[]
+  zones: RateZone[]
 }) => {
   if (!data?.length) {
     return <Typography>No B2B rates available</Typography>
@@ -139,6 +174,48 @@ const B2BClientTable = ({
             </Stack>
 
             <Table size="small" sx={{ mt: 2 }}>
+              {courier.b2b_matrix ? (
+                <>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Origin \ Destination</TableCell>
+                      {zones.map((zone) => (
+                        <TableCell key={zone.id || zone.code || zone.name} align="right">
+                          {zone.name || zone.code}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {zones.map((originZone) => (
+                      <TableRow key={originZone.id || originZone.code || originZone.name}>
+                        <TableCell>{originZone.name || originZone.code}</TableCell>
+                        {zones.map((destinationZone) => {
+                          const laneRate = getB2BLaneRate(
+                            courier.rates,
+                            originZone,
+                            destinationZone,
+                          )
+                          const perKg = laneRate?.forward_per_kg ?? laneRate?.rate_per_kg
+
+                          return (
+                            <TableCell
+                              key={destinationZone.id || destinationZone.code || destinationZone.name}
+                              align="right"
+                            >
+                              {formatRateValue(
+                                perKg,
+                                perKg !== undefined && perKg !== null ? '/kg' : '',
+                              )}
+                            </TableCell>
+                          )
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </>
+              ) : (
+                <>
               <TableHead>
                 <TableRow>
                   <TableCell>Zone</TableCell>
@@ -149,10 +226,10 @@ const B2BClientTable = ({
               </TableHead>
               <TableBody>
                 {zones.map((zone) => {
-                  const rates = courier.rates?.[zone.name] || {}
+                  const rates = getRateByZoneKey(courier.rates, zone)
                   return (
-                    <TableRow key={zone.code}>
-                      <TableCell>{zone.name}</TableCell>
+                    <TableRow key={zone.id || zone.code || zone.name}>
+                      <TableCell>{zone.name || zone.code}</TableCell>
                       <TableCell>₹{rates.forward_per_kg ?? 'NA'}</TableCell>
                       <TableCell>₹{rates.rto_per_kg ?? 'NA'}</TableCell>
                       <TableCell>{rates.min_weight ?? courier.min_weight ?? 'NA'} kg</TableCell>
@@ -160,6 +237,8 @@ const B2BClientTable = ({
                   )
                 })}
               </TableBody>
+                </>
+              )}
             </Table>
           </CardContent>
         </Card>

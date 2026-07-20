@@ -1,12 +1,12 @@
 import { randomUUID } from 'crypto'
-import { and, asc, desc, eq, gte, ilike, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lte, or, sql } from 'drizzle-orm'
 import type { ShippingRateFilters } from '../../controllers/admin/courier.controller'
 import { db } from '../client'
 import { couriers } from '../schema/couriers'
 import { courierSummary } from '../schema/courierSummary'
 import { shippingRates } from '../schema/shippingRates'
 import { userPlans } from '../schema/userPlans'
-import { zones } from '../schema/zones'
+import { b2bZoneToZoneRates, zones } from '../schema/zones'
 import {
   fetchShippingRateSlabs,
   normalizeB2CShippingMode,
@@ -257,6 +257,13 @@ export const getUserShippingRates = async (
 
   const planId = userPlan[0].plan_id
 
+  if (filters.business_type === 'b2b') {
+    const zoneToZoneRates = await getUserB2BZoneToZoneRateCards(planId, filters)
+    if (zoneToZoneRates.length > 0) {
+      return zoneToZoneRates
+    }
+  }
+
   // 2. Call existing getShippingRates with plan_id injected
   return getShippingRates({ ...filters, plan_id: planId })
 }
@@ -310,6 +317,182 @@ const getB2CGroupKey = (rate: any) =>
 
 const getB2BGroupKey = (rate: any) =>
   `${rate.courier_name}_${rate.plan_id}_${normalizeB2CShippingMode(rate.mode)}`
+
+const normalizeB2BRateCardCourierName = (value: unknown) =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+
+const getUserB2BZoneToZoneRateCards = async (
+  planId: string,
+  filters: Omit<ShippingRateFilters, 'plan_id'> = {},
+) => {
+  const effectiveDate = new Date()
+  const b2bZones = await db
+    .select({
+      id: zones.id,
+      code: zones.code,
+      name: zones.name,
+      description: zones.description,
+    })
+    .from(zones)
+    .where(eq(zones.business_type, 'B2B'))
+    .orderBy(asc(zones.code))
+
+  if (!b2bZones.length) {
+    return []
+  }
+
+  const zoneById = new Map(b2bZones.map((zone) => [zone.id, zone]))
+  const rateRows = await db
+    .select({
+      id: b2bZoneToZoneRates.id,
+      planId: b2bZoneToZoneRates.plan_id,
+      originZoneId: b2bZoneToZoneRates.origin_zone_id,
+      destinationZoneId: b2bZoneToZoneRates.destination_zone_id,
+      courierId: b2bZoneToZoneRates.courier_id,
+      serviceProvider: b2bZoneToZoneRates.service_provider,
+      ratePerKg: b2bZoneToZoneRates.rate_per_kg,
+      volumetricFactor: b2bZoneToZoneRates.volumetric_factor,
+      updatedAt: b2bZoneToZoneRates.updated_at,
+    })
+    .from(b2bZoneToZoneRates)
+    .where(
+      and(
+        eq(b2bZoneToZoneRates.is_active, true),
+        or(
+          isNull(b2bZoneToZoneRates.effective_from),
+          lte(b2bZoneToZoneRates.effective_from, effectiveDate),
+        ),
+        or(
+          isNull(b2bZoneToZoneRates.effective_to),
+          gte(b2bZoneToZoneRates.effective_to, effectiveDate),
+        ),
+        or(eq(b2bZoneToZoneRates.plan_id, planId), isNull(b2bZoneToZoneRates.plan_id)),
+      ),
+    )
+    .orderBy(desc(b2bZoneToZoneRates.updated_at))
+
+  if (!rateRows.length) {
+    return []
+  }
+
+  const courierRows = await db
+    .select({
+      id: couriers.id,
+      name: couriers.name,
+      serviceProvider: couriers.serviceProvider,
+      isEnabled: couriers.isEnabled,
+      businessType: couriers.businessType,
+    })
+    .from(couriers)
+    .where(sql`${couriers.businessType} @> '["b2b"]'::jsonb`)
+
+  const courierByKey = new Map(
+    courierRows.map((courier) => [
+      `${Number(courier.id)}__${normalizeB2CServiceProvider(courier.serviceProvider)}`,
+      courier,
+    ]),
+  )
+  const selectedCourierNames = new Set(
+    (filters.courier_name || []).map(normalizeB2BRateCardCourierName).filter(Boolean),
+  )
+  const preferredLaneRows = new Map<string, (typeof rateRows)[number]>()
+
+  for (const rate of rateRows) {
+    const providerKey = normalizeB2CServiceProvider(rate.serviceProvider) || 'global'
+    const courierId = rate.courierId != null ? Number(rate.courierId) : null
+    const courierKey = courierId != null ? `${courierId}__${providerKey}` : `global__${providerKey}`
+    const courierRow = courierId != null ? courierByKey.get(courierKey) : null
+
+    if (courierId != null && (!courierRow || courierRow.isEnabled === false)) {
+      continue
+    }
+
+    const courierName =
+      courierRow?.name ||
+      (providerKey && providerKey !== 'global'
+        ? `${providerKey.charAt(0).toUpperCase()}${providerKey.slice(1)} B2B`
+        : 'B2B Rate Card')
+
+    if (
+      selectedCourierNames.size &&
+      !selectedCourierNames.has(normalizeB2BRateCardCourierName(courierName))
+    ) {
+      continue
+    }
+
+    if (!zoneById.has(rate.originZoneId) || !zoneById.has(rate.destinationZoneId)) {
+      continue
+    }
+
+    const laneKey = `${courierKey}__${rate.originZoneId}__${rate.destinationZoneId}`
+    const existing = preferredLaneRows.get(laneKey)
+    const currentIsPlanSpecific = rate.planId === planId
+    const existingIsPlanSpecific = existing?.planId === planId
+
+    if (!existing || (currentIsPlanSpecific && !existingIsPlanSpecific)) {
+      preferredLaneRows.set(laneKey, rate)
+    }
+  }
+
+  const grouped = new Map<string, any>()
+
+  for (const rate of preferredLaneRows.values()) {
+    const providerKey = normalizeB2CServiceProvider(rate.serviceProvider) || 'global'
+    const courierId = rate.courierId != null ? Number(rate.courierId) : null
+    const courierKey = courierId != null ? `${courierId}__${providerKey}` : `global__${providerKey}`
+    const courierRow = courierId != null ? courierByKey.get(courierKey) : null
+    const courierName =
+      courierRow?.name ||
+      (providerKey && providerKey !== 'global'
+        ? `${providerKey.charAt(0).toUpperCase()}${providerKey.slice(1)} B2B`
+        : 'B2B Rate Card')
+    const groupKey = `${courierKey}__${rate.planId === planId ? planId : 'global'}`
+
+    if (!grouped.has(groupKey)) {
+      grouped.set(groupKey, {
+        id: groupKey,
+        plan_id: rate.planId,
+        courier_id: courierId,
+        courier_name: courierName,
+        service_provider: providerKey === 'global' ? null : providerKey,
+        mode: 'surface',
+        business_type: 'b2b',
+        min_weight: 1,
+        cod_charges: null,
+        cod_percent: null,
+        other_charges: null,
+        rates: {},
+        b2b_matrix: true,
+      })
+    }
+
+    const group = grouped.get(groupKey)
+    const originZone = zoneById.get(rate.originZoneId)
+    const destinationZone = zoneById.get(rate.destinationZoneId)
+    if (!originZone || !destinationZone) continue
+
+    const rateValue = Number(rate.ratePerKg)
+    const cellValue = {
+      forward_per_kg: Number.isFinite(rateValue) ? rateValue : rate.ratePerKg,
+      rate_per_kg: Number.isFinite(rateValue) ? rateValue : rate.ratePerKg,
+      min_weight: group.min_weight,
+      volumetric_factor: rate.volumetricFactor ? Number(rate.volumetricFactor) : null,
+    }
+
+    for (const originKey of [originZone.id, originZone.code, originZone.name]) {
+      if (!originKey) continue
+      group.rates[originKey] = group.rates[originKey] || {}
+      for (const destinationKey of [destinationZone.id, destinationZone.code, destinationZone.name]) {
+        if (!destinationKey) continue
+        group.rates[originKey][destinationKey] = cellValue
+      }
+    }
+  }
+
+  return Array.from(grouped.values())
+}
 
 export const updateShippingRate = async (
   courierId: number,
