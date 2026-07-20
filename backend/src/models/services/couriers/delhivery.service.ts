@@ -700,10 +700,12 @@ export const createDelhiveryB2BShipment = async ({
   token,
   apiBase,
   payload,
+  files = [],
 }: {
   token: string
   apiBase?: string | null
   payload: Record<string, any>
+  files?: Array<{ data: Uint8Array; filename: string; contentType?: string }>
 }) => {
   const normalizedToken = ensureDelhiveryB2BToken(token)
   const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
@@ -721,6 +723,13 @@ export const createDelhiveryB2BShipment = async ({
 
         Object.entries(payload || {}).forEach(([key, value]) => {
           appendDelhiveryManifestField(form, key, value)
+        })
+        files.forEach((file) => {
+          if (!file?.data || !file?.filename) return
+          const blob = new (globalThis as any).Blob([file.data], {
+            type: file.contentType || 'application/octet-stream',
+          })
+          form.append('doc_file', blob, file.filename)
         })
 
         return axios.post(`${resolvedApiBase}/manifest`, form, {

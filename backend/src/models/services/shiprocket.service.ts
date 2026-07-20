@@ -3557,6 +3557,181 @@ const buildDelhiveryB2BManifestPayload = ({
   return manifestPayload
 }
 
+type DelhiveryB2BInvoiceDocument = {
+  data: Uint8Array
+  filename: string
+  contentType?: string
+}
+
+const sanitizeDelhiveryB2BInvoiceFilename = (value: unknown, fallback: string) => {
+  const normalized = String(value || fallback)
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]/g, '_')
+    .slice(-180)
+  return normalized || fallback
+}
+
+const generateDelhiveryB2BInvoiceDocument = async ({
+  invoice,
+  index,
+  payload,
+  normalizedOrderNumber,
+  invoiceValue,
+}: {
+  invoice: any
+  index: number
+  payload: ShipmentParams
+  normalizedOrderNumber: string
+  invoiceValue: number
+}): Promise<DelhiveryB2BInvoiceDocument> => {
+  const invoiceNumber = String(invoice?.invoiceNumber || payload.invoice_number || normalizedOrderNumber).trim()
+  const amount = Number(invoice?.invoiceValue ?? payload.invoice_amount ?? invoiceValue ?? 0)
+  const safeInvoiceNumber = invoiceNumber || `invoice-${index + 1}`
+  const printer = new PdfPrinter(pdfFonts)
+  const docDefinition: any = {
+    defaultStyle: { font: 'Helvetica', fontSize: 10 },
+    pageSize: 'A4',
+    pageMargins: [36, 36, 36, 36],
+    content: [
+      { text: 'Commercial Invoice', style: 'title' },
+      { text: 'Auto-generated for courier manifest booking', color: '#666666', margin: [0, 0, 0, 16] },
+      {
+        table: {
+          widths: ['35%', '65%'],
+          body: [
+            ['Invoice Number', safeInvoiceNumber],
+            ['Order Number', normalizedOrderNumber],
+            ['Invoice Date', String(invoice?.invoiceDate || payload.invoice_date || payload.order_date || '')],
+            ['Invoice Value', `INR ${amount.toFixed(2)}`],
+          ],
+        },
+        layout: 'lightHorizontalLines',
+        margin: [0, 0, 0, 16],
+      },
+      {
+        columns: [
+          [
+            { text: 'Seller / Pickup', bold: true, margin: [0, 0, 0, 6] },
+            String(payload.pickup?.name || payload.pickup?.warehouse_name || payload.company?.name || ''),
+            String([payload.pickup?.address, payload.pickup?.address_2].filter(Boolean).join(', ')),
+            String([payload.pickup?.city, payload.pickup?.state, payload.pickup?.pincode].filter(Boolean).join(', ')),
+            String(payload.pickup?.phone || ''),
+          ],
+          [
+            { text: 'Consignee', bold: true, margin: [0, 0, 0, 6] },
+            String(payload.consignee?.company_name || payload.consignee?.name || ''),
+            String([payload.consignee?.address, payload.consignee?.address_2].filter(Boolean).join(', ')),
+            String([payload.consignee?.city, payload.consignee?.state, payload.consignee?.pincode].filter(Boolean).join(', ')),
+            String(payload.consignee?.phone || ''),
+          ],
+        ],
+        columnGap: 24,
+        margin: [0, 0, 0, 16],
+      },
+      {
+        table: {
+          headerRows: 1,
+          widths: ['*', 'auto', 'auto'],
+          body: [
+            [
+              { text: 'Description', bold: true },
+              { text: 'Qty', bold: true },
+              { text: 'Amount', bold: true },
+            ],
+            [
+              (payload.order_items || [])
+                .map((item) => String(item?.name || '').trim())
+                .filter(Boolean)
+                .join(', ') || 'General Merchandise',
+              '1',
+              `INR ${amount.toFixed(2)}`,
+            ],
+          ],
+        },
+        layout: 'lightHorizontalLines',
+      },
+    ],
+    styles: {
+      title: { fontSize: 18, bold: true, margin: [0, 0, 0, 4] },
+    },
+  }
+
+  const pdfDoc = printer.createPdfKitDocument(docDefinition)
+  const chunks: Buffer[] = []
+  const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+    pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk))
+    pdfDoc.on('end', () => resolve(Buffer.concat(chunks)))
+    pdfDoc.on('error', (err: unknown) => reject(err))
+    pdfDoc.end()
+  })
+
+  return {
+    data: new Uint8Array(pdfBuffer),
+    filename: sanitizeDelhiveryB2BInvoiceFilename(`${safeInvoiceNumber}.pdf`, `invoice-${index + 1}.pdf`),
+    contentType: 'application/pdf',
+  }
+}
+
+const resolveDelhiveryB2BInvoiceDocument = async ({
+  invoice,
+  index,
+  payload,
+  normalizedOrderNumber,
+  invoiceValue,
+}: {
+  invoice: any
+  index: number
+  payload: ShipmentParams
+  normalizedOrderNumber: string
+  invoiceValue: number
+}): Promise<DelhiveryB2BInvoiceDocument> => {
+  const fileUrl = String(invoice?.invoiceFileUrl || invoice?.invoice_file_url || '').trim()
+  if (!fileUrl) {
+    return generateDelhiveryB2BInvoiceDocument({
+      invoice,
+      index,
+      payload,
+      normalizedOrderNumber,
+      invoiceValue,
+    })
+  }
+
+  try {
+    const response = await axios.get(fileUrl, {
+      responseType: 'arraybuffer',
+      timeout: 30000,
+      maxContentLength: 5 * 1024 * 1024,
+    })
+    const keyName = String(invoice?.invoiceFileKey || invoice?.invoice_file_key || '').split('/').pop()
+    const urlName = (() => {
+      try {
+        return decodeURIComponent(new URL(fileUrl).pathname.split('/').pop() || '')
+      } catch {
+        return ''
+      }
+    })()
+    const fallbackName = `${invoice?.invoiceNumber || `invoice-${index + 1}`}.pdf`
+
+    return {
+      data: new Uint8Array(response.data),
+      filename: sanitizeDelhiveryB2BInvoiceFilename(keyName || urlName || fallbackName, fallbackName),
+      contentType: String(response.headers?.['content-type'] || 'application/pdf'),
+    }
+  } catch (error: any) {
+    console.warn('Unable to read uploaded B2B invoice document; using generated invoice copy', {
+      invoiceNumber: invoice?.invoiceNumber || index + 1,
+      error: error?.message || error,
+    })
+    return generateDelhiveryB2BInvoiceDocument({
+      invoice,
+      index,
+      payload,
+      normalizedOrderNumber,
+      invoiceValue,
+    })
+  }
+}
+
 //ADMIN CALCULATION
 export const fetchAvailableCouriersWithRatesAdmin = async (
   params: NimbusServiceabilityParams,
@@ -10158,11 +10333,32 @@ export const createB2BShipmentService = async (
         pickupLocationName,
         invoiceValue,
       })
+      const invoiceDocuments = await Promise.all(
+        (normalizedInvoices.length
+          ? normalizedInvoices
+          : [
+              {
+                invoiceNumber: String(payload.invoice_number || normalizedOrderNumber).trim(),
+                invoiceDate: String(payload.invoice_date || payload.order_date || '').trim(),
+                invoiceValue: Number(payload.invoice_amount || payload.order_amount || invoiceValue || 0),
+              },
+            ]
+        ).map((invoice: any, index: number) =>
+          resolveDelhiveryB2BInvoiceDocument({
+            invoice,
+            index,
+            payload,
+            normalizedOrderNumber,
+            invoiceValue,
+          }),
+        ),
+      )
 
       const shipmentData = await createDelhiveryB2BShipment({
         token: b2bLogin.token,
         apiBase: resolvedDelhiveryAccount.apiBase,
         payload: b2bManifestPayload,
+        files: invoiceDocuments,
       })
       const providerResponse = shipmentData?.data ?? shipmentData
       const delhiveryLrn = extractDelhiveryB2BLrn(providerResponse) || null
