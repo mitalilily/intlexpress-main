@@ -277,8 +277,8 @@ export async function sendWeightDiscrepancyEmail(data: WeightDiscrepancyNotifica
           </div>
           
           <div class="footer">
-            <p>This is an automated notification from the Shiplifi weight reconciliation system.</p>
-            <p>© ${new Date().getFullYear()} Shiplifi. All rights reserved.</p>
+            <p>This is an automated notification from the Intlexpress weight reconciliation system.</p>
+            <p>© ${new Date().getFullYear()} Intlexpress. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -424,11 +424,11 @@ export async function sendDailySummaryEmail(data: DailySummaryData) {
           </div>
           
           <div class="footer">
-            <p>This is an automated daily summary from Shiplifi.</p>
+            <p>This is an automated daily summary from Intlexpress.</p>
             <p>You can manage email preferences in your <a href="${
               process.env.FRONTEND_URL || 'http://localhost:5173'
             }/reconciliation/weight/settings">settings</a></p>
-            <p>© ${new Date().getFullYear()} Shiplifi. All rights reserved.</p>
+            <p>© ${new Date().getFullYear()} Intlexpress. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -511,7 +511,7 @@ export async function sendDisputeUpdateEmail(
           </div>
           
           <div class="footer">
-            <p>© ${new Date().getFullYear()} Shiplifi. All rights reserved.</p>
+            <p>© ${new Date().getFullYear()} Intlexpress. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -744,11 +744,11 @@ export async function sendWeeklyReportEmail(data: WeeklyReportData) {
           </div>
           
           <div class="footer">
-            <p>This is an automated weekly report from Shiplifi.</p>
+            <p>This is an automated weekly report from Intlexpress.</p>
             <p>You can manage email preferences in your <a href="${
               process.env.FRONTEND_URL || 'http://localhost:5173'
             }/reconciliation/weight/settings">settings</a></p>
-            <p>© ${new Date().getFullYear()} Shiplifi. All rights reserved.</p>
+            <p>© ${new Date().getFullYear()} Intlexpress. All rights reserved.</p>
           </div>
         </div>
       </body>
