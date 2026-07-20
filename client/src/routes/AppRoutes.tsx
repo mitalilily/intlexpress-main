@@ -8,6 +8,7 @@ import { normalizeAwb } from '../utils/awb'
 import GlobalRedirectHandler from './WalletRedirectHandler'
 import RequireAuth from '../components/auth/wrapper/RequireAuth'
 import RequireOnboard from '../components/auth/wrapper/RequireOnboard'
+import RequireMerchantReady from '../components/auth/wrapper/RequireMerchantReady'
 import Login from '../pages/auth/Login'
 
 /* ---------- Lazy-loaded components ---------- */
@@ -176,7 +177,14 @@ export default function AppRoutes() {
             <Route path="/billing/wallet_transactions" element={<WalletTransactions />} />
             <Route path="/billing/invoice_management" element={<Invoices />} />
             <Route path="/orders/list" element={<Orders />} />
-            <Route path="/orders/create" element={<CreateOrderWrapper />} />
+            <Route
+              path="/orders/create"
+              element={
+                <RequireMerchantReady>
+                  <CreateOrderWrapper />
+                </RequireMerchantReady>
+              }
+            />
             <Route path="/orders/b2c/list" element={<B2COrdersList />} />
             <Route path="/support/about_us" element={<AboutUs />} />
             <Route path="/orders/b2b/list" element={<B2bOrders />} />

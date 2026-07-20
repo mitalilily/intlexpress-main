@@ -6827,7 +6827,7 @@ export const createB2CShipmentService = async (
   is_external_api: boolean = false,
   options: ExistingB2COrderBookingOptions = {},
 ) => {
-  await requireMerchantOrderReadiness(userId, { requireMinimumWalletBalance: false })
+  await requireMerchantOrderReadiness(userId)
 
   // 🔹 Handle provider_code: Convert provider_code to integration_type if provided
   // Users can send either integration_type (direct) or provider_code (opaque code from serviceability API)
@@ -9870,7 +9870,7 @@ export const createB2BShipmentService = async (
   userId: string,
   is_external_api: boolean = false,
 ) => {
-  await requireMerchantOrderReadiness(userId, { requireMinimumWalletBalance: false })
+  await requireMerchantOrderReadiness(userId)
 
   // Helper function to normalize JSON values (similar to B2C)
   const normalizeJsonValue = (value: unknown) => {
