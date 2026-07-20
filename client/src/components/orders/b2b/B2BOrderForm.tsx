@@ -259,15 +259,20 @@ export default function B2BOrderForm({ onClose }: { onClose?: () => void }) {
 
         // Invoices array
         invoices:
-          data?.invoices?.map((invoice) => ({
-            invoiceNumber: invoice.invoiceNumber,
-            invoiceDate: invoice.invoiceDate,
-            invoiceValue: Number(invoice.invoiceValue || 0),
-            invoiceFileUrl: invoice.invoiceFileUrl || undefined,
-            invoiceFileKey: invoice.invoiceFileKey || undefined,
-            ebnNumber: invoice.ebnNumber || undefined,
-            ebnExpiry: invoice.ebnExpiry || undefined,
-          })) ?? [],
+          data?.invoices?.map((invoice) => {
+            const invoiceFileUrl = String(invoice.invoiceFileUrl || '').trim()
+            const invoiceFileKey = String(invoice.invoiceFileKey || '').trim()
+
+            return {
+              invoiceNumber: invoice.invoiceNumber,
+              invoiceDate: invoice.invoiceDate,
+              invoiceValue: Number(invoice.invoiceValue || 0),
+              ...(invoiceFileUrl ? { invoiceFileUrl } : {}),
+              ...(invoiceFileKey ? { invoiceFileKey } : {}),
+              ebnNumber: invoice.ebnNumber || undefined,
+              ebnExpiry: invoice.ebnExpiry || undefined,
+            }
+          }) ?? [],
         courier_id: Number(data.courierPartnerId),
         courier_partner: data.courierPartner,
         courier_option_key: data.courierOptionKey,

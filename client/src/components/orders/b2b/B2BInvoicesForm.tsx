@@ -344,22 +344,6 @@ export default function B2BInvoicesForm() {
                   <Controller
                     name={`invoices.${index}.invoiceFileUrl`}
                     control={control}
-                    rules={{
-                      validate: (value) => {
-                        const currentInvoiceValue = getValues(
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          `invoices.${index}.invoiceValue` as any,
-                        )
-                        const invoiceValue = Number(currentInvoiceValue || 0)
-
-                        // Required if invoiceValue > 0
-                        if (false && invoiceValue > 0 && !value) {
-                          return 'Invoice file is required when invoice value is greater than ₹0'
-                        }
-
-                        return true
-                      },
-                    }}
                     render={({ field, fieldState }) => {
                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       const currentInvoiceValue = watch(`invoices.${index}.invoiceValue` as any)
@@ -552,11 +536,6 @@ export default function B2BInvoicesForm() {
                           {!fieldState.error && !field.value && (
                             <Typography variant="caption" color="#4A5568">
                               Optional. Upload only if you want to attach the invoice document.
-                            </Typography>
-                          )}
-                          {false && !fieldState.error && !field.value && (
-                            <Typography variant="caption" color="#4A5568">
-                              Required when invoice value is greater than ₹0
                             </Typography>
                           )}
                         </Stack>
