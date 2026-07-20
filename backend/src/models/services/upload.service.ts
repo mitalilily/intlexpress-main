@@ -2,6 +2,11 @@ import { GetObjectCommand, HeadObjectCommand, PutObjectCommand } from '@aws-sdk/
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import axios from 'axios'
 import { r2 } from '../../config/r2Client'
+import {
+  buildR2PublicUrl,
+  buildStorageObjectKey,
+  getR2Endpoint,
+} from '../../config/storage'
 import { getBucketName, sanitizeFilename } from '../../utils/functions'
 
 import * as dotenv from 'dotenv'
@@ -51,7 +56,11 @@ export const presignUpload = async ({
   folderKey = 'userPp',
 }: PresignParams) => {
   const bucket = getBucketName()
-  const key = `${folderKey}/${userId}/${Date.now()}-${sanitizeFilename(filename)}`
+  const key = buildStorageObjectKey({
+    folderKey,
+    userId,
+    filename: `${Date.now()}-${sanitizeFilename(filename)}`,
+  })
 
   const command = new PutObjectCommand({
     Bucket: bucket,
@@ -61,7 +70,7 @@ export const presignUpload = async ({
 
   const uploadUrl = await getSignedUrl(r2, command, { expiresIn: 60 * 5 }) // 5 min
 
-  const publicUrl = `${process.env.R2_ENDPOINT}/${bucket}/${key}`
+  const publicUrl = buildR2PublicUrl(bucket, key)
   return { uploadUrl, key, publicUrl, bucket }
 }
 
@@ -73,7 +82,11 @@ export const uploadBufferToR2 = async ({
   fileBuffer,
 }: DirectUploadParams) => {
   const bucket = getBucketName()
-  const key = `${folderKey}/${userId}/${Date.now()}-${sanitizeFilename(filename)}`
+  const key = buildStorageObjectKey({
+    folderKey,
+    userId,
+    filename: `${Date.now()}-${sanitizeFilename(filename)}`,
+  })
 
   await r2.send(
     new PutObjectCommand({
@@ -84,7 +97,7 @@ export const uploadBufferToR2 = async ({
     }),
   )
 
-  const publicUrl = `${process.env.R2_ENDPOINT}/${bucket}/${key}`
+  const publicUrl = buildR2PublicUrl(bucket, key)
   return { key, publicUrl, bucket }
 }
 
@@ -124,7 +137,11 @@ export const downloadAndUploadToR2 = async ({
 
       // If it's just a filename, construct a proper key path
       // This handles cases where Delhivery returns just a filename
-      const key = `${folderKey}/${userId}/${url}`
+      const key = buildStorageObjectKey({
+        folderKey,
+        userId,
+        filename: sanitizeFilename(url),
+      })
       console.log(`✅ Constructed R2 key from filename: ${key}`)
       return key
     }
@@ -195,13 +212,14 @@ const extractKeyFromUrl = (url: string, bucket: string): string | null => {
       }
     }
     // If it's an R2 endpoint URL format, try to extract key
-    if (process.env.R2_ENDPOINT && url.startsWith(process.env.R2_ENDPOINT)) {
+    const r2Endpoint = getR2Endpoint()
+    if (r2Endpoint && url.startsWith(r2Endpoint)) {
       const urlObj = new URL(url)
       const pathParts = urlObj.pathname.split('/').filter(Boolean)
-      // Skip bucket name (first part) and get the rest as key
-      if (pathParts.length > 1) {
+      if (pathParts[0] === bucket && pathParts.length > 1) {
         return pathParts.slice(1).join('/')
       }
+      if (pathParts.length > 0) return pathParts.join('/')
     }
     return null
   } catch (error) {
@@ -275,6 +293,8 @@ const buildPresignedDownloadUrl = async (
     storageKey = extractedKey
     console.log(`🔄 Extracted key from URL: ${storageKey}, regenerating presigned URL`)
   }
+
+  storageKey = storageKey.replace(/^\/+/, '')
 
   if (options?.checkExists) {
     const exists = await ensureObjectExists(bucket, storageKey)
