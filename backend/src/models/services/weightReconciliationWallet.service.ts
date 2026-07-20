@@ -15,7 +15,7 @@ import { users } from '../schema/users'
 import { createWalletTransaction } from './wallet.service'
 
 const env = process.env.NODE_ENV || 'development'
-dotenv.config({ path: path.resolve(__dirname, '../../.env.${env}') })
+dotenv.config({ path: path.resolve(__dirname, `../../.env.${env}`) })
 
 const EMAIL_FROM = formatEmailFromHeader()
 const GOOGLE_SMTP_USER = getEmailAuthUser()

@@ -6,6 +6,7 @@ import { db } from '../client'
 import { notifications } from '../schema/notifications'
 import { users } from '../schema/users'
 import { formatEmailFromHeader, getEmailFromAddress } from '../../utils/emailIdentity'
+import { sendTransactionalEmail } from '../../utils/emailSender'
 
 export type NotificationType = 'ticket_update' | 'payment' | 'general'
 
@@ -56,7 +57,7 @@ export async function createNotificationService(params: CreateNotificationParams
       )
 
       await Promise.allSettled(
-        recipients.map((recipient) => sendEmailNotification(recipient, title, message)),
+        recipients.map((recipient) => sendPanelEmailNotification(recipient, title, message)),
       )
     }
 
@@ -87,7 +88,7 @@ export async function createNotificationService(params: CreateNotificationParams
     }
 
     if (recipient) {
-      await sendEmailNotification(recipient, title, message)
+      await sendPanelEmailNotification(recipient, title, message)
     }
   }
 
@@ -131,6 +132,41 @@ const getSendGridApiKey = () =>
   process.env.TWILIO_SENDGRID_API_KEY ||
   process.env.SENDGRID_API_KEY ||
   ''
+
+async function sendPanelEmailNotification(to: string, subject: string, message: string) {
+  const emailFrom = getEmailFromAddress()
+  if (!emailFrom) {
+    console.warn('Email notification skipped: missing EMAIL_FROM')
+    return
+  }
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 8px;">
+      <h2 style="color: #333;">${subject}</h2>
+      <p style="font-size: 16px; color: #555;">${message}</p>
+      <p style="font-size: 14px; color: #888; margin-top: 32px;">— The Shiplifi Team</p>
+    </div>
+  `
+
+  const sendGridApiKey = getSendGridApiKey()
+  if (!sendGridApiKey) {
+    await sendTransactionalEmail(to, subject, html)
+    return
+  }
+
+  sgMail.setApiKey(sendGridApiKey)
+
+  try {
+    await sgMail.send({
+      to,
+      from: formatEmailFromHeader(),
+      subject,
+      html,
+    })
+  } catch (error) {
+    console.error('Email sending failed:', error)
+  }
+}
 
 async function sendEmailNotification(to: string, subject: string, message: string) {
   const sendGridApiKey = getSendGridApiKey()

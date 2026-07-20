@@ -23,6 +23,7 @@ import {
 
 import axios from 'axios'
 import { OTP_EXPIRY } from '../utils/constants'
+import { sendVerificationEmail } from '../utils/emailSender'
 
 import { eq } from 'drizzle-orm'
 import { db } from '../models/client'
@@ -39,6 +40,7 @@ const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_T
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
 const demoConsoleOtpStore = new Map<string, { otp: string; expiresAt: number }>()
+const isAuthOtpDemoMode = () => process.env.AUTH_OTP_DEMO_MODE === 'true'
 
 export const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString()
 
@@ -204,7 +206,10 @@ export const requestOtp = async (req: Request, res: Response): Promise<any> => {
   const normalizedEmail = email.trim().toLowerCase()
   const otp = generateOtp()
   const expiry = new Date(Date.now() + OTP_EXPIRY)
-  setDemoConsoleOtp(normalizedEmail, otp, expiry)
+  const demoMode = isAuthOtpDemoMode()
+  if (demoMode) {
+    setDemoConsoleOtp(normalizedEmail, otp, expiry)
+  }
 
   try {
     // 1. Look up user by email
@@ -236,22 +241,37 @@ export const requestOtp = async (req: Request, res: Response): Promise<any> => {
       }
     }
 
-    // Demo mode: always surface the OTP on screen and in server logs.
-    console.log(`[Auth OTP] Demo OTP for ${normalizedEmail}: ${otp}`)
+    if (demoMode) {
+      console.log(`[Auth OTP] Demo OTP for ${normalizedEmail}: ${otp}`)
+
+      return res.json({
+        message: 'Demo OTP generated and displayed on screen',
+        deliveryMode: 'console',
+        otp,
+      })
+    }
+
+    await sendVerificationEmail(normalizedEmail, otp)
 
     return res.json({
-      message: 'Demo OTP generated and displayed on screen',
-      deliveryMode: 'console',
-      otp,
+      message: 'OTP sent to your email',
+      deliveryMode: 'email',
     })
   } catch (err) {
-    console.warn('[Auth OTP] Falling back to in-memory demo OTP store:', err)
-    console.log(`[Auth OTP] Demo OTP fallback for ${normalizedEmail}: ${otp}`)
+    if (demoMode) {
+      console.warn('[Auth OTP] Falling back to in-memory demo OTP store:', err)
+      console.log(`[Auth OTP] Demo OTP fallback for ${normalizedEmail}: ${otp}`)
 
-    return res.json({
-      message: 'Demo OTP generated and displayed on screen',
-      deliveryMode: 'console',
-      otp,
+      return res.json({
+        message: 'Demo OTP generated and displayed on screen',
+        deliveryMode: 'console',
+        otp,
+      })
+    }
+
+    console.error('[Auth OTP] Failed to send email OTP:', err)
+    return res.status(502).json({
+      error: 'Unable to send OTP email. Please try again.',
     })
   }
 }

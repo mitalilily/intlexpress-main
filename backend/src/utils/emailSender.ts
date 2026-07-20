@@ -202,6 +202,13 @@ const sendEmail = async (
   }
 }
 
+export const sendTransactionalEmail = async (
+  to: string,
+  subject: string,
+  htmlContent: string,
+  attachments?: AttachmentInput[],
+) => sendEmail(to, subject, htmlContent, attachments)
+
 // Login / verification Email for OTP-based auth
 export const sendVerificationEmail = async (to: string, token: string) => {
   const html = renderEmailFrame({
