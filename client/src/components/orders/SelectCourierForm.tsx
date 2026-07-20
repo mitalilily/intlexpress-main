@@ -280,6 +280,11 @@ export const SelectCourierForm = ({
     if (grams < 1000) return `${Math.round(grams).toLocaleString('en-IN')} g`
     return `${(grams / 1000).toFixed(2)} kg`
   }
+  const formatKgDisplay = (value?: number | string | null) => {
+    const kg = Number(value ?? 0)
+    if (!Number.isFinite(kg) || kg <= 0) return '-'
+    return `${kg.toFixed(2)} kg`
+  }
   const getCourierDisplayName = (courier: any) => courier?.displayName || courier?.name || 'Courier'
   const getActiveLocalRate = (courier: any) =>
     courier?.localRates?.[activeRateKey] ?? courier?.localRates?.forward ?? {}
@@ -367,6 +372,16 @@ export const SelectCourierForm = ({
     }
 
     return lines
+  }
+  const getB2BWeightLines = (courier: any) => {
+    const calculation = (getCourierChargeBreakdown(courier) as any)?.calculation
+    if (!calculation || typeof calculation !== 'object') return []
+
+    return [
+      ['Actual', formatKgDisplay(calculation.actualWeight)] as [string, string],
+      ['Volumetric', formatKgDisplay(calculation.volumetricWeight)] as [string, string],
+      ['Billable', formatKgDisplay(calculation.billableWeight)] as [string, string],
+    ].filter(([, value]) => value !== '-')
   }
   const toRecord = (value: unknown): Record<string, unknown> =>
     value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
@@ -480,6 +495,8 @@ export const SelectCourierForm = ({
     ''
   const selectedB2BChargeLines =
     shipment_type === 'b2b' && selectedCourierSummary ? getB2BChargeLines(selectedCourierSummary) : []
+  const selectedB2BWeightLines =
+    shipment_type === 'b2b' && selectedCourierSummary ? getB2BWeightLines(selectedCourierSummary) : []
   const selectedB2BTotal =
     selectedB2BChargeLines.find((line) => line.isTotal)?.amount ?? forwardCharges
   const selectedChargeSummaryLabel =
@@ -627,6 +644,18 @@ export const SelectCourierForm = ({
                           </Typography>
                         </Stack>
                       ),
+                    )}
+                    {selectedB2BWeightLines.length > 0 && (
+                      <Grid container spacing={0.75} sx={{ pt: 0.35 }}>
+                        {selectedB2BWeightLines.map(([label, value]) => (
+                          <Grid key={label} size={{ xs: 4 }}>
+                            <Typography sx={{ fontSize: 10, color: TEXT_SECONDARY }}>{label}</Typography>
+                            <Typography sx={{ fontSize: 11, fontWeight: 800, color: TEXT_PRIMARY }}>
+                              {value}
+                            </Typography>
+                          </Grid>
+                        ))}
+                      </Grid>
                     )}
                   </Stack>
                 </>
@@ -882,6 +911,7 @@ export const SelectCourierForm = ({
               const courierGstAmount = getCourierGstAmount(courier)
               const taxInclusiveCharge = getCourierTaxInclusiveCharge(courier)
               const b2bChargeLines = shipment_type === 'b2b' ? getB2BChargeLines(courier) : []
+              const b2bWeightLines = shipment_type === 'b2b' ? getB2BWeightLines(courier) : []
               const b2bTotal =
                 b2bChargeLines.find((line) => line.isTotal)?.amount ?? forwardCharge
 
@@ -1156,6 +1186,20 @@ export const SelectCourierForm = ({
                               </Typography>
                             </Stack>
                           ))}
+                          {b2bWeightLines.length > 0 && (
+                            <Grid container spacing={0.75} sx={{ pt: 0.35 }}>
+                              {b2bWeightLines.map(([label, value]) => (
+                                <Grid key={label} size={{ xs: 4 }}>
+                                  <Typography sx={{ fontSize: 10, color: TEXT_SECONDARY }}>
+                                    {label}
+                                  </Typography>
+                                  <Typography sx={{ fontSize: 11, fontWeight: 800, color: TEXT_PRIMARY }}>
+                                    {value}
+                                  </Typography>
+                                </Grid>
+                              ))}
+                            </Grid>
+                          )}
                         </Stack>
                       </Box>
                     )}

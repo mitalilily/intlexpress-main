@@ -163,7 +163,8 @@ export function RateCalculator() {
       const length = Number(formData.length) || 0
       const breadth = Number(formData.breadth) || 0
       const height = Number(formData.height) || 0
-      const actualWeightKg = Number(formData.weight) || 0 // kg from UI
+      const actualWeightKg =
+        shipmentType === 'b2b' ? Number(formData.totalWeight) || 0 : Number(formData.weight) || 0 // kg from UI
 
       // volumetric weight in grams
       const volumetricWeightGrams = ((length * breadth * height) / 5000) * 1000
@@ -466,6 +467,7 @@ export function RateCalculator() {
       ) : (
         <CourierRateCards
           shipmentType={watch('paymentType')}
+          shipmentCategory={shipmentType}
           availableCouriers={availableCouriers}
           defaultLogo={defaultLogo}
         />

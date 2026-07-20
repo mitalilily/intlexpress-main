@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Chip,
+  Divider,
   Grid,
   Stack,
   Tooltip,
@@ -23,6 +24,23 @@ type ForwardRate = {
   cod_percent?: number | null
   other_charges?: number | null
   total_charges?: number | null
+  charge_breakdown?: {
+    baseFreight?: number | string | null
+    overheads?: Array<{
+      id?: string | null
+      code?: string | null
+      name?: string | null
+      amount?: number | string | null
+    }>
+    demurrage?: number | string | null
+    total?: number | string | null
+    calculation?: {
+      actualWeight?: number | string | null
+      volumetricWeight?: number | string | null
+      billableWeight?: number | string | null
+      usedVolumetric?: boolean | null
+    }
+  } | null
   chargeable_weight?: number | null
   volumetric_weight?: number | null
   is_prepaid?: boolean
@@ -58,6 +76,7 @@ type Props = {
   defaultLogo?: string
   onSelect?: (courier: Courier) => void
   shipmentType?: string
+  shipmentCategory?: 'b2b' | 'b2c'
 }
 
 const ACCENT = '#333d81'
@@ -72,11 +91,53 @@ const formatWeightDisplay = (value?: number | string | null) => {
   return `${(grams / 1000).toFixed(2)} kg`
 }
 
+const formatKgDisplay = (value?: number | string | null) => {
+  const kg = Number(value ?? 0)
+  if (!Number.isFinite(kg) || kg <= 0) return '—'
+  return `${kg.toFixed(2)} kg`
+}
+
+const formatCurrencyDisplay = (value?: number | string | null) => {
+  const amount = Number(value ?? 0)
+  if (!Number.isFinite(amount)) return '₹0'
+  return `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
+}
+
+const getB2BChargeLines = (breakdown: ForwardRate['charge_breakdown']) => {
+  if (!breakdown || typeof breakdown !== 'object') return []
+
+  const lines: Array<{ label: string; amount: number; isTotal?: boolean }> = []
+  const baseFreight = Number(breakdown.baseFreight ?? 0)
+  if (baseFreight > 0) lines.push({ label: 'Base Freight', amount: baseFreight })
+
+  const overheads = Array.isArray(breakdown.overheads) ? breakdown.overheads : []
+  overheads.forEach((overhead) => {
+    const amount = Number(overhead?.amount ?? 0)
+    if (amount > 0) {
+      lines.push({
+        label: String(overhead?.name || overhead?.code || 'Additional Charge'),
+        amount,
+      })
+    }
+  })
+
+  const demurrage = Number(breakdown.demurrage ?? 0)
+  if (demurrage > 0 && !overheads.some((overhead) => String(overhead?.id) === 'demurrage_charge')) {
+    lines.push({ label: 'Demurrage', amount: demurrage })
+  }
+
+  const total = Number(breakdown.total ?? 0)
+  if (total > 0) lines.push({ label: 'Total Booking Charge', amount: total, isTotal: true })
+
+  return lines
+}
+
 export default function CourierRateList({
   availableCouriers = [],
   defaultLogo = '',
   onSelect,
   shipmentType,
+  shipmentCategory,
 }: Props): JSX.Element {
   if (!availableCouriers || availableCouriers.length === 0) {
     return (
@@ -145,6 +206,9 @@ export default function CourierRateList({
             )?.[1] ?? defaultLogo
 
           const forward: ForwardRate = courier?.localRates?.forward ?? {}
+          const chargeBreakdown = forward?.charge_breakdown ?? null
+          const b2bChargeLines = getB2BChargeLines(chargeBreakdown)
+          const shouldShowB2BBreakdown = shipmentCategory === 'b2b' && b2bChargeLines.length > 0
           const zoneDisplay =
             String(courier?.approxZone?.name || '').trim() ||
             String(courier?.approxZone?.code || '').trim() ||
@@ -280,6 +344,86 @@ export default function CourierRateList({
                       {isCOD ? 'Including COD Charges' : 'Prepaid Rate'}
                     </Typography>
                   </Box>
+
+                  {shouldShowB2BBreakdown && (
+                    <Box
+                      sx={{
+                        borderRadius: 2,
+                        p: 1.5,
+                        mb: 2,
+                        background: '#F8FAFC',
+                        border: `1px solid ${BORDER}`,
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{ color: TEXT_MUTED, fontWeight: 800, display: 'block', mb: 1 }}
+                      >
+                        Charge Breakup
+                      </Typography>
+                      <Stack spacing={0.75}>
+                        {b2bChargeLines.map((line) => (
+                          <Stack
+                            key={line.label}
+                            direction="row"
+                            justifyContent="space-between"
+                            sx={{
+                              pt: line.isTotal ? 0.75 : 0,
+                              borderTop: line.isTotal ? `1px solid ${alpha(ACCENT, 0.14)}` : 'none',
+                            }}
+                          >
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: line.isTotal ? TEXT_PRIMARY : TEXT_MUTED,
+                                fontWeight: line.isTotal ? 800 : 500,
+                              }}
+                            >
+                              {line.label}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              sx={{ color: TEXT_PRIMARY, fontWeight: line.isTotal ? 900 : 700 }}
+                            >
+                              {formatCurrencyDisplay(line.amount)}
+                            </Typography>
+                          </Stack>
+                        ))}
+                      </Stack>
+
+                      {chargeBreakdown?.calculation && (
+                        <>
+                          <Divider sx={{ my: 1 }} />
+                          <Grid container spacing={1}>
+                            <Grid size={{ xs: 4 }}>
+                              <Typography variant="caption" color={TEXT_MUTED}>
+                                Actual
+                              </Typography>
+                              <Typography variant="caption" display="block" fontWeight={800}>
+                                {formatKgDisplay(chargeBreakdown.calculation.actualWeight)}
+                              </Typography>
+                            </Grid>
+                            <Grid size={{ xs: 4 }}>
+                              <Typography variant="caption" color={TEXT_MUTED}>
+                                Volumetric
+                              </Typography>
+                              <Typography variant="caption" display="block" fontWeight={800}>
+                                {formatKgDisplay(chargeBreakdown.calculation.volumetricWeight)}
+                              </Typography>
+                            </Grid>
+                            <Grid size={{ xs: 4 }}>
+                              <Typography variant="caption" color={TEXT_MUTED}>
+                                Billable
+                              </Typography>
+                              <Typography variant="caption" display="block" fontWeight={800}>
+                                {formatKgDisplay(chargeBreakdown.calculation.billableWeight)}
+                              </Typography>
+                            </Grid>
+                          </Grid>
+                        </>
+                      )}
+                    </Box>
+                  )}
 
                   {/* Details Grid */}
                   <Grid container spacing={1.5} mb={2}>

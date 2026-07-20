@@ -113,6 +113,11 @@ export const b2b_orders = pgTable(
       amount: number
       description?: string
     }[]
+    calculation?: Record<string, unknown>
+    origin?: Record<string, unknown>
+    destination?: Record<string, unknown>
+    config?: Record<string, unknown>
+    breakdown?: Record<string, unknown>
   }>(),
   delivery_location: varchar('delivery_location', { length: 100 }),
   delivery_message: varchar('delivery_message', { length: 100 }),

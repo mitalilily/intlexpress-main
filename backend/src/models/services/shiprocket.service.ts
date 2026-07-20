@@ -5896,6 +5896,11 @@ export const fetchAvailableCouriersWithRatesB2B = async (
                       overheads: rateResult.charges.overheads,
                       demurrage: rateResult.charges.demurrage,
                       total: rateResult.charges.total,
+                      calculation: rateResult.calculation,
+                      origin: rateResult.origin,
+                      destination: rateResult.destination,
+                      config: rateResult.config,
+                      breakdown: rateResult.breakdown,
                     }
                   : null,
                 rate: rateResult?.charges?.total ?? null,
@@ -9925,6 +9930,11 @@ export const createB2BShipmentService = async (
     }[]
     demurrage: number
     total: number
+    calculation?: Record<string, unknown>
+    origin?: Record<string, unknown>
+    destination?: Record<string, unknown>
+    config?: Record<string, unknown>
+    breakdown?: Record<string, unknown>
   } | null = null
   let calculatedFreightCharges = 0
 
@@ -9956,6 +9966,11 @@ export const createB2BShipmentService = async (
         overheads: rateResult.charges.overheads,
         demurrage: rateResult.charges.demurrage,
         total: rateResult.charges.total,
+        calculation: rateResult.calculation,
+        origin: rateResult.origin,
+        destination: rateResult.destination,
+        config: rateResult.config,
+        breakdown: rateResult.breakdown,
       }
       calculatedFreightCharges = Number(rateResult.charges.total ?? 0)
     }
