@@ -18,30 +18,72 @@ const parseTimeout = (value: string | undefined, fallbackMs: number) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackMs
 }
 
-const extractProviderErrorMessage = (value: unknown): string | null => {
-  if (!value) return null
+const PROVIDER_ERROR_MESSAGE_KEYS = new Set([
+  'message',
+  'messages',
+  'error',
+  'errors',
+  'reason',
+  'remarks',
+  'remark',
+  'detail',
+  'details',
+  'description',
+  'status_message',
+  'non_field_errors',
+])
+
+const normalizeProviderErrorText = (value: unknown): string | null => {
+  const normalized = String(value ?? '').trim()
+  if (!normalized) return null
+
+  const lower = normalized.toLowerCase()
+  if (['true', 'false', 'null', 'undefined', 'success', 'failed', 'fail', 'error'].includes(lower)) {
+    return null
+  }
+
+  return normalized
+}
+
+const collectProviderErrorMessages = (
+  value: unknown,
+  messages: string[] = [],
+  keyHint = '',
+): string[] => {
+  if (!value) return messages
 
   if (typeof value === 'string') {
-    const normalized = value.trim()
-    return normalized.length > 0 ? normalized : null
+    const normalized = normalizeProviderErrorText(value)
+    if (normalized && (!keyHint || PROVIDER_ERROR_MESSAGE_KEYS.has(keyHint.toLowerCase()))) {
+      messages.push(normalized)
+    }
+    return messages
   }
 
   if (Array.isArray(value)) {
     for (const entry of value) {
-      const message = extractProviderErrorMessage(entry)
-      if (message) return message
+      collectProviderErrorMessages(entry, messages, keyHint)
     }
-    return null
+    return messages
   }
 
   if (typeof value === 'object') {
-    for (const nestedValue of Object.values(value as Record<string, unknown>)) {
-      const message = extractProviderErrorMessage(nestedValue)
-      if (message) return message
+    const record = value as Record<string, unknown>
+    const entries = Object.entries(record)
+    const prioritized = entries.filter(([key]) => PROVIDER_ERROR_MESSAGE_KEYS.has(key.toLowerCase()))
+    const remaining = entries.filter(([key]) => !PROVIDER_ERROR_MESSAGE_KEYS.has(key.toLowerCase()))
+
+    for (const [key, nestedValue] of [...prioritized, ...remaining]) {
+      collectProviderErrorMessages(nestedValue, messages, key)
     }
   }
 
-  return null
+  return messages
+}
+
+const extractProviderErrorMessage = (value: unknown): string | null => {
+  const messages = collectProviderErrorMessages(value, [])
+  return messages?.[0] || null
 }
 
 const normalizeDelhiveryManifestRemarks = (remarks: unknown): string[] => {
@@ -711,42 +753,52 @@ export const createDelhiveryB2BShipment = async ({
   const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
   const useBtobApi = isDelhiveryB2BBtobApiBase(resolvedApiBase)
 
-  const response = useBtobApi
-    ? await axios.post(`${resolvedApiBase}/v2/manifest`, payload || {}, {
-        headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
-        timeout: 60000,
-        maxBodyLength: Infinity,
-        maxContentLength: Infinity,
-      })
-    : await (async () => {
-        const form = new (globalThis as any).FormData()
-
-        Object.entries(payload || {}).forEach(([key, value]) => {
-          appendDelhiveryManifestField(form, key, value)
-        })
-        files.forEach((file) => {
-          if (!file?.data || !file?.filename) return
-          const blob = new (globalThis as any).Blob([file.data], {
-            type: file.contentType || 'application/octet-stream',
-          })
-          form.append('doc_file', blob, file.filename)
-        })
-
-        return axios.post(`${resolvedApiBase}/manifest`, form, {
-          headers: {
-            Authorization: `Bearer ${normalizedToken}`,
-            ...(typeof form.getHeaders === 'function' ? form.getHeaders() : {}),
-          },
+  try {
+    const response = useBtobApi
+      ? await axios.post(`${resolvedApiBase}/v2/manifest`, payload || {}, {
+          headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
           timeout: 60000,
           maxBodyLength: Infinity,
           maxContentLength: Infinity,
         })
-      })()
+      : await (async () => {
+          const form = new (globalThis as any).FormData()
 
-  return {
-    apiBase: resolvedApiBase,
-    status: response.status,
-    data: response.data,
+          Object.entries(payload || {}).forEach(([key, value]) => {
+            appendDelhiveryManifestField(form, key, value)
+          })
+          files.forEach((file) => {
+            if (!file?.data || !file?.filename) return
+            const blob = new (globalThis as any).Blob([file.data], {
+              type: file.contentType || 'application/octet-stream',
+            })
+            form.append('doc_file', blob, file.filename)
+          })
+
+          return axios.post(`${resolvedApiBase}/manifest`, form, {
+            headers: {
+              Authorization: `Bearer ${normalizedToken}`,
+              ...(typeof form.getHeaders === 'function' ? form.getHeaders() : {}),
+            },
+            timeout: 60000,
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
+          })
+        })()
+
+    return {
+      apiBase: resolvedApiBase,
+      status: response.status,
+      data: response.data,
+    }
+  } catch (err: any) {
+    const providerMessage =
+      extractProviderErrorMessage(err?.response?.data) ||
+      err?.response?.data?.message ||
+      err?.message ||
+      'Delhivery B2B shipment creation failed'
+
+    throw new HttpError(Number(err?.response?.status) || 502, providerMessage)
   }
 }
 
@@ -766,16 +818,26 @@ export const getDelhiveryB2BShipmentStatus = async ({
   }
 
   const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
-  const response = await axios.get(`${resolvedApiBase}/manifest`, {
-    headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
-    params: { job_id: normalizedJobId },
-    timeout: 30000,
-  })
+  try {
+    const response = await axios.get(`${resolvedApiBase}/manifest`, {
+      headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+      params: { job_id: normalizedJobId },
+      timeout: 30000,
+    })
 
-  return {
-    apiBase: resolvedApiBase,
-    status: response.status,
-    data: response.data,
+    return {
+      apiBase: resolvedApiBase,
+      status: response.status,
+      data: response.data,
+    }
+  } catch (err: any) {
+    const providerMessage =
+      extractProviderErrorMessage(err?.response?.data) ||
+      err?.response?.data?.message ||
+      err?.message ||
+      'Delhivery B2B shipment status request failed'
+
+    throw new HttpError(Number(err?.response?.status) || 502, providerMessage)
   }
 }
 

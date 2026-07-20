@@ -3504,6 +3504,8 @@ const buildDelhiveryB2BManifestPayload = ({
       .join(', ') ||
     boxes.map((box, index) => sanitize(box.box_name || box.name, `Box ${index + 1}`)).join(', ') ||
     'General Goods'
+  const consigneeGstin = sanitize(payload.consignee?.gstin) || 'UR'
+  const sellerGstin = sanitize(payload.company?.gst || payload.pickup?.gst_number) || 'UR'
 
   const manifestPayload: Record<string, any> = {
     pickup_location: sanitize(pickupLocationName || payload.pickup?.warehouse_name),
@@ -3545,8 +3547,8 @@ const buildDelhiveryB2BManifestPayload = ({
       },
     ],
     dimensions: Array.from(dimensionMap.values()),
-    consignee_gst_tin: sanitize(payload.consignee?.gstin) || undefined,
-    seller_gst_tin: sanitize(payload.company?.gst || payload.pickup?.gst_number) || undefined,
+    consignee_gst_tin: consigneeGstin,
+    seller_gst_tin: sellerGstin,
   }
 
   const explicitLrn = sanitize(payload.waybill || payload.order_id)
