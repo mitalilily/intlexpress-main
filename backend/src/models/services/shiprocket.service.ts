@@ -1068,7 +1068,10 @@ const isProviderBalanceIssue = (message: string) => {
     .toLowerCase()
   return (
     (normalized.includes('wallet balance') && normalized.includes('less than')) ||
+    normalized.includes('wallet not activated') ||
     normalized.includes('insufficient balance') ||
+    normalized.includes('in sufficient wallet balance') ||
+    normalized.includes('insufficient wallet balance') ||
     normalized.includes('low balance') ||
     (normalized.includes('client wallet') && normalized.includes('balance')) ||
     (normalized.includes('recharge') && normalized.includes('wallet'))

@@ -38,6 +38,16 @@ const normalizeProviderErrorText = (value: unknown): string | null => {
   if (!normalized) return null
 
   const lower = normalized.toLowerCase()
+  if (
+    lower.includes('wallet') &&
+    (lower.includes('wallet not activated') ||
+      lower.includes('insufficient balance') ||
+      lower.includes('in sufficient wallet balance') ||
+      lower.includes('insufficient wallet balance'))
+  ) {
+    return 'Delhivery B2B wallet is not activated or has insufficient balance. Recharge or activate the Delhivery B2B wallet, then retry booking.'
+  }
+
   if (['true', 'false', 'null', 'undefined', 'success', 'failed', 'fail', 'error'].includes(lower)) {
     return null
   }
