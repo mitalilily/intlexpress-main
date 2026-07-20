@@ -99,7 +99,12 @@ import {
   applyAmazonShippingCredentialsToEnv,
   getStoredAmazonShippingCredentials,
 } from './amazonShippingCredentials.service'
-import { DelhiveryService } from './couriers/delhivery.service'
+import {
+  createDelhiveryB2BShipment,
+  extractDelhiveryB2BJobId,
+  loginDelhiveryB2B,
+  DelhiveryService,
+} from './couriers/delhivery.service'
 import { EkartService } from './couriers/ekart.service'
 import { ShadowfaxService } from './couriers/shadowfax.service'
 import { XpressbeesService } from './couriers/xpressbees.service'
@@ -3341,6 +3346,7 @@ const summarizeB2BBoxes = (boxes: any[]) => {
       summary.totalActualWeightKg += actualWeightKg * quantity
       summary.totalVolumetricWeightKg += volumetricWeightPerPieceKg * quantity
       summary.totalChargeableWeightKg += Math.max(actualWeightKg, volumetricWeightPerPieceKg) * quantity
+      summary.totalBoxes += quantity
       summary.maxLengthCm = Math.max(summary.maxLengthCm, lengthCm)
       summary.maxBreadthCm = Math.max(summary.maxBreadthCm, breadthCm)
       summary.maxHeightCm = Math.max(summary.maxHeightCm, heightCm)
@@ -3350,11 +3356,205 @@ const summarizeB2BBoxes = (boxes: any[]) => {
       totalActualWeightKg: 0,
       totalVolumetricWeightKg: 0,
       totalChargeableWeightKg: 0,
+      totalBoxes: 0,
       maxLengthCm: 0,
       maxBreadthCm: 0,
       maxHeightCm: 0,
     },
   )
+}
+
+const isUsableDelhiveryB2BToken = (token?: string | null, expiresAt?: string | null) => {
+  const normalizedToken = String(token || '').trim()
+  if (!normalizedToken) return false
+
+  const expiry = expiresAt ? new Date(expiresAt).getTime() : 0
+  if (!expiry || Number.isNaN(expiry)) return false
+
+  // Keep a five-minute safety window so a token does not expire during booking.
+  return expiry > Date.now() + 5 * 60 * 1000
+}
+
+const extractDelhiveryB2BLrn = (value: unknown): string => {
+  if (!value) return ''
+  if (typeof value === 'string') return value.trim()
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const lrn = extractDelhiveryB2BLrn(entry)
+      if (lrn) return lrn
+    }
+    return ''
+  }
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    for (const key of ['lrnum', 'lrn', 'lrn_number', 'LRN', 'ident']) {
+      const direct = record[key]
+      if (typeof direct === 'string' && direct.trim()) return direct.trim()
+    }
+    for (const nested of Object.values(record)) {
+      const lrn = extractDelhiveryB2BLrn(nested)
+      if (lrn) return lrn
+    }
+  }
+  return ''
+}
+
+const buildDelhiveryB2BManifestPayload = ({
+  payload,
+  normalizedOrderNumber,
+  normalizedInvoices,
+  boxes,
+  boxSummary,
+  packageWeight,
+  pickupLocationName,
+  invoiceValue,
+}: {
+  payload: ShipmentParams
+  normalizedOrderNumber: string
+  normalizedInvoices: Array<{
+    invoiceNumber: string
+    invoiceDate?: string
+    invoiceValue: number
+    ebnNumber?: string
+    ewaybill?: string
+    ewbn?: string
+  }>
+  boxes: NonNullable<ShipmentParams['boxes']>
+  boxSummary: ReturnType<typeof summarizeB2BBoxes>
+  packageWeight: number
+  pickupLocationName: string
+  invoiceValue: number
+}) => {
+  const sanitize = (value: unknown, fallback = '') => {
+    const normalized = String(value ?? '').trim()
+    return normalized || fallback
+  }
+  const positiveNumber = (value: unknown, fallback = 0) => {
+    const numeric = Number(value)
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback
+  }
+  const sanitizePhone = (value: unknown) => {
+    const digits = String(value || '').replace(/\D/g, '')
+    return digits.length >= 10 ? digits.slice(-10) : digits
+  }
+  const invoiceRows =
+    normalizedInvoices.length > 0
+      ? normalizedInvoices
+      : [
+          {
+            invoiceNumber: sanitize(payload.invoice_number || normalizedOrderNumber),
+            invoiceValue,
+            ebnNumber: sanitize(
+              payload.ewbn || payload.ewb || payload.ewbn_number || payload.ewaybill_number,
+            ),
+          },
+        ]
+
+  const dimensionsSource = boxes.length
+    ? boxes
+    : [
+        {
+          lengthCm: positiveNumber(payload.package_length, 1),
+          breadthCm: positiveNumber(payload.package_breadth, 1),
+          heightCm: positiveNumber(payload.package_height, 1),
+          quantity: 1,
+        },
+      ]
+  const dimensionMap = new Map<
+    string,
+    { length: number; width: number; height: number; count: number }
+  >()
+
+  for (const box of dimensionsSource) {
+    const length = positiveNumber(box.length ?? box.lengthCm ?? box.length_cm ?? payload.package_length, 1)
+    const width = positiveNumber(
+      box.breadth ??
+        box.breadthCm ??
+        box.breadth_cm ??
+        box.width ??
+        box.widthCm ??
+        box.width_cm ??
+        payload.package_breadth,
+      1,
+    )
+    const height = positiveNumber(box.height ?? box.heightCm ?? box.height_cm ?? payload.package_height, 1)
+    const count = Math.max(1, Math.round(positiveNumber(box.quantity ?? box.qty, 1)))
+    const key = `${length}x${width}x${height}`
+    const existing = dimensionMap.get(key)
+    if (existing) {
+      existing.count += count
+    } else {
+      dimensionMap.set(key, { length, width, height, count })
+    }
+  }
+
+  const packageCount = Math.max(1, boxSummary.totalBoxes || 1)
+  const weightKg =
+    positiveNumber(boxSummary.totalActualWeightKg, 0) ||
+    positiveNumber(payload.weight, 0) ||
+    positiveNumber(packageWeight, 0.5)
+  const paymentMode =
+    String(payload.payment_type || '').trim().toLowerCase() === 'cod' ? 'CoD' : 'Prepaid'
+  const codAmount =
+    paymentMode === 'CoD' ? Math.max(1, Number(payload.order_amount ?? invoiceValue ?? 0)) : 0
+  const productsDescription =
+    (payload.order_items || [])
+      .map((item) => sanitize(item?.name))
+      .filter(Boolean)
+      .join(', ') ||
+    boxes.map((box, index) => sanitize(box.box_name || box.name, `Box ${index + 1}`)).join(', ') ||
+    'General Goods'
+
+  const manifestPayload: Record<string, any> = {
+    pickup_location: sanitize(pickupLocationName || payload.pickup?.warehouse_name),
+    dropoff_location: {
+      consignee: sanitize(payload.consignee?.company_name || payload.consignee?.name),
+      address: sanitize(
+        [payload.consignee?.address, payload.consignee?.address_2].filter(Boolean).join(', '),
+      ),
+      city: sanitize(payload.consignee?.city),
+      region: sanitize(payload.consignee?.state),
+      zip: sanitize(payload.consignee?.pincode),
+      phone: sanitizePhone(payload.consignee?.phone),
+      email: sanitize(payload.consignee?.email),
+    },
+    d_mode: paymentMode,
+    amount: codAmount,
+    invoices: invoiceRows.map((invoice, index) => {
+      const ewaybill = sanitize(
+        invoice.ewaybill ||
+          invoice.ewbn ||
+          invoice.ebnNumber ||
+          (index === 0
+            ? payload.ewbn || payload.ewb || payload.ewbn_number || payload.ewaybill_number
+            : ''),
+      )
+      return {
+        ident: sanitize(invoice.invoiceNumber, `${normalizedOrderNumber}-${index + 1}`),
+        n_value: positiveNumber(invoice.invoiceValue, invoiceValue || 1),
+        ...(ewaybill ? { ewaybill } : {}),
+      }
+    }),
+    weight: Math.max(1, Math.round(weightKg * 1000)),
+    suborders: [
+      {
+        ident: normalizedOrderNumber,
+        count: packageCount,
+        description: productsDescription,
+        master: true,
+      },
+    ],
+    dimensions: Array.from(dimensionMap.values()),
+    consignee_gst_tin: sanitize(payload.consignee?.gstin) || undefined,
+    seller_gst_tin: sanitize(payload.company?.gst || payload.pickup?.gst_number) || undefined,
+  }
+
+  const explicitLrn = sanitize(payload.waybill || payload.order_id)
+  if (explicitLrn) {
+    manifestPayload.ident = explicitLrn
+  }
+
+  return manifestPayload
 }
 
 //ADMIN CALCULATION
@@ -5941,6 +6141,11 @@ export interface ShipmentParams {
     invoiceDate?: string
     invoiceValue?: number
     invoiceFileUrl?: string
+    invoiceFileKey?: string
+    ebnNumber?: string
+    ebnExpiry?: string
+    ewaybill?: string
+    ewbn?: string
   }[]
   order_items?: {
     name: string
@@ -9555,6 +9760,18 @@ export const createB2BShipmentService = async (
           invoiceValue: Number(invoice?.invoiceValue ?? invoice?.invoice_value ?? 0),
           invoiceFileUrl:
             String(invoice?.invoiceFileUrl || invoice?.invoice_file_url || '').trim() || undefined,
+          invoiceFileKey:
+            String(invoice?.invoiceFileKey || invoice?.invoice_file_key || '').trim() || undefined,
+          ebnNumber:
+            String(
+              invoice?.ebnNumber ||
+                invoice?.ebn_number ||
+                invoice?.ewaybill ||
+                invoice?.ewbn ||
+                '',
+            ).trim() || undefined,
+          ebnExpiry:
+            String(invoice?.ebnExpiry || invoice?.ebn_expiry || '').trim() || undefined,
         }))
         .filter((invoice: any) => invoice.invoiceNumber || invoice.invoiceValue > 0)
     : []
@@ -9709,6 +9926,7 @@ export const createB2BShipmentService = async (
     demurrage: number
     total: number
   } | null = null
+  let calculatedFreightCharges = 0
 
   try {
     const rateResult = await calculateB2BRate({
@@ -9739,13 +9957,26 @@ export const createB2BShipmentService = async (
         demurrage: rateResult.charges.demurrage,
         total: rateResult.charges.total,
       }
+      calculatedFreightCharges = Number(rateResult.charges.total ?? 0)
     }
   } catch (err) {
     console.error('⚠️ Failed to compute B2B charges breakdown for order', params.order_number, err)
-    chargesBreakdown = null
+    throw new HttpError(
+      400,
+      `Unable to calculate B2B rate card charges for this shipment: ${
+        (err as any)?.message || 'missing rate card configuration'
+      }`,
+    )
   }
 
   // 1️⃣ Insert local B2B order as 'pending'
+  if (!chargesBreakdown || calculatedFreightCharges <= 0) {
+    throw new HttpError(
+      400,
+      'Unable to calculate B2B rate card charges for this shipment. Please configure the B2B zone rate card and additional charges before booking.',
+    )
+  }
+
   const [pendingOrder] = await db
     .insert(b2b_orders)
     .values({
@@ -9781,7 +10012,7 @@ export const createB2BShipmentService = async (
       rov_charge: params.is_insurance === 1 ? rovCharge : null,
       charges_breakdown: chargesBreakdown,
       shipping_charges: params.shipping_charges ?? 0,
-      freight_charges: params.freight_charges ?? 0, // What platform charges seller
+      freight_charges: calculatedFreightCharges, // Server-calculated platform charge from B2B rate card
       courier_cost: params.courier_cost ?? null, // What platform pays courier (will be updated via webhook)
       transaction_fee: params.transaction_fee ?? 0,
       discount: params.discount ?? 0,
@@ -9863,6 +10094,7 @@ export const createB2BShipmentService = async (
   try {
     if (effectiveIntegrationType === 'delhivery') {
       const delhivery = new DelhiveryService({
+        preferredAccountCode: 'account_2',
         pickupLocationId: String(params.pickup_location_id || '').trim() || null,
         pickupLocationName: String(
           params.pickup?.warehouse_name || params.pickup_location_alias || params.pickup_location_id || '',
@@ -9876,32 +10108,79 @@ export const createB2BShipmentService = async (
         )
       }
 
-      const shipmentData = await delhivery.createShipment(payload, payload.waybill)
-      const shipmentPackage = shipmentData?.packages?.[0] || null
-      const delhiveryAwb =
-        String(shipmentPackage?.waybill ?? shipmentData?.awb_number ?? '').trim() || null
+      if (!resolvedDelhiveryAccount.username || !resolvedDelhiveryAccount.password) {
+        throw new HttpError(
+          400,
+          'Delhivery B2B account_2 username/password are not configured. Save the B2B credentials before booking B2B shipments.',
+        )
+      }
 
-      if (!delhiveryAwb) {
+      const b2bLogin = isUsableDelhiveryB2BToken(
+        resolvedDelhiveryAccount.b2bAuthToken,
+        resolvedDelhiveryAccount.b2bAuthTokenExpiresAt,
+      )
+        ? {
+            token: resolvedDelhiveryAccount.b2bAuthToken,
+            status: 200,
+            expiresAt: resolvedDelhiveryAccount.b2bAuthTokenExpiresAt,
+          }
+        : await loginDelhiveryB2B({
+            username: resolvedDelhiveryAccount.username,
+            password: resolvedDelhiveryAccount.password,
+            apiBase: resolvedDelhiveryAccount.apiBase,
+          })
+
+      const pickupLocationName = String(
+        payload.pickup?.warehouse_name || params.pickup_location_alias || params.pickup_location_id || '',
+      ).trim()
+      const b2bManifestPayload = buildDelhiveryB2BManifestPayload({
+        payload,
+        normalizedOrderNumber,
+        normalizedInvoices,
+        boxes,
+        boxSummary,
+        packageWeight: package_weight,
+        pickupLocationName,
+        invoiceValue,
+      })
+
+      const shipmentData = await createDelhiveryB2BShipment({
+        token: b2bLogin.token,
+        apiBase: resolvedDelhiveryAccount.apiBase,
+        payload: b2bManifestPayload,
+      })
+      const providerResponse = shipmentData?.data ?? shipmentData
+      const delhiveryLrn = extractDelhiveryB2BLrn(providerResponse) || null
+      const delhiveryAwb = delhiveryLrn
+      const shipmentPackage = Array.isArray(providerResponse?.packages)
+        ? providerResponse.packages[0]
+        : providerResponse?.packages || null
+
+      if (false && !delhiveryAwb) {
         console.error('âŒ Invalid Delhivery B2B shipment:', shipmentData)
         throw new HttpError(500, 'Delhivery B2B shipment creation failed')
       }
 
       const providerReference =
         String(
-          shipmentData?.upload_wbn ??
-            shipmentData?.shipment_id ??
-            shipmentData?.provider_reference ??
+          delhiveryLrn ??
+            providerResponse?.lrnum ??
+            providerResponse?.lrn ??
+            providerResponse?.shipment_id ??
+            providerResponse?.provider_reference ??
             delhiveryAwb,
-        ).trim() || delhiveryAwb
+        ).trim() || null
       const providerRequestId =
         String(
-          shipmentData?.provider_request_id ??
-            shipmentData?.request_id ??
-            shipmentData?.client_request_id ??
-            delhiveryAwb,
-        ).trim() || delhiveryAwb
+          extractDelhiveryB2BJobId(providerResponse) ||
+            providerResponse?.request_id ||
+            providerResponse?.client_request_id ||
+            providerResponse?.job_id ||
+            providerReference ||
+            normalizedOrderNumber,
+        ).trim() || normalizedOrderNumber
       const responseShippingMode =
-        shipmentData?.shipping_mode ??
+        providerResponse?.shipping_mode ??
         shipmentPackage?.shipping_mode ??
         shipmentPackage?.service_mode ??
         shipmentPackage?.service_type ??
@@ -9909,10 +10188,10 @@ export const createB2BShipmentService = async (
         selectedDelhiveryShippingMode
       const resolvedProviderMode =
         String(responseShippingMode || selectedDelhiveryShippingMode || '').trim() || null
-      const delhiveryPackages = Array.isArray(shipmentData?.packages)
-        ? shipmentData.packages
-        : shipmentData?.packages
-          ? [shipmentData.packages]
+      const delhiveryPackages = Array.isArray(providerResponse?.packages)
+        ? providerResponse.packages
+        : providerResponse?.packages
+          ? [providerResponse.packages]
           : []
       const persistedWaybills = Array.from(
         new Set(
@@ -9928,9 +10207,6 @@ export const createB2BShipmentService = async (
         1,
         delhiveryPackages.length || (Array.isArray(payload.boxes) ? payload.boxes.length : 0) || 1,
       )
-      const pickupLocationName = String(
-        payload.pickup?.warehouse_name || params.pickup_location_alias || params.pickup_location_id || '',
-      ).trim()
       const orderDateRaw =
         payload.order_date instanceof Date ? payload.order_date.toISOString() : payload.order_date
       const delhiveryPickupSchedule = normalizePickupSchedule({
@@ -9951,21 +10227,25 @@ export const createB2BShipmentService = async (
       }
       const shipmentMeta: Record<string, any> = {
         ...shipmentData,
-        shipment_id: shipmentData?.upload_wbn ?? shipmentData?.shipment_id ?? providerReference,
+        shipment_id:
+          providerResponse?.upload_wbn ??
+          providerResponse?.shipment_id ??
+          providerResponse?.lrnum ??
+          providerReference,
         awb_number: delhiveryAwb,
         courier_name: 'Delhivery',
         courier_id: courierId ?? null,
         courier_cost:
           shipmentPackage?.charge ??
           shipmentPackage?.amount ??
-          shipmentData?.charge ??
-          shipmentData?.amount ??
+          providerResponse?.charge ??
+          providerResponse?.amount ??
           params?.courier_cost ??
           null,
         sort_code:
           shipmentPackage?.sort_code ??
           shipmentPackage?.sortCode ??
-          shipmentData?.packages?.[0]?.sort_code ??
+          providerResponse?.packages?.[0]?.sort_code ??
           null,
         provider_reference: providerReference,
         provider_request_id: providerRequestId,
@@ -10009,7 +10289,7 @@ export const createB2BShipmentService = async (
           }
           nextProviderLastStatus = 'pickup_requested'
           if (shipmentData && typeof shipmentData === 'object') {
-            shipmentData.pickup_request = pickupRequest
+            ;(shipmentData as any).pickup_request = pickupRequest
           }
         } catch (pickupError: any) {
           const pickupErrorMessage = getUserFacingManifestError(
@@ -10027,7 +10307,7 @@ export const createB2BShipmentService = async (
             error: pickupErrorMessage,
           }
           if (shipmentData && typeof shipmentData === 'object') {
-            shipmentData.pickup_request_error = pickupErrorMessage
+            ;(shipmentData as any).pickup_request_error = pickupErrorMessage
           }
           console.warn('âš ï¸ Delhivery B2B shipment booked but pickup request failed', {
             order_number: normalizedOrderNumber,
@@ -10042,8 +10322,8 @@ export const createB2BShipmentService = async (
         .set({
           integration_type: 'delhivery',
           order_status: nextOrderStatus,
-          order_id: String(shipmentData?.order_id || '').trim() || null,
-          shipment_id: providerReference,
+          order_id: String(providerResponse?.order_id || providerResponse?.ident || '').trim() || null,
+          shipment_id: providerReference || providerRequestId,
           awb_number: delhiveryAwb,
           courier_partner: 'Delhivery',
           courier_id: courierId ?? null,

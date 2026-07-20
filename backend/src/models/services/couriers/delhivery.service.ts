@@ -174,6 +174,8 @@ const isDelhiveryAlreadyCancelledResponse = (value: unknown) => {
 }
 
 const DEFAULT_DELHIVERY_B2B_AUTH_API_BASE = 'https://ltl-clients-api.delhivery.com'
+const DELHIVERY_B2B_BTOB_API_HOST = 'btob.api.delhivery.com'
+const DELHIVERY_B2B_BTOB_DEV_API_HOST = 'btob-api-dev.delhivery.com'
 
 const getDelhiveryCancellationMessage = (value: unknown): string | null => {
   if (!value) return null
@@ -251,8 +253,22 @@ const normalizeDelhiveryB2BAuthApiBase = (value: unknown) => {
   if (normalized.toLowerCase().includes('ltl-clients-api')) {
     return normalized
   }
+  if (
+    normalized.toLowerCase().includes(DELHIVERY_B2B_BTOB_API_HOST) ||
+    normalized.toLowerCase().includes(DELHIVERY_B2B_BTOB_DEV_API_HOST)
+  ) {
+    return normalized
+  }
 
   return DEFAULT_DELHIVERY_B2B_AUTH_API_BASE
+}
+
+const isDelhiveryB2BBtobApiBase = (apiBase: string) => {
+  const normalized = String(apiBase || '').trim().toLowerCase()
+  return (
+    normalized.includes(DELHIVERY_B2B_BTOB_API_HOST) ||
+    normalized.includes(DELHIVERY_B2B_BTOB_DEV_API_HOST)
+  )
 }
 
 const extractDelhiveryB2BToken = (value: unknown): string => {
@@ -691,21 +707,32 @@ export const createDelhiveryB2BShipment = async ({
 }) => {
   const normalizedToken = ensureDelhiveryB2BToken(token)
   const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
-  const form = new (globalThis as any).FormData()
+  const useBtobApi = isDelhiveryB2BBtobApiBase(resolvedApiBase)
 
-  Object.entries(payload || {}).forEach(([key, value]) => {
-    appendDelhiveryManifestField(form, key, value)
-  })
+  const response = useBtobApi
+    ? await axios.post(`${resolvedApiBase}/v2/manifest`, payload || {}, {
+        headers: buildDelhiveryB2BAuthHeaders(normalizedToken),
+        timeout: 60000,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      })
+    : await (async () => {
+        const form = new (globalThis as any).FormData()
 
-  const response = await axios.post(`${resolvedApiBase}/manifest`, form, {
-    headers: {
-      Authorization: `Bearer ${normalizedToken}`,
-      ...(typeof form.getHeaders === 'function' ? form.getHeaders() : {}),
-    },
-    timeout: 60000,
-    maxBodyLength: Infinity,
-    maxContentLength: Infinity,
-  })
+        Object.entries(payload || {}).forEach(([key, value]) => {
+          appendDelhiveryManifestField(form, key, value)
+        })
+
+        return axios.post(`${resolvedApiBase}/manifest`, form, {
+          headers: {
+            Authorization: `Bearer ${normalizedToken}`,
+            ...(typeof form.getHeaders === 'function' ? form.getHeaders() : {}),
+          },
+          timeout: 60000,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        })
+      })()
 
   return {
     apiBase: resolvedApiBase,

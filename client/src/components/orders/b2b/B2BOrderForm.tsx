@@ -34,6 +34,8 @@ export type Invoice = {
   invoiceValue: number
   invoiceFileUrl?: string
   invoiceFileKey?: string
+  ebnNumber?: string
+  ebnExpiry?: string
 }
 
 // Main Form Data
@@ -263,6 +265,8 @@ export default function B2BOrderForm({ onClose }: { onClose?: () => void }) {
             invoiceValue: Number(invoice.invoiceValue || 0),
             invoiceFileUrl: invoice.invoiceFileUrl || undefined,
             invoiceFileKey: invoice.invoiceFileKey || undefined,
+            ebnNumber: invoice.ebnNumber || undefined,
+            ebnExpiry: invoice.ebnExpiry || undefined,
           })) ?? [],
         courier_id: Number(data.courierPartnerId),
         courier_partner: data.courierPartner,

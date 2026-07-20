@@ -5,6 +5,7 @@ import { db, pool } from '../models/client'
 import { courier_credentials } from '../models/schema/courierCredentials'
 import {
   DEFAULT_DELHIVERY_API_BASE,
+  DEFAULT_DELHIVERY_B2B_API_BASE,
   HARDCODED_DELHIVERY_API_KEY,
 } from '../models/services/delhiveryCredentials.service'
 
@@ -25,6 +26,27 @@ const DEFAULT_DELHIVERY_ACCOUNT = {
   isDefault: true,
   pickupLocationIds: [],
   pickupLocationNames: [],
+}
+
+const DEFAULT_DELHIVERY_B2B_ACCOUNT = {
+  accountCode: 'account_2',
+  accountLabel: 'Delhivery B2B Account',
+  apiBase:
+    String(process.env.DELHIVERY_B2B_API_BASE || process.env.DELHIVERY_LTL_API_BASE || '').trim() ||
+    DEFAULT_DELHIVERY_B2B_API_BASE,
+  clientName: String(process.env.DELHIVERY_B2B_CLIENT_NAME || '').trim(),
+  apiKey: HARDCODED_DELHIVERY_API_KEY,
+  username: String(process.env.DELHIVERY_B2B_USERNAME || '').trim(),
+  password: String(process.env.DELHIVERY_B2B_PASSWORD || '').trim(),
+  b2bAuthToken: '',
+  b2bAuthTokenExpiresAt: '',
+  isActive: true,
+  isDefault: false,
+  pickupLocationIds: [],
+  pickupLocationNames: String(process.env.DELHIVERY_B2B_PICKUP_LOCATION_NAMES || '')
+    .split(/[\n,]+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean),
 }
 
 const parseRecord = (value: unknown): Record<string, any> => {
@@ -74,12 +96,59 @@ async function upsertHardcodedDelhiveryCredentials() {
       : [],
   }
 
+  const existingB2BAccount =
+    existingAccounts[1] && typeof existingAccounts[1] === 'object'
+      ? (existingAccounts[1] as Record<string, any>)
+      : {}
+  const nextB2BAccount = {
+    ...DEFAULT_DELHIVERY_B2B_ACCOUNT,
+    ...existingB2BAccount,
+    accountCode: 'account_2',
+    accountLabel: String(existingB2BAccount.accountLabel || 'Delhivery B2B Account').trim(),
+    apiBase:
+      String(
+        process.env.DELHIVERY_B2B_API_BASE ||
+          process.env.DELHIVERY_LTL_API_BASE ||
+          existingB2BAccount.apiBase ||
+          DEFAULT_DELHIVERY_B2B_API_BASE,
+      ).trim() || DEFAULT_DELHIVERY_B2B_API_BASE,
+    clientName: String(
+      process.env.DELHIVERY_B2B_CLIENT_NAME || existingB2BAccount.clientName || '',
+    ).trim(),
+    username: String(
+      process.env.DELHIVERY_B2B_USERNAME || existingB2BAccount.username || '',
+    ).trim(),
+    password: String(
+      process.env.DELHIVERY_B2B_PASSWORD || existingB2BAccount.password || '',
+    ).trim(),
+    b2bAuthToken:
+      process.env.DELHIVERY_B2B_USERNAME || process.env.DELHIVERY_B2B_PASSWORD
+        ? ''
+        : String(existingB2BAccount.b2bAuthToken || '').trim(),
+    b2bAuthTokenExpiresAt:
+      process.env.DELHIVERY_B2B_USERNAME || process.env.DELHIVERY_B2B_PASSWORD
+        ? ''
+        : String(existingB2BAccount.b2bAuthTokenExpiresAt || '').trim(),
+    isActive: true,
+    isDefault: false,
+    pickupLocationIds: Array.isArray(existingB2BAccount.pickupLocationIds)
+      ? existingB2BAccount.pickupLocationIds
+      : [],
+    pickupLocationNames:
+      DEFAULT_DELHIVERY_B2B_ACCOUNT.pickupLocationNames.length > 0
+        ? DEFAULT_DELHIVERY_B2B_ACCOUNT.pickupLocationNames
+        : Array.isArray(existingB2BAccount.pickupLocationNames)
+          ? existingB2BAccount.pickupLocationNames
+          : [],
+  }
+
   const nextMetadata = {
     ...existingMetadata,
     delhiveryAccountsVersion: 2,
     delhiveryAccounts: [
       nextPrimaryAccount,
-      ...existingAccounts.slice(1),
+      nextB2BAccount,
+      ...existingAccounts.slice(2),
     ],
   }
 
@@ -109,6 +178,8 @@ async function upsertHardcodedDelhiveryCredentials() {
         apiBase: values.apiBase,
         clientName: values.clientName,
         apiKeyPreview: `${HARDCODED_DELHIVERY_API_KEY.slice(0, 6)}...${HARDCODED_DELHIVERY_API_KEY.slice(-6)}`,
+        b2bAccountConfigured: Boolean(nextB2BAccount.username && nextB2BAccount.password),
+        b2bApiBase: nextB2BAccount.apiBase,
         storedAccounts: nextMetadata.delhiveryAccounts.length,
       },
       null,
