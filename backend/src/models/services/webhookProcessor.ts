@@ -892,7 +892,7 @@ export async function processDelhiveryWebhook(payload: any, tx = db) {
     }
     if (st === 'manifested') return 'shipment_created'
     if (st === 'not picked' || st === 'pickup scheduled' || st === 'pickup requested') {
-      return 'pickup_initiated'
+      return 'shipment_created'
     }
     if (st === 'in transit') return 'in_transit'
     if (st === 'pending') return 'in_transit'
@@ -904,7 +904,7 @@ export async function processDelhiveryWebhook(payload: any, tx = db) {
     // Forward Shipment Statuses (UD)
     if (t === 'UD') {
       if (st === 'manifested') return 'shipment_created'
-      if (st === 'not picked') return 'pickup_initiated'
+      if (st === 'not picked') return 'shipment_created'
       if (st === 'in transit') return 'in_transit'
       if (st === 'pending') return 'in_transit' // Reached destination city, not yet dispatched
       if (st === 'dispatched') return 'out_for_delivery'
@@ -931,8 +931,8 @@ export async function processDelhiveryWebhook(payload: any, tx = db) {
 
     // Reverse Shipment - Pickup Request Statuses (PP)
     if (t === 'PP') {
-      if (st === 'open') return 'pickup_initiated' // Pickup request created
-      if (st === 'scheduled') return 'pickup_initiated' // Pickup request scheduled
+      if (st === 'open') return 'shipment_created' // Pickup request created; not physically picked up yet
+      if (st === 'scheduled') return 'shipment_created' // Pickup request scheduled; not physically picked up yet
       if (st === 'dispatched') return 'out_for_delivery' // FE out in field to collect package
     }
 

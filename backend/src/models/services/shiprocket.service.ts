@@ -880,18 +880,22 @@ const resolveCourierBookingLifecycle = (
     .trim()
     .toLowerCase()
 
+  // A successful booking / pickup request is not the same as live pickup
+  // progress. Keep the displayed order lifecycle aligned with provider
+  // tracking; pickup request state is tracked separately via pickup_status /
+  // provider metadata.
   if (provider === 'shadowfax' || provider === 'ekart') {
     return {
-      orderStatus: 'pickup_initiated',
+      orderStatus: 'shipment_created',
       pickupStatus: 'pickup_requested',
-      providerLastStatus: 'pickup_initiated',
+      providerLastStatus: 'shipment_created',
     }
   }
 
   if (provider === 'amazon') {
     return {
-      orderStatus: 'pickup_initiated',
-      pickupStatus: 'pickup_initiated',
+      orderStatus: 'shipment_created',
+      pickupStatus: 'pickup_requested',
       providerLastStatus: 'shipment_purchased',
     }
   }
@@ -904,9 +908,9 @@ const resolveCourierBookingLifecycle = (
 
     if (!needsManualManifest) {
       return {
-        orderStatus: 'pickup_initiated',
+        orderStatus: 'shipment_created',
         pickupStatus: 'pickup_requested',
-        providerLastStatus: 'pickup_initiated',
+        providerLastStatus: 'shipment_created',
       }
     }
   }
@@ -1237,11 +1241,11 @@ const retryDelhiveryPickupRequestForOrder = async (order: {
   await db
     .update(b2c_orders)
     .set({
-      order_status: 'pickup_initiated',
+      order_status: 'shipment_created',
       manifest_error: null,
       pickup_error: null,
       pickup_status: 'pickup_requested',
-      provider_last_status: 'pickup_initiated',
+      provider_last_status: 'pickup_requested',
       updated_at: new Date(),
     })
     .where(eq(b2c_orders.id, order.id))
@@ -1255,7 +1259,7 @@ const retryDelhiveryPickupRequestForOrder = async (order: {
       0,
       MAX_MANIFEST_RETRY_ATTEMPTS - Number(order.manifest_retry_count ?? 0),
     ),
-    order_status: 'pickup_initiated',
+    order_status: 'shipment_created',
     retry_action: 'pickup_request' as const,
   }
 }
@@ -9157,7 +9161,7 @@ export const createB2CShipmentService = async (
             .set({
               pickup_status: 'pickup_requested',
               pickup_error: null,
-              order_status: 'pickup_initiated',
+              order_status: 'shipment_created',
               provider_last_status: 'pickup_requested',
               provider_meta: buildDelhiveryPickupProviderMeta('accepted', {
                 response: pickupRequest,
@@ -10003,7 +10007,6 @@ export const createB2BShipmentService = async (
             recorded_at: new Date().toISOString(),
             response: pickupRequest,
           }
-          nextOrderStatus = 'pickup_initiated'
           nextProviderLastStatus = 'pickup_requested'
           if (shipmentData && typeof shipmentData === 'object') {
             shipmentData.pickup_request = pickupRequest
@@ -11618,9 +11621,9 @@ export const generateManifestService = async (params: {
           : ['pending', 'booked', 'manifest_failed', 'shipment_created'].includes(
               currentOrderStatus,
             )
-            ? 'pickup_initiated'
+            ? 'shipment_created'
             : String(freshOrder.order_status || '').trim() ||
-              (currentAwb ? 'pickup_initiated' : 'shipment_created')
+              'shipment_created'
         const existingPickupDetails = normalizeDetails(freshOrder.pickup_details)
         const updateDataDel: any = {
           manifest: manifestKey,
@@ -11628,7 +11631,7 @@ export const generateManifestService = async (params: {
           pickup_error: pickupRequestWarning ? truncateColumnValue(pickupRequestWarning) : null,
           pickup_status: pickupRequestWarning ? 'failed' : 'pickup_requested',
           order_status: stableManifestStatus,
-          provider_last_status: stableManifestStatus,
+          provider_last_status: pickupRequestWarning ? stableManifestStatus : 'pickup_requested',
           pickup_details: {
             ...existingPickupDetails,
             warehouse_name: pickupLocationName,
@@ -13764,16 +13767,16 @@ export const generateManifestService = async (params: {
               : ['pending', 'booked', 'manifest_failed', 'shipment_created'].includes(
                   currentOrderStatus,
                 )
-                ? 'pickup_initiated'
+                ? 'shipment_created'
                 : String(freshOrder.order_status || '').trim() ||
-                  (currentAwb ? 'pickup_initiated' : 'shipment_created')
+                  'shipment_created'
             const updateDataDel: any = {
               manifest: manifestKey,
               manifest_error: null,
               pickup_error: pickupRequestWarning ? truncateColumnValue(pickupRequestWarning) : null,
               pickup_status: pickupRequestWarning ? 'failed' : 'pickup_requested',
               order_status: stableManifestStatus,
-              provider_last_status: stableManifestStatus,
+              provider_last_status: pickupRequestWarning ? stableManifestStatus : 'pickup_requested',
               updated_at: new Date(),
             }
 
@@ -14059,6 +14062,20 @@ export const generateManifestService = async (params: {
 
           // Update order with manifest + invoice (local manifest only)
           // Ensure we store R2 key, not a full URL
+          const currentInvoiceOrderStatus = String(order.order_status || '').trim().toLowerCase()
+          const nextInvoiceOrderStatus = [
+            'cancelled',
+            'canceled',
+            'delivered',
+            'rto_delivered',
+            'in_transit',
+            'out_for_delivery',
+            'ndr',
+            'rto',
+            'rto_in_transit',
+          ].includes(currentInvoiceOrderStatus)
+            ? order.order_status
+            : 'shipment_created'
           await tx
             .update(table)
             .set({
@@ -14066,7 +14083,7 @@ export const generateManifestService = async (params: {
               invoice_number: invoiceNumber,
               invoice_date: invoiceDateStored,
               invoice_amount: invoiceAmount,
-              order_status: 'pickup_initiated',
+              order_status: nextInvoiceOrderStatus,
               updated_at: new Date(),
             })
             .where(eq(table.id, order.id))
@@ -15157,9 +15174,14 @@ const mapProviderTrackingCodeToInternal = (
     delhivery: {
       ud: 'in_transit',
       rt: 'rto_in_transit',
-      pp: 'pickup_initiated',
+      pp: 'shipment_created',
       pu: 'in_transit',
       cn: 'cancelled',
+      manifest: 'shipment_created',
+      manifested: 'shipment_created',
+      not_picked: 'shipment_created',
+      pickup_scheduled: 'shipment_created',
+      pickup_requested: 'shipment_created',
     },
     xpressbees: {
       manifest: 'pickup_initiated',
@@ -15267,6 +15289,36 @@ const preserveNonRegressiveTrackingStatus = (currentStatus: string, mappedStatus
   return mapped
 }
 
+const preserveTerminalOrReturnTrackingStatus = (currentStatus: string, mappedStatus: string) => {
+  const current = normalizeInternalTrackingStatus(currentStatus)
+  const mapped = normalizeInternalTrackingStatus(mappedStatus)
+  if (!mapped) return current || 'in_transit'
+
+  if (
+    ['cancelled', 'delivered', 'rto_delivered'].includes(current) &&
+    !['cancelled', 'delivered', 'rto_delivered'].includes(mapped)
+  ) {
+    return current
+  }
+
+  if (current.startsWith('rto') && !mapped.startsWith('rto') && mapped !== 'cancelled') {
+    return current
+  }
+
+  return mapped
+}
+
+const isDelhiveryPrePickupTrackingStatus = (status: string) =>
+  status.includes('manifest') ||
+  status.includes('not picked') ||
+  status.includes('pickup scheduled') ||
+  status.includes('pickup requested') ||
+  status.includes('pickup booked') ||
+  status.includes('booking confirmed') ||
+  status.includes('shipment created') ||
+  status.includes('order created') ||
+  status.includes('created')
+
 const mapLiveTrackingStatusToInternal = (
   rawStatus: unknown,
   providerKey: string,
@@ -15281,6 +15333,9 @@ const mapLiveTrackingStatusToInternal = (
 
   const providerCodeStatus = mapProviderTrackingCodeToInternal(rawStatus, providerKey)
   if (providerCodeStatus) {
+    if (provider === 'delhivery' && providerCodeStatus === 'shipment_created') {
+      return preserveTerminalOrReturnTrackingStatus(current, providerCodeStatus)
+    }
     return preserveNonRegressiveTrackingStatus(current, providerCodeStatus)
   }
 
@@ -15323,7 +15378,9 @@ const mapLiveTrackingStatusToInternal = (
     hasTrackingStatusToken(status, 'it') ||
     hasTrackingStatusToken(status, 'rad')
   ) mapped = 'in_transit'
-  else if (
+  else if (provider === 'delhivery' && isDelhiveryPrePickupTrackingStatus(status)) {
+    return preserveTerminalOrReturnTrackingStatus(current, 'shipment_created')
+  } else if (
     status === 'new' ||
     status.includes('created') ||
     status.includes('booked') ||
@@ -15334,7 +15391,7 @@ const mapLiveTrackingStatusToInternal = (
     status.includes('assigned for seller pickup') ||
     status.includes('assigned for pickup')
   ) {
-    mapped = provider === 'shadowfax' ? 'pickup_initiated' : 'pickup_initiated'
+    mapped = provider === 'delhivery' ? 'shipment_created' : 'pickup_initiated'
   }
 
   return preserveNonRegressiveTrackingStatus(current, mapped)
@@ -15599,7 +15656,7 @@ const persistLiveTrackingStatus = async (
     nextStatus !== 'cancelled' &&
     (trackingConfirmsPickupRequest || trackingConfirmsShipmentProgress)
   ) {
-    updateData.pickup_status = 'pickup_initiated'
+    updateData.pickup_status = nextStatus === 'shipment_created' ? 'pickup_requested' : 'pickup_initiated'
     updateData.pickup_error = null
     updateData.manifest_error = null
   }
