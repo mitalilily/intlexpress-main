@@ -92,7 +92,7 @@ const client = new Client({
 NODE
 NODE_ENV=production npm run seed:basic-provider-ratecards
 npm run build
-NODE_ENV=production PORT=5003 pm2 startOrReload ecosystem.config.cjs
+NODE_ENV=production PORT=5014 pm2 startOrReload ecosystem.config.cjs
 pm2 save
 
 cd "$APP_ROOT/landing"

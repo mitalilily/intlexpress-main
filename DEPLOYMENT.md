@@ -5,7 +5,7 @@ This repository is set up to deploy:
 - `landing/` as a static Vite site served by Nginx
 - `client/` as the app frontend served on `app.intlexpress.in`
 - `admin-dashboard/` as the admin frontend served on `admin.intlexpress.in`
-- `backend/` as a Node.js API managed by PM2 on port `5003` and exposed on `api.intlexpress.in`
+- `backend/` as a Node.js API managed by PM2 on port `5014` and exposed on `api.intlexpress.in`
 
 Key production files:
 
