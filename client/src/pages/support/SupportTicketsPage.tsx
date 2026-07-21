@@ -185,7 +185,7 @@ export const SupportTicketsPage = () => {
             label: 'Email Support',
             onClick: () =>
               (window.location.href =
-                'mailto:info@intlexpress.com?subject=IntleExpress%20Support%20Request'),
+                'mailto:info@intlexpress.com?subject=Intlexpress%20Support%20Request'),
             icon: <FiMail />,
             variant: 'outlined',
           },

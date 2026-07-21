@@ -12,7 +12,7 @@ async function createDummyMerchant() {
   try {
     console.log('🚀 Creating dummy merchant user...')
 
-    const email = 'merchant@shiplifi.local'
+    const email = 'merchant@intlexpress.local'
     const phone = '+919876543210'
 
     // Check if user already exists
@@ -73,10 +73,10 @@ async function createDummyMerchant() {
             state: 'Maharashtra',
             city: 'Mumbai',
             contactNumber: '+919876543210',
-            contactEmail: 'merchant@shiplifi.local',
+            contactEmail: 'merchant@intlexpress.local',
             companyContactNumber: '+919876543210',
             brandName: 'Test Store',
-            companyEmail: 'merchant@shiplifi.local',
+            companyEmail: 'merchant@intlexpress.local',
             website: 'https://teststore.local',
           },
           businessType: ['b2c'],
@@ -104,10 +104,10 @@ async function createDummyMerchant() {
             state: 'Maharashtra',
             city: 'Mumbai',
             contactNumber: '+919876543210',
-            contactEmail: 'merchant@shiplifi.local',
+            contactEmail: 'merchant@intlexpress.local',
             companyContactNumber: '+919876543210',
             brandName: 'Test Store',
-            companyEmail: 'merchant@shiplifi.local',
+            companyEmail: 'merchant@intlexpress.local',
             website: 'https://teststore.local',
           },
           businessType: ['b2c'],
@@ -124,7 +124,7 @@ async function createDummyMerchant() {
     console.log('\n✅ Dummy merchant setup complete!')
     console.log('\n📊 MERCHANT LOGIN (OTP Flow):')
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    console.log('📧 Email: merchant@shiplifi.local')
+    console.log('📧 Email: merchant@intlexpress.local')
     console.log('📱 Phone: +919876543210')
     console.log('🔐 OTP: Any 6-digit number (validation disabled in dev)')
     console.log('   Example: 123456')

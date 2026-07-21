@@ -77,7 +77,7 @@ const request = async (
 const main = async () => {
   const results: StepResult[] = []
   const suffix = Date.now()
-  const warehouseName = `IntleExpress API Test ${suffix}`
+  const warehouseName = `Intlexpress API Test ${suffix}`
 
   let clientName = 'INTLEXPRESS JAIPUR C2C'
   let ndrRequestId = ''
@@ -170,7 +170,7 @@ const main = async () => {
       address: 'API test warehouse address',
       country: 'India',
       email: 'ops@intlexpress.test',
-      registered_name: 'IntleExpress',
+      registered_name: 'Intlexpress',
       return_address: 'API test return address',
       return_pin: '110042',
       return_city: 'Delhi',
@@ -230,7 +230,7 @@ const main = async () => {
           shipment_length: 10,
           shipment_width: 10,
           shipment_height: 10,
-          seller_name: 'IntleExpress',
+          seller_name: 'Intlexpress',
           seller_add: 'API test warehouse address',
           seller_city: 'Delhi',
           seller_state: 'Delhi',
@@ -272,7 +272,7 @@ const main = async () => {
           shipment_length: 10,
           shipment_width: 10,
           shipment_height: 10,
-          seller_name: 'IntleExpress',
+          seller_name: 'Intlexpress',
           seller_add: 'API test warehouse address',
           seller_city: 'Delhi',
           seller_state: 'Delhi',
@@ -323,7 +323,7 @@ const main = async () => {
         shipment_length: 10,
         shipment_width: 10,
         shipment_height: 10,
-        seller_name: 'IntleExpress',
+        seller_name: 'Intlexpress',
         seller_add: 'API test warehouse address',
         seller_city: 'Delhi',
         seller_state: 'Delhi',

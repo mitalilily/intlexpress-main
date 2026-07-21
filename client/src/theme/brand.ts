@@ -1,5 +1,5 @@
 export const brand = {
-  name: 'IntleExpress',
+  name: 'Intlexpress',
   tagline: 'Global Courier Solutions',
   website: 'https://intlexpress.in',
   supportEmail: 'info@intlexpress.com',

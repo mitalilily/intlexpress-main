@@ -179,7 +179,7 @@ const normalizeDelhiveryWeightGrams = (value: unknown, fallbackGrams = 500) => {
   const numericValue = Number(value ?? 0)
   if (!Number.isFinite(numericValue) || numericValue <= 0) return fallbackGrams
 
-  // Shiplifi stores B2C weights in grams; older integrations may still send kg.
+  // Intlexpress stores B2C weights in grams; older integrations may still send kg.
   return numericValue > 50 ? Math.round(numericValue) : Math.round(numericValue * 1000)
 }
 
@@ -1353,7 +1353,7 @@ export class DelhiveryService {
     try {
       const registration = await this.createWarehouse({
         name: pickupLocationName || sellerName || 'Default Warehouse',
-        registered_name: sellerName || pickup?.name || 'Shiplifi',
+        registered_name: sellerName || pickup?.name || 'Intlexpress',
         phone: String(pickup?.phone || '').trim(),
         email: undefined,
         address: pickupAddress || String(pickup?.address || '').trim(),
@@ -1729,7 +1729,7 @@ export class DelhiveryService {
         sanitizeString(normalizedPickup.warehouse_name)
 
       const sellerName = sanitizeString(
-        params.company?.name || normalizedPickup.name || 'IntleExpress',
+        params.company?.name || normalizedPickup.name || 'Intlexpress',
       )
       const sellerGst = resolveDelhiverySellerGstin(
         params.company?.gst,
@@ -2418,7 +2418,7 @@ export class DelhiveryService {
             shipment_width: Number(params.package_breadth ?? 10),
             shipment_height: Number(params.package_height ?? 10),
             pickup_location: sanitizeString(params.pickup?.warehouse_name) || 'Default Warehouse',
-            seller_name: sanitizeString(params.pickup?.name) || 'IntleExpress',
+            seller_name: sanitizeString(params.pickup?.name) || 'Intlexpress',
             seller_add: pickupAddress || sanitizeString(params.pickup?.warehouse_name),
             seller_city: sanitizeString(params.pickup?.city),
             seller_state: sanitizeString(params.pickup?.state),
@@ -2447,7 +2447,7 @@ export class DelhiveryService {
             shipping_mode: sanitizeString(params.shipping_mode) || undefined,
             transport_speed: sanitizeString(params.transport_speed) || undefined,
             address_type: sanitizeString(params.address_type) || undefined,
-            client: this.clientName || sanitizeString(params.pickup?.name) || 'IntleExpress',
+            client: this.clientName || sanitizeString(params.pickup?.name) || 'Intlexpress',
             waybill: sanitizeString(params.waybill) || undefined,
           },
         ],

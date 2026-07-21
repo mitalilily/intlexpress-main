@@ -14,18 +14,18 @@ const TermsOfService = () => {
           other information needed in order to complete the signup process.
         </li>
         <li>
-          You are responsible for keeping your password secure. IntleExpress cannot and will not be
+          You are responsible for keeping your password secure. Intlexpress cannot and will not be
           liable for any loss or damage from your failure to maintain the security of your account
           and password.
         </li>
         <li>
-          You may not use the IntleExpress service for any illegal or unauthorized purpose nor may you
+          You may not use the Intlexpress service for any illegal or unauthorized purpose nor may you
           violate any laws in your jurisdiction (including copyright laws) as well as the laws of
           India.
         </li>
         <li>
           You are responsible for all activity and content (data, graphics, photos, links) uploaded
-          under your IntleExpress account.
+          under your Intlexpress account.
         </li>
         <li>You must not transmit any worms or viruses or any code of a destructive nature.</li>
         <li>
@@ -41,7 +41,7 @@ const TermsOfService = () => {
       <ul>
         <li>
           You must read, agree with, and accept all terms and conditions contained in this User
-          Agreement and the Privacy Policy before becoming a member of IntleExpress.
+          Agreement and the Privacy Policy before becoming a member of Intlexpress.
         </li>
         <li>
           We reserve the right to modify or terminate the Service for any reason, without notice at
@@ -53,11 +53,11 @@ const TermsOfService = () => {
           “as available” basis without any warranty or condition.
         </li>
         <li>
-          IntleExpress does not warrant that the service will be uninterrupted, timely, secure, or
+          Intlexpress does not warrant that the service will be uninterrupted, timely, secure, or
           error-free.
         </li>
         <li>
-          IntleExpress does not warrant that the results obtained from the use of the service will be
+          Intlexpress does not warrant that the results obtained from the use of the service will be
           accurate or reliable.
         </li>
         <li>
@@ -69,7 +69,7 @@ const TermsOfService = () => {
           Terms of Service.
         </li>
         <li>
-          IntleExpress shall not be liable for any direct, indirect, incidental, special, or
+          Intlexpress shall not be liable for any direct, indirect, incidental, special, or
           consequential damages.
         </li>
         <li>
@@ -85,13 +85,13 @@ const TermsOfService = () => {
           We do not claim intellectual property rights over your material uploaded to the Service.
         </li>
         <li>
-          By uploading content, you agree to allow other users to view and IntleExpress to store and
+          By uploading content, you agree to allow other users to view and Intlexpress to store and
           review it.
         </li>
         <li>Failure to exercise any right does not constitute a waiver of that right.</li>
-        <li>The Terms of Service constitute the entire agreement between you and IntleExpress.</li>
-        <li>You shall not purchase keywords or domains infringing on IntleExpress trademarks.</li>
-        <li>IntleExpress may refuse or remove any content at its discretion.</li>
+        <li>The Terms of Service constitute the entire agreement between you and Intlexpress.</li>
+        <li>You shall not purchase keywords or domains infringing on Intlexpress trademarks.</li>
+        <li>Intlexpress may refuse or remove any content at its discretion.</li>
         <li>
           Questions about Terms of Service should be sent to{' '}
           <Link href="mailto:info@intlexpress.com">info@intlexpress.com</Link>
@@ -112,7 +112,7 @@ const TermsOfService = () => {
           the online store.
         </li>
         <li>All fees are exclusive of applicable taxes, fees, or charges.</li>
-        <li>IntleExpress does not provide refunds.</li>
+        <li>Intlexpress does not provide refunds.</li>
       </ul>
 
       {/* Cancellation and Termination */}
@@ -134,9 +134,9 @@ const TermsOfService = () => {
       </Typography>
       <ul>
         <li>Prices may change with 14 days’ notice via posting on the site or announcement.</li>
-        <li>IntleExpress reserves the right to modify or discontinue the Service at any time.</li>
+        <li>Intlexpress reserves the right to modify or discontinue the Service at any time.</li>
         <li>
-          IntleExpress shall not be liable for any modification, price change, suspension, or
+          Intlexpress shall not be liable for any modification, price change, suspension, or
           discontinuance.
         </li>
       </ul>
@@ -151,7 +151,7 @@ const TermsOfService = () => {
           restricted items.
         </li>
         <li>
-          IntleExpress does not permit hosting of the following:
+          Intlexpress does not permit hosting of the following:
           <ul>
             <li>
               “Securities” including shares, bonds, debentures, or other financial instruments.

@@ -152,7 +152,7 @@ const samplePickupSlot = getDefaultPickupSlot()
 
 const sampleRows = [
   {
-    warehouse_name: 'IntleExpress Jaipur Hub',
+    warehouse_name: 'Intlexpress Jaipur Hub',
     pickup_date: samplePickupSlot.pickupDate,
     pickup_time: samplePickupSlot.pickupTime,
     order_id: 'B2C-1001',

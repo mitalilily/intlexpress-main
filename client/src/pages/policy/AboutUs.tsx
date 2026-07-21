@@ -39,7 +39,7 @@ const AboutUs = () => {
 
   return (
     <Stack gap={3} sx={{ py: 4, px: 4 }}>
-      <PageHeading title="About Us – IntleExpress" />
+      <PageHeading title="About Us – Intlexpress" />
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
           <CircularProgress />

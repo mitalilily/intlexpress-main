@@ -18,7 +18,7 @@ dotenv.config({ path: path.resolve(__dirname, `../../.env.${env}`) })
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || '2026-04'
 
 const SHOP_QUERY = `
-  query ShiplifiCheckShop {
+  query IntlexpressCheckShop {
     shop {
       id
       name
@@ -31,7 +31,7 @@ const SHOP_QUERY = `
 `
 
 const ORDERS_QUERY = `
-  query ShiplifiCheckOrders($first: Int!) {
+  query IntlexpressCheckOrders($first: Int!) {
     orders(first: $first, sortKey: CREATED_AT, reverse: true) {
       edges {
         node {
@@ -49,7 +49,7 @@ const ORDERS_QUERY = `
 `
 
 const WEBHOOKS_QUERY = `
-  query ShiplifiCheckWebhooks($topics: [WebhookSubscriptionTopic!]) {
+  query IntlexpressCheckWebhooks($topics: [WebhookSubscriptionTopic!]) {
     webhookSubscriptions(first: 50, topics: $topics) {
       edges {
         node {
@@ -143,25 +143,25 @@ const startMockShopifyServer = async () => {
       const body = await readJsonBody(req)
       const query = String(body?.query || '')
 
-      if (query.includes('ShiplifiCheckShop')) {
+      if (query.includes('IntlexpressCheckShop')) {
         return sendJson(res, 200, {
           data: {
             shop: {
               id: 'gid://shopify/Shop/123456789',
-              name: 'Shiplifi Shopify Test Store',
-              myshopifyDomain: 'shiplifi-test.myshopify.com',
+              name: 'Intlexpress Shopify Test Store',
+              myshopifyDomain: 'intlexpress-test.myshopify.com',
               currencyCode: 'INR',
               ianaTimezone: 'Asia/Kolkata',
               primaryDomain: {
-                host: 'shiplifi-test.myshopify.com',
-                url: 'https://shiplifi-test.myshopify.com',
+                host: 'intlexpress-test.myshopify.com',
+                url: 'https://intlexpress-test.myshopify.com',
               },
             },
           },
         })
       }
 
-      if (query.includes('ShiplifiCheckOrders')) {
+      if (query.includes('IntlexpressCheckOrders')) {
         return sendJson(res, 200, {
           data: {
             orders: {
@@ -185,7 +185,7 @@ const startMockShopifyServer = async () => {
         })
       }
 
-      if (query.includes('ShiplifiCheckWebhooks')) {
+      if (query.includes('IntlexpressCheckWebhooks')) {
         return sendJson(res, 200, {
           data: {
             webhookSubscriptions: {
@@ -194,7 +194,7 @@ const startMockShopifyServer = async () => {
                   node: {
                     id: 'gid://shopify/WebhookSubscription/111',
                     topic: 'ORDERS_CREATE',
-                    uri: 'https://api.shiplifi.com/api/webhooks/shopify/order-created',
+                    uri: 'https://api.intlexpress.in/api/webhooks/shopify/order-created',
                   },
                 },
               ],

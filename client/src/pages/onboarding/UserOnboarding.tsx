@@ -285,7 +285,7 @@ export default function UserOnboarding() {
               <Box
                 component="img"
                 src="/brand/intelExpress-logo.png"
-                alt="IntleExpress"
+                alt="Intlexpress"
                 sx={{ width: { xs: 150, md: 176 }, height: 'auto', mb: 2.2 }}
               />
 

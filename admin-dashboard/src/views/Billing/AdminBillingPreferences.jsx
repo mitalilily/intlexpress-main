@@ -497,7 +497,7 @@ export default function AdminBillingPreferences() {
               <Box>
                 <FormLabel>Issuer Name</FormLabel>
                 <Input
-                  placeholder="IntleExpress"
+                  placeholder="Intlexpress"
                   value={issuerForm.brandName}
                   onChange={(e) => handleIssuerFieldChange('brandName', e.target.value)}
                 />

@@ -90,7 +90,7 @@ export default function Dashboard(props) {
 			<RtlProvider>
 				<Sidebar
 					routes={routes}
-					logoText={'IntleExpress'}
+					logoText={'Intlexpress'}
 					display='none'
 					sidebarVariant={sidebarVariant}
 					{...rest}
@@ -104,7 +104,7 @@ export default function Dashboard(props) {
 					<Portal>
 						<AdminNavbar
 							onOpen={onOpen}
-							logoText={'IntleExpress'}
+							logoText={'Intlexpress'}
 							brandText={getActiveRoute(routes)}
 							secondary={getActiveNavbar(routes)}
 							fixed={fixed}

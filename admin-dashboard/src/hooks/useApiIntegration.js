@@ -216,7 +216,7 @@ export const useConnectShopifyEnvStore = () => {
       queryClient.invalidateQueries(['shopifyStatus'])
       toast({
         title: 'Shopify store connected',
-        description: data?.data?.warning || 'Custom app credentials are now bound in IntleExpress.',
+        description: data?.data?.warning || 'Custom app credentials are now bound in Intlexpress.',
         status: data?.data?.warning ? 'warning' : 'success',
         duration: 5000,
         isClosable: true,

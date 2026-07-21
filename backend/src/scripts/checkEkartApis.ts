@@ -148,7 +148,7 @@ const main = async () => {
       package_breadth: 10,
       package_height: 10,
       pickup_location_alias: 'BLR Warehouse',
-      company: { name: 'Shiplifi Test', gst: '' },
+      company: { name: 'Intlexpress Test', gst: '' },
       consignee: {
         name: 'Test Buyer',
         address: 'Connaught Place',

@@ -86,7 +86,7 @@ export const ensureDefaultAdminBootstrap = async (
       .values({
         userId: updatedUser.id,
         companyInfo: {
-          businessName: 'IntleExpress Admin',
+          businessName: 'Intlexpress Admin',
           contactPerson: 'Admin User',
           POCEmailVerified: true,
           POCPhoneVerified: true,
@@ -97,7 +97,7 @@ export const ensureDefaultAdminBootstrap = async (
           contactNumber: phone,
           contactEmail: email,
           companyContactNumber: phone,
-          brandName: 'IntleExpress',
+          brandName: 'Intlexpress',
           companyEmail: email,
           website: 'https://intlexpress.com',
         },
@@ -138,7 +138,7 @@ export const ensureDefaultAdminBootstrap = async (
   await db.insert(userProfiles).values({
     userId: newUser.id,
     companyInfo: {
-      businessName: 'IntleExpress Admin',
+      businessName: 'Intlexpress Admin',
       contactPerson: 'Admin User',
       POCEmailVerified: true,
       POCPhoneVerified: true,
@@ -149,7 +149,7 @@ export const ensureDefaultAdminBootstrap = async (
       contactNumber: phone,
       contactEmail: email,
       companyContactNumber: phone,
-      brandName: 'IntleExpress',
+      brandName: 'Intlexpress',
       companyEmail: email,
       website: 'https://intlexpress.com',
     },

@@ -490,7 +490,7 @@ export default function TrackingPage() {
             letterSpacing: 0.5,
           }}
         >
-          Powered by IntleExpress
+          Powered by Intlexpress
         </Typography>
       </Box>
     </Box>

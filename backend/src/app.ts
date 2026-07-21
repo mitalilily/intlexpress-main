@@ -122,9 +122,6 @@ const configuredAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
 const allowedOrigins = new Set([
   'https://intlexpress-client.onrender.com',
   'https://intlexpress-admin.onrender.com',
-  'https://shiplifi.com',
-  'https://www.shiplifi.com',
-  'https://app.shiplifi.com',
   'https://intlexpress.com',
   'https://www.intlexpress.com',
   'https://app.intlexpress.com',
@@ -139,7 +136,7 @@ const allowedOrigins = new Set([
 
 const isLocalOrigin = (origin: string) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
 const isFirstPartyOrigin = (origin: string) =>
-  /^https:\/\/([a-z0-9-]+\.)*(shiplifi|intlexpress)\.(com|in)$/.test(origin)
+  /^https:\/\/([a-z0-9-]+\.)*intlexpress\.(com|in)$/.test(origin)
 
 const isAllowedOrigin = (origin: string) => {
   const normalizedOrigin = normalizeOrigin(origin)

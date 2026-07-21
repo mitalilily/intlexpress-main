@@ -50,8 +50,8 @@ const AboutUsEditor = () => {
 
   const handleLoadTemplate = () => {
     const templateHtml = `
-      <h2>About IntleExpress</h2>
-      <p><strong>IntleExpress</strong> is a courier aggregator technology platform designed to help entrepreneurs, D2C brands, and logistics businesses run a branded shipping operation with a cleaner and more scalable software stack.</p>
+      <h2>About Intlexpress</h2>
+      <p><strong>Intlexpress</strong> is a courier aggregator technology platform designed to help entrepreneurs, D2C brands, and logistics businesses run a branded shipping operation with a cleaner and more scalable software stack.</p>
 
       <h3>What We Do</h3>
       <ul>
@@ -129,7 +129,7 @@ const AboutUsEditor = () => {
     if (!validateForm()) return
 
     try {
-      await updatePageMutation.mutateAsync({ title: 'About Us - IntleExpress', content })
+      await updatePageMutation.mutateAsync({ title: 'About Us - Intlexpress', content })
       toast({
         title: 'About Us content saved',
         status: 'success',

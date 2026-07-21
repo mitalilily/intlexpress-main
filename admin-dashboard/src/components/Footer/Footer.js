@@ -28,7 +28,7 @@ export default function Footer() {
           target="_blank"
           fontWeight="semibold"
         >
-          IntleExpress Admin
+          Intlexpress Admin
         </Link>
       </Text>
       <Link

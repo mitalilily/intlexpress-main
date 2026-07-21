@@ -141,7 +141,7 @@ export default function AppRoutes() {
               }}
             >
               <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: '#151c46' }}>
-                Loading IntleExpress
+                Loading Intlexpress
               </Typography>
               <Typography sx={{ fontSize: '0.8rem', color: '#556188' }}>
                 Preparing your workspace...

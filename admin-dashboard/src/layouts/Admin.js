@@ -116,7 +116,7 @@ export default function Dashboard(props) {
       {/* Sidebar with dynamic width */}
       <Sidebar
         routes={routes}
-        logoText={'IntleExpress'}
+        logoText={'Intlexpress'}
         sidebarVariant={sidebarVariant}
         sidebarWidth={sidebarWidth}
         {...rest}
@@ -133,7 +133,7 @@ export default function Dashboard(props) {
         <Portal>
           <AdminNavbar
             onOpen={onOpen}
-            logoText={'IntleExpress'}
+            logoText={'Intlexpress'}
             brandText={getActiveRoute(routes)}
             secondary={getActiveNavbar(routes)}
             fixed={fixed}

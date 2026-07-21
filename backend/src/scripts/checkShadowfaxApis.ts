@@ -481,7 +481,7 @@ const buildShipmentPayload = (overrides: Record<string, any> = {}) => {
       email: 'buyer@example.com',
     },
     company: {
-      name: 'Shiplifi Test',
+      name: 'Intlexpress Test',
       gst: '27ABCDE1234F1Z5',
     },
     order_items: [
@@ -517,7 +517,7 @@ const main = async () => {
   process.env.SHADOWFAX_API_BASE = mock.baseUrl
   process.env.SHADOWFAX_QR_BASE = mock.baseUrl
   process.env.SHADOWFAX_API_TOKEN = 'mock-shadowfax-token'
-  process.env.SHADOWFAX_CLIENT_NAME = 'Shiplifi Test'
+  process.env.SHADOWFAX_CLIENT_NAME = 'Intlexpress Test'
 
   try {
     const { ShadowfaxService } = await import('../models/services/couriers/shadowfax.service')

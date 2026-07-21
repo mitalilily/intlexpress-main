@@ -79,7 +79,7 @@ export default function AuthNavbar(props) {
       <Flex w="100%" justifyContent={{ sm: 'start', lg: 'space-between' }}>
         {brand}
         <Box ms={{ base: 'auto', lg: '0px' }} display={{ base: 'flex', lg: 'none' }}>
-          <SidebarResponsive logoText={logoText || 'IntleExpress'} secondary={secondary} routes={routes} {...rest} />
+          <SidebarResponsive logoText={logoText || 'Intlexpress'} secondary={secondary} routes={routes} {...rest} />
         </Box>
         {linksAuth}
         <Link href="/auth/signin">

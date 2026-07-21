@@ -68,7 +68,7 @@ export default function Dashboard() {
         gap='24px'>
         <BuiltByDevelopers
           title={"تم تطويرها للإدارة"}
-          name={"لوحة تحكم IntleExpress"}
+          name={"لوحة تحكم Intlexpress"}
           description={
             "تجربة إدارة احترافية لمتابعة الشحنات والدعم والتسعير والعمليات من مكان واحد."
           }

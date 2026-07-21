@@ -274,7 +274,7 @@ export const ensureWooCommerceOrderWebhooks = async (store: WooCommerceStore) =>
       method: 'post',
       path: '/webhooks',
       data: {
-        name: `Shiplifi ${topic}`,
+        name: `Intlexpress ${topic}`,
         topic,
         delivery_url: address,
         secret,
@@ -634,7 +634,7 @@ export const processWooCommerceWebhookOrder = async (
 }
 
 const buildWooCommerceSyncNote = (orderStatus: string, awb: string, courierPartner: unknown) =>
-  `Shiplifi update: ${orderStatus}. AWB: ${awb}. Courier: ${courierPartner || 'Courier'}.`
+  `Intlexpress update: ${orderStatus}. AWB: ${awb}. Courier: ${courierPartner || 'Courier'}.`
 
 const ensureWooCommerceSyncNote = async ({
   store,

@@ -106,7 +106,7 @@ const startMockWooCommerceServer = async () => {
       if (req.method === 'GET' && pathname === '/wp-json/wc/v3/system_status') {
         return sendJson(res, 200, {
           environment: {
-            site_title: 'Shiplifi Woo Test Store',
+            site_title: 'Intlexpress Woo Test Store',
             site_url: `http://127.0.0.1/mock-store`,
             version: '9.9.0',
           },
@@ -143,7 +143,7 @@ const startMockWooCommerceServer = async () => {
             id: 7,
             name: 'Existing order webhook',
             topic: 'order.created',
-            delivery_url: 'https://api.shiplifi.com/api/webhook/woocommerce/orders',
+            delivery_url: 'https://api.intlexpress.in/api/webhook/woocommerce/orders',
             status: 'active',
           },
         ])
@@ -264,7 +264,7 @@ const createAndDeletePermissionWebhook = async ({
     configuredWebhookUrl ||
     (configuredApiUrl
       ? `${configuredApiUrl}/api/webhook/woocommerce/orders`
-      : 'https://example.com/shiplifi-woocommerce-check')
+      : 'https://example.com/intlexpress-woocommerce-check')
 
   const created = await wooRequest<any>({
     storeUrl,
@@ -273,7 +273,7 @@ const createAndDeletePermissionWebhook = async ({
     method: 'post',
     path: '/webhooks',
     data: {
-      name: `Shiplifi permission check ${Date.now()}`,
+      name: `Intlexpress permission check ${Date.now()}`,
       topic: 'order.updated',
       delivery_url: deliveryUrl,
       secret: crypto.randomBytes(16).toString('hex'),

@@ -2438,8 +2438,8 @@ const buildAmazonAddressFromLooseInput = async ({
   }
 
   return buildAmazonShippingAddressFromWarehouse({
-    alias: trimText(name) || trimText(companyName) || 'Shiplifi',
-    contactName: trimText(name) || trimText(companyName) || 'Shiplifi',
+    alias: trimText(name) || trimText(companyName) || 'Intlexpress',
+    contactName: trimText(name) || trimText(companyName) || 'Intlexpress',
     contactPhone: trimText(phone),
     contactEmail: trimText(email),
     addressLine1: trimText(addressLine1) || `Pincode ${normalizedPincode}`,
@@ -2448,7 +2448,7 @@ const buildAmazonAddressFromLooseInput = async ({
     state: resolvedState,
     country: trimText(country) || trimText(location?.country) || 'India',
     pincode: normalizedPincode,
-    companyName: trimText(companyName) || trimText(name) || 'Shiplifi',
+    companyName: trimText(companyName) || trimText(name) || 'Intlexpress',
   })
 }
 
@@ -2481,7 +2481,7 @@ const buildAmazonShippingRatesRequest = async (params: any, userId?: string | nu
         pincode: pickupWarehouse.pincode,
         latitude: pickupWarehouse.latitude,
         longitude: pickupWarehouse.longitude,
-        companyName: pickupWarehouse.addressNickname || pickupWarehouse.contactName || 'Shiplifi',
+        companyName: pickupWarehouse.addressNickname || pickupWarehouse.contactName || 'Intlexpress',
       })
     }
   }
@@ -2529,7 +2529,7 @@ const buildAmazonShippingRatesRequest = async (params: any, userId?: string | nu
       pincode: pickupWarehouse.pincode,
       latitude: pickupWarehouse.latitude,
       longitude: pickupWarehouse.longitude,
-      companyName: pickupWarehouse.addressNickname || pickupWarehouse.contactName || 'Shiplifi',
+      companyName: pickupWarehouse.addressNickname || pickupWarehouse.contactName || 'Intlexpress',
     })
   }
 
@@ -2774,7 +2774,7 @@ function buildPickupFromWarehouse(
     city: warehouse.city,
     state: warehouse.state,
     pincode: warehouse.pincode,
-    name: warehouse.contactName || 'Shiplifi',
+    name: warehouse.contactName || 'Intlexpress',
     phone: warehouse.contactPhone || '',
     gst_number: previousPickup?.gst_number ?? warehouse.gstNumber ?? '',
     pickup_date: previousPickup?.pickup_date ?? fallbackDate,
@@ -7597,7 +7597,7 @@ export const createB2CShipmentService = async (
 
     params.company = {
       ...(params.company || {}),
-      name: resolvedCompanyName || 'Shiplifi',
+      name: resolvedCompanyName || 'Intlexpress',
       gst: resolvedCompanyGst || '',
     }
 
@@ -7738,7 +7738,7 @@ export const createB2CShipmentService = async (
       400,
       isReverseShipment
         ? 'No reverse pickup rate card freight available for selected courier/zone'
-        : 'No Shiplifi rate card freight available for selected courier/zone',
+        : 'No Intlexpress rate card freight available for selected courier/zone',
     )
   }
 
@@ -9038,7 +9038,7 @@ export const createB2CShipmentService = async (
           400,
           isReverseShipment
             ? 'No reverse pickup rate card freight available for selected courier/zone'
-            : 'No Shiplifi rate card freight available for selected courier/zone',
+            : 'No Intlexpress rate card freight available for selected courier/zone',
         )
       }
       // Extract courier_cost from shipment response or use estimated from params
@@ -9125,7 +9125,7 @@ export const createB2CShipmentService = async (
       } else if (params.payment_type === 'prepaid') {
         // Prepaid: Seller wallet debited for freight charges + other charges (all courier costs)
         // Customer pays: order_amount + shipping + transaction_fee + gift_wrap - discount - prepaid
-        // Seller wallet debited: freight_charges (Shiplifi rate-card freight) + other_charges (fuel surcharge, handling, etc.)
+        // Seller wallet debited: freight_charges (Intlexpress rate-card freight) + other_charges (fuel surcharge, handling, etc.)
         applyConfiguredGstToWalletDebit(freightCharges + otherCharges)
 
         // Validate that otherCharges are included
@@ -9157,7 +9157,7 @@ export const createB2CShipmentService = async (
       } else {
         // COD: Seller wallet debited for freight charges + other charges + COD charges
         // Customer pays: order_amount + shipping + transaction_fee + gift_wrap - discount
-        // Seller wallet debited: freight_charges (Shiplifi rate-card freight) + other_charges (fuel surcharge, handling, etc.) + cod_charges (courier COD fee)
+        // Seller wallet debited: freight_charges (Intlexpress rate-card freight) + other_charges (fuel surcharge, handling, etc.) + cod_charges (courier COD fee)
         applyConfiguredGstToWalletDebit(freightCharges + otherCharges + codCharges)
 
         // Validate that otherCharges are included
@@ -9341,7 +9341,7 @@ export const createB2CShipmentService = async (
         })
       }
 
-      // Download the Shiplifi label URL and save to R2, or generate a platform label.
+      // Download the Intlexpress label URL and save to R2, or generate a platform label.
       if (
         params.integration_type === 'shiplifi' ||
         params.integration_type === 'couriercart' ||
@@ -9354,7 +9354,7 @@ export const createB2CShipmentService = async (
             .where(eq(b2c_orders.id, newOrder.id))
 
           if (freshOrder) {
-            // Try to download the Shiplifi label URL first if available.
+            // Try to download the Intlexpress label URL first if available.
             const courierCartLabelUrl = shipmentMeta?.label
 
             if (
@@ -9363,7 +9363,7 @@ export const createB2CShipmentService = async (
               courierCartLabelUrl.startsWith('http')
             ) {
               try {
-                console.log(`Downloading Shiplifi label from URL: ${courierCartLabelUrl}`)
+                console.log(`Downloading Intlexpress label from URL: ${courierCartLabelUrl}`)
 
                 // Download label PDF from the platform URL.
                 const labelResponse = await axios.get(courierCartLabelUrl, {
@@ -9397,10 +9397,10 @@ export const createB2CShipmentService = async (
                   })
                   .where(eq(b2c_orders.id, newOrder.id))
 
-                console.log(`Shiplifi label downloaded and saved to R2: ${labelKey}`)
+                console.log(`Intlexpress label downloaded and saved to R2: ${labelKey}`)
               } catch (downloadErr: any) {
                 console.error(
-                  `Failed to download Shiplifi label from URL: ${courierCartLabelUrl}`,
+                  `Failed to download Intlexpress label from URL: ${courierCartLabelUrl}`,
                   downloadErr?.message || downloadErr,
                 )
                 console.log(`Falling back to generating a custom label for ${params.order_number}`)
@@ -9415,13 +9415,13 @@ export const createB2CShipmentService = async (
                       updated_at: new Date(),
                     })
                     .where(eq(b2c_orders.id, newOrder.id))
-                  console.log(`Shiplifi custom label generated and saved: ${labelKey}`)
+                  console.log(`Intlexpress custom label generated and saved: ${labelKey}`)
                 }
               }
             } else {
-              // No hosted platform label URL, generate a custom Shiplifi label.
+              // No hosted platform label URL, generate a custom Intlexpress label.
               console.log(
-                `No Shiplifi label URL, generating custom label for ${params.order_number}`,
+                `No Intlexpress label URL, generating custom label for ${params.order_number}`,
               )
               const labelKey = await generateLabelForOrder(freshOrder, userId, tx)
               if (labelKey) {
@@ -9432,17 +9432,17 @@ export const createB2CShipmentService = async (
                     updated_at: new Date(),
                   })
                   .where(eq(b2c_orders.id, newOrder.id))
-                console.log(`Shiplifi custom label generated and saved: ${labelKey}`)
+                console.log(`Intlexpress custom label generated and saved: ${labelKey}`)
               } else {
                 console.warn(
-                  `Shiplifi label generator returned empty result for ${params.order_number}`,
+                  `Intlexpress label generator returned empty result for ${params.order_number}`,
                 )
               }
             }
           }
         } catch (labelErr: any) {
           console.error(
-            `Failed to process Shiplifi label for ${params.order_number}:`,
+            `Failed to process Intlexpress label for ${params.order_number}:`,
             labelErr?.message || labelErr,
           )
         }

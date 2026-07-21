@@ -151,7 +151,7 @@ export default function HeaderLinks({ variant, children, fixed, secondary, onOpe
         </Popover>
       ) : null}
 
-      <SidebarResponsive logoText={rest.logoText || 'IntleExpress'} secondary={secondary} routes={routes} {...rest} />
+      <SidebarResponsive logoText={rest.logoText || 'Intlexpress'} secondary={secondary} routes={routes} {...rest} />
 
       <IconButton
         aria-label="Settings"

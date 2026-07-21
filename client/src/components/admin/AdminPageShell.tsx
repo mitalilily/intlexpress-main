@@ -31,7 +31,7 @@ interface AdminPageShellProps {
 }
 
 export default function AdminPageShell({
-  eyebrow = 'IntleExpress Admin',
+  eyebrow = 'Intlexpress Admin',
   title,
   description,
   badge,

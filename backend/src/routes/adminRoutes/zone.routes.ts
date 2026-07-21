@@ -8,7 +8,7 @@ import multer from 'multer'
 import os from 'os'
 import path from 'path'
 
-const zoneUploadDir = path.join(os.tmpdir(), 'shiplifi-zone-uploads')
+const zoneUploadDir = path.join(os.tmpdir(), 'intlexpress-zone-uploads')
 fs.mkdirSync(zoneUploadDir, { recursive: true })
 const upload = multer({ dest: zoneUploadDir }) // temp folder
 

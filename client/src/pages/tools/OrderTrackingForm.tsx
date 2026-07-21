@@ -230,7 +230,7 @@ export default function OrderTrackingForm() {
           Shipment tracking
         </Typography>
         <Typography sx={{ mt: 0.5, maxWidth: 760, color: '#6E6763', fontSize: '0.88rem' }}>
-          Track every IntleExpress shipment from a single clean workspace using either AWB details or
+          Track every Intlexpress shipment from a single clean workspace using either AWB details or
           your order reference with customer contact.
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={0.8} mt={1.1}>

@@ -202,7 +202,7 @@ export default function PhoneForm() {
         <Box
           component="img"
           src="/brand/intelExpress-logo.png"
-          alt="IntleExpress"
+          alt="Intlexpress"
           sx={{
             width: { xs: 148, sm: 168 },
             height: 'auto',

@@ -292,7 +292,7 @@ export const buildShopifyOAuthAuthorizeUrl = ({
   url.searchParams.set('redirect_uri', config.redirectUri)
   url.searchParams.set('state', state)
   // Shopify returns an offline access token when grant_options[] is omitted.
-  // Shiplifi needs offline access for background order sync, webhooks, and fulfillment updates.
+  // Intlexpress needs offline access for background order sync, webhooks, and fulfillment updates.
   return {
     authUrl: url.toString(),
     shop: normalizedShop,
@@ -540,7 +540,7 @@ export const probeShopifyStore = async (storeUrl: string, adminApiAccessToken: s
     storeUrl,
     accessToken: adminApiAccessToken,
     query: `
-      query ShiplifiShopProbe {
+      query IntlexpressShopProbe {
         shop {
           id
           name
@@ -600,7 +600,7 @@ export const ensureShopifyOrderWebhooks = async ({
     storeUrl,
     accessToken,
     query: `
-      query ShiplifiWebhookSubscriptions($topics: [WebhookSubscriptionTopic!]) {
+      query IntlexpressWebhookSubscriptions($topics: [WebhookSubscriptionTopic!]) {
         webhookSubscriptions(first: 250, topics: $topics) {
           edges {
             node {
@@ -637,7 +637,7 @@ export const ensureShopifyOrderWebhooks = async ({
       storeUrl,
       accessToken,
       query: `
-        mutation ShiplifiWebhookSubscriptionCreate(
+        mutation IntlexpressWebhookSubscriptionCreate(
           $topic: WebhookSubscriptionTopic!,
           $webhookSubscription: WebhookSubscriptionInput!
         ) {
@@ -688,7 +688,7 @@ export const upsertShopifySettingsMetafield = async ({
   const ownerData = await shopifyGraphqlRequest<{ shop: { id: string } }>({
     storeUrl,
     accessToken,
-    query: `query ShiplifiSettingsOwner { shop { id } }`,
+    query: `query IntlexpressSettingsOwner { shop { id } }`,
   })
 
   const metafieldData = await shopifyGraphqlRequest<{
@@ -700,13 +700,13 @@ export const upsertShopifySettingsMetafield = async ({
     storeUrl,
     accessToken,
     query: `
-      query ShiplifiSettingsMetafield($key: String!) {
+      query IntlexpressSettingsMetafield($key: String!) {
         shop {
           shiplifiSettings: metafield(namespace: "shiplifi", key: $key) {
             id
             namespace
           }
-          legacySettings: metafield(namespace: "Shiplifi", key: $key) {
+          legacySettings: metafield(namespace: "Intlexpress", key: $key) {
             id
             namespace
           }
@@ -718,7 +718,7 @@ export const upsertShopifySettingsMetafield = async ({
 
   const existingMetafield = metafieldData?.shop?.shiplifiSettings || metafieldData?.shop?.legacySettings
   const mutation = `
-      mutation ShiplifiSettingsMetafieldSet($metafields: [MetafieldsSetInput!]!) {
+      mutation IntlexpressSettingsMetafieldSet($metafields: [MetafieldsSetInput!]!) {
         metafieldsSet(metafields: $metafields) {
           metafields { id namespace key }
           userErrors { field message }
@@ -1380,7 +1380,7 @@ const isSameShopifyOrderRow = (
 }
 
 const SHOPIFY_ORDERS_QUERY = `
-  query ShiplifiOrders($first: Int!) {
+  query IntlexpressOrders($first: Int!) {
     orders(first: $first, sortKey: CREATED_AT, reverse: true) {
       edges {
         node {
@@ -1454,7 +1454,7 @@ const SHOPIFY_ORDERS_QUERY = `
 `
 
 const SHOPIFY_ORDERS_RESTRICTED_QUERY = `
-  query ShiplifiOrdersRestricted($first: Int!) {
+  query IntlexpressOrdersRestricted($first: Int!) {
     orders(first: $first, sortKey: CREATED_AT, reverse: true) {
       edges {
         node {
@@ -2103,7 +2103,7 @@ const getShopifyOrderForStatusSync = async (store: ShopifyStore, shopifyOrderId:
   }>({
     store,
     query: `
-      query ShiplifiOrderStatusSync($id: ID!) {
+      query IntlexpressOrderStatusSync($id: ID!) {
         order(id: $id) {
           id
           tags
@@ -2163,7 +2163,7 @@ const createShopifyFulfillment = async ({
   if (trackingNumber) {
     fulfillment.trackingInfo = {
       number: trackingNumber,
-      company: String(courierPartner || 'Shiplifi').slice(0, 255),
+      company: String(courierPartner || 'Intlexpress').slice(0, 255),
       url: buildTrackingUrl(trackingNumber),
     }
   }
@@ -2173,7 +2173,7 @@ const createShopifyFulfillment = async ({
   }>({
     store,
     query: `
-      mutation ShiplifiFulfillmentCreate($fulfillment: FulfillmentInput!) {
+      mutation IntlexpressFulfillmentCreate($fulfillment: FulfillmentInput!) {
         fulfillmentCreate(fulfillment: $fulfillment) {
           fulfillment { id status }
           userErrors { field message }
@@ -2195,7 +2195,7 @@ const buildTrackingUrl = (trackingNumber: string) => {
     process.env.FRONTEND_URL ||
       process.env.CLIENT_URL ||
       process.env.APP_URL ||
-      'https://app.shiplifi.com',
+      'https://app.intlexpress.in',
   )
     .trim()
     .replace(/\/+$/, '')
@@ -2221,7 +2221,7 @@ const updateShopifyFulfillmentTracking = async ({
   }>({
     store,
     query: `
-      mutation ShiplifiFulfillmentTrackingUpdate(
+      mutation IntlexpressFulfillmentTrackingUpdate(
         $fulfillmentId: ID!,
         $trackingInfoInput: FulfillmentTrackingInput!,
         $notifyCustomer: Boolean
@@ -2241,7 +2241,7 @@ const updateShopifyFulfillmentTracking = async ({
       notifyCustomer,
       trackingInfoInput: {
         number: trackingNumber,
-        company: String(courierPartner || 'Shiplifi').slice(0, 255),
+        company: String(courierPartner || 'Intlexpress').slice(0, 255),
         url: buildTrackingUrl(trackingNumber),
       },
     },
@@ -2260,7 +2260,7 @@ const updateShopifyOrderTags = async (store: ShopifyStore, shopifyOrderId: strin
   }>({
     store,
     query: `
-      mutation ShiplifiOrderTagsUpdate($input: OrderInput!) {
+      mutation IntlexpressOrderTagsUpdate($input: OrderInput!) {
         orderUpdate(input: $input) {
           order { id }
           userErrors { field message }
@@ -2287,7 +2287,7 @@ const cancelShopifyOrder = async (store: ShopifyStore, shopifyOrderId: string) =
   }>({
     store,
     query: `
-      mutation ShiplifiOrderCancel(
+      mutation IntlexpressOrderCancel(
         $orderId: ID!,
         $notifyCustomer: Boolean,
         $refundMethod: OrderCancelRefundMethodInput!,
@@ -2315,7 +2315,7 @@ const cancelShopifyOrder = async (store: ShopifyStore, shopifyOrderId: string) =
       refundMethod: { originalPaymentMethodsRefund: false },
       restock: false,
       reason: 'OTHER',
-      staffNote: 'Cancelled from Shiplifi shipment status sync.',
+      staffNote: 'Cancelled from Intlexpress shipment status sync.',
     },
   })
 
@@ -2331,7 +2331,7 @@ const markShopifyOrderAsPaid = async (store: ShopifyStore, shopifyOrderId: strin
   }>({
     store,
     query: `
-      mutation ShiplifiOrderMarkAsPaid($input: OrderMarkAsPaidInput!) {
+      mutation IntlexpressOrderMarkAsPaid($input: OrderMarkAsPaidInput!) {
         orderMarkAsPaid(input: $input) {
           order { id canMarkAsPaid displayFinancialStatus }
           userErrors { field message }

@@ -93,7 +93,7 @@ export async function createWalletOrder(
     amount: razorpayOrder.amount,
     currency: razorpayOrder.currency,
     key: keyId,
-    name: 'Shiplifi',
+    name: 'Intlexpress',
     description: 'Wallet Recharge',
     prefill: {
       name: details.name,
