@@ -172,7 +172,6 @@ export default function StepOneForm({ formData, onChange, errors, setFormData, s
                 type="email"
                 value={formData?.basicInfo.email}
                 onChange={(e) => onChange(e, 'basicInfo')}
-                disabled
                 required
                 error={!!errors.basicInfo.email}
                 helperText={errors.basicInfo.email}

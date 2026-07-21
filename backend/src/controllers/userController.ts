@@ -66,6 +66,16 @@ export const completeRegistration = async (req: any, res: Response): Promise<any
     const phoneRaw = data?.basicInfo?.phone ?? ''
     const phoneDigits = phoneRaw.replace(/\D/g, '') // keep 10 digits
     const emailLower = (data?.basicInfo?.email ?? '').toLowerCase().trim()
+    const existingEmailLower = (user.email ?? '').toLowerCase().trim()
+    const existingPhoneDigits = (user.phone ?? '').replace(/\D/g, '')
+    const finalEmail = emailLower || existingEmailLower
+    const finalPhone = phoneDigits || existingPhoneDigits
+    const emailRemainsVerified = Boolean(
+      user.emailVerified && finalEmail && finalEmail === existingEmailLower,
+    )
+    const phoneRemainsVerified = Boolean(
+      user.phoneVerified && finalPhone && finalPhone === existingPhoneDigits,
+    )
 
     switch (step) {
       /* ─────────────────────────── STEP 1 ─────────────────────────── */
@@ -99,12 +109,12 @@ export const completeRegistration = async (req: any, res: Response): Promise<any
         updates = {
           companyInfo: {
             contactPerson: `${data?.basicInfo?.firstName} ${data?.basicInfo?.lastName}`,
-            contactEmail: emailLower || user.email,
-            contactNumber: phoneDigits || user.phone,
+            contactEmail: finalEmail,
+            contactNumber: finalPhone,
             pincode: data?.basicInfo?.pincode,
             state: data?.basicInfo?.state,
-            POCEmailVerified: user?.emailVerified,
-            POCPhoneVerified: user?.phoneVerified,
+            POCEmailVerified: emailRemainsVerified,
+            POCPhoneVerified: phoneRemainsVerified,
             businessName: data?.basicInfo?.companyName,
             city: data?.basicInfo?.city,
             profilePicture: user?.profilePicture,
@@ -148,8 +158,10 @@ export const completeRegistration = async (req: any, res: Response): Promise<any
 
     const updatedUser = await upsertUserProfile(userId, updates)
     await updateUser(userId, {
-      email: emailLower || user.email,
-      phone: phoneDigits || user.phone,
+      email: finalEmail,
+      phone: finalPhone,
+      emailVerified: emailRemainsVerified,
+      phoneVerified: phoneRemainsVerified,
     })
 
     return res.json({
