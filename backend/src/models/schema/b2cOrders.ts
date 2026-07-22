@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, numeric, pgTable, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core'
+import { boolean, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex, uuid, varchar } from 'drizzle-orm/pg-core'
 import { users } from './users'
 
 export interface PickupDetails {
@@ -75,7 +75,7 @@ export const b2c_orders = pgTable(
   // Order status
   order_status: varchar('order_status', { length: 50 }).default('pending'), // pending | shipment_created | delivered | cancelled
   pickup_status: varchar('pickup_status', { length: 50 }).default('pending'),
-  pickup_error: varchar('pickup_error', { length: 255 }),
+  pickup_error: text('pickup_error'),
 
   // Courier info
   courier_partner: varchar('courier_partner', { length: 50 }),
@@ -92,12 +92,12 @@ export const b2c_orders = pgTable(
   provider_last_status: varchar('provider_last_status', { length: 80 }),
   provider_meta: jsonb('provider_meta'),
   is_insurance: boolean('is_insurance').default(false),
-  label: varchar('label', { length: 100 }),
+  label: varchar('label', { length: 512 }),
   // Sort / routing code from courier label (e.g. JBN/JBN/PA)
   sort_code: varchar('sort_code', { length: 100 }),
   invoice_link: varchar('invoice_link', { length: 300 }),
-  manifest: varchar('manifest', { length: 100 }),
-  manifest_error: varchar('manifest_error', { length: 255 }),
+  manifest: varchar('manifest', { length: 512 }),
+  manifest_error: text('manifest_error'),
   manifest_retry_count: integer('manifest_retry_count').default(0).notNull(),
   manifest_last_retry_at: timestamp('manifest_last_retry_at'),
 
