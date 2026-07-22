@@ -169,6 +169,14 @@ const triggerBrowserDownload = (url: string, fileName: string) => {
   document.body.removeChild(link)
 }
 
+const isCrossOriginUrl = (value: string) => {
+  try {
+    return new URL(value, window.location.href).origin !== window.location.origin
+  } catch {
+    return false
+  }
+}
+
 const createDownloadError = (message: string, code: string) => {
   const error = new Error(message) as Error & { code: string }
   error.code = code
@@ -176,6 +184,11 @@ const createDownloadError = (message: string, code: string) => {
 }
 
 export const downloadFile = async (url: string, fileName: string) => {
+  if (isCrossOriginUrl(url)) {
+    triggerBrowserDownload(url, fileName)
+    return
+  }
+
   try {
     const response = await fetch(url)
     if (!response.ok) {
