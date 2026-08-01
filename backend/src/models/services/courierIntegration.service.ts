@@ -316,7 +316,7 @@ const getB2CGroupKey = (rate: any) =>
   `${rate.courier_id}_${rate.plan_id}_${normalizeB2CServiceProvider(rate.service_provider)}_${normalizeB2CShippingMode(rate.mode)}`
 
 const getB2BGroupKey = (rate: any) =>
-  `${rate.courier_name}_${rate.plan_id}_${normalizeB2CShippingMode(rate.mode)}`
+  `${rate.courier_id}_${normalizeB2CServiceProvider(rate.service_provider)}_${rate.plan_id}_${normalizeB2CShippingMode(rate.mode)}`
 
 const normalizeB2BRateCardCourierName = (value: unknown) =>
   String(value ?? '')

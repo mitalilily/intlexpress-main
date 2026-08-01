@@ -49,6 +49,7 @@ const migrationFiles = [
   'migration_add_courier_credentials_metadata.sql',
   'migration_seed_shadowfax_b2c_couriers.sql',
   'migration_seed_delhivery_b2c_couriers.sql',
+  'migration_seed_delhivery_b2b_account_couriers.sql',
   'migration_add_amazon_rate_token_cache.sql',
   'migration_add_gst_to_payment_options_and_b2c_orders.sql',
   'migration_add_pan_number_to_kyc.sql',

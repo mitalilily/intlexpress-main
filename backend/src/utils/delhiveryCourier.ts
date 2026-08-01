@@ -3,12 +3,20 @@ export const DELHIVERY_COURIER_IDS = {
   SURFACE: 100,
 } as const
 
+export const DELHIVERY_B2B_ACCOUNT_COURIER_IDS = {
+  account_2: 21002,
+  account_3: 21003,
+} as const
+
 export type DelhiveryShippingMode = 'Express' | 'Surface'
+export type DelhiveryB2BAccountCode = keyof typeof DELHIVERY_B2B_ACCOUNT_COURIER_IDS
 
 const DELHIVERY_LEGACY_MODE_BY_ID: Record<number, DelhiveryShippingMode> = {
   // Current admin/manual setup.
   [DELHIVERY_COURIER_IDS.EXPRESS]: 'Express',
   [DELHIVERY_COURIER_IDS.SURFACE]: 'Surface',
+  [DELHIVERY_B2B_ACCOUNT_COURIER_IDS.account_2]: 'Surface',
+  [DELHIVERY_B2B_ACCOUNT_COURIER_IDS.account_3]: 'Surface',
   // Legacy/imported Shiprocket-style B2C rate cards commonly use id 1 for Delhivery Air.
   1: 'Express',
   92: 'Express',
@@ -18,6 +26,8 @@ const DELHIVERY_LEGACY_MODE_BY_ID: Record<number, DelhiveryShippingMode> = {
 export const DELHIVERY_ALLOWED_COURIER_IDS: number[] = [
   DELHIVERY_COURIER_IDS.EXPRESS,
   DELHIVERY_COURIER_IDS.SURFACE,
+  DELHIVERY_B2B_ACCOUNT_COURIER_IDS.account_2,
+  DELHIVERY_B2B_ACCOUNT_COURIER_IDS.account_3,
   1,
   92,
   93,
@@ -43,6 +53,22 @@ export const getDelhiveryShippingModeByCourierId = (
 ): DelhiveryShippingMode | null => {
   const id = normalizeCourierId(value)
   return id === null ? null : DELHIVERY_LEGACY_MODE_BY_ID[id] ?? null
+}
+
+export const getDelhiveryB2BAccountCodeByCourierId = (
+  value: unknown,
+): DelhiveryB2BAccountCode | null => {
+  const id = normalizeCourierId(value)
+  if (id === DELHIVERY_B2B_ACCOUNT_COURIER_IDS.account_2) return 'account_2'
+  if (id === DELHIVERY_B2B_ACCOUNT_COURIER_IDS.account_3) return 'account_3'
+  return null
+}
+
+export const getDelhiveryB2BAccountCourierId = (
+  accountCode: unknown,
+): number | null => {
+  const normalized = String(accountCode || '').trim() as DelhiveryB2BAccountCode
+  return DELHIVERY_B2B_ACCOUNT_COURIER_IDS[normalized] ?? null
 }
 
 export const getCanonicalDelhiveryCourierIdByMode = (

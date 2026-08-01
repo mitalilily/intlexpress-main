@@ -29,6 +29,7 @@ import {
 } from '../../utils/courierProvider'
 import {
   type DelhiveryShippingMode,
+  getDelhiveryB2BAccountCodeByCourierId,
   getCanonicalDelhiveryCourierIdByMode,
   getDelhiveryCourierDisplayName,
   getDelhiveryShippingModeByCourierId,
@@ -6257,11 +6258,17 @@ export const fetchAvailableCouriersWithRatesB2B = async (
     combined = combined.flatMap((courier: any) => {
       const providerKey = normalizeProviderKey(courier.integration_type || courier.serviceProvider)
       if (providerKey !== 'delhivery') return [courier]
+      const accountCodeFromCourierId = getDelhiveryB2BAccountCodeByCourierId(courier.id)
+      const accountsForCourier = accountCodeFromCourierId
+        ? activeDelhiveryB2BAccounts.filter(
+            (account) => account.accountCode === accountCodeFromCourierId,
+          )
+        : activeDelhiveryB2BAccounts
 
-      return activeDelhiveryB2BAccounts.map((account) => ({
+      return accountsForCourier.map((account) => ({
         ...courier,
-        name: `${courier.name || 'Delhivery B2B'} - ${account.accountLabel}`,
-        displayName: `${courier.displayName || courier.name || 'Delhivery B2B'} - ${account.accountLabel}`,
+        name: courier.name || account.accountLabel || 'Delhivery B2B',
+        displayName: courier.displayName || courier.name || account.accountLabel || 'Delhivery B2B',
         courier_option_key: makeDelhiveryB2BAccountOptionKey(courier, account.accountCode),
         delhivery_account_code: account.accountCode,
         delhivery_account_label: account.accountLabel,
@@ -10180,6 +10187,7 @@ export const createB2BShipmentService = async (
   let selectedDelhiveryShippingMode: DelhiveryShippingMode | null = null
   let selectedDelhiveryB2BAccountCode = ''
   if (effectiveIntegrationType === 'delhivery') {
+    const accountCodeFromCourierId = getDelhiveryB2BAccountCodeByCourierId(courierId)
     selectedDelhiveryShippingMode = resolveDelhiveryShippingMode({
       courierId,
       mode: params.shipping_mode,
@@ -10196,7 +10204,15 @@ export const createB2BShipmentService = async (
       normalizeDelhiveryB2BAccountCode(params.delhivery_account_code) ||
       normalizeDelhiveryB2BAccountCode(params.delhiveryAccountCode) ||
       normalizeDelhiveryB2BAccountCode(params.courier_option_key) ||
+      accountCodeFromCourierId ||
       'account_2'
+
+    if (accountCodeFromCourierId && accountCodeFromCourierId !== selectedDelhiveryB2BAccountCode) {
+      throw new HttpError(
+        400,
+        `Selected courier_id ${courierId} belongs to ${accountCodeFromCourierId}, but the request selected ${selectedDelhiveryB2BAccountCode}. Please choose the matching Delhivery B2B courier option.`,
+      )
+    }
   }
 
   if (!['shadowfax', 'delhivery'].includes(effectiveIntegrationType)) {
