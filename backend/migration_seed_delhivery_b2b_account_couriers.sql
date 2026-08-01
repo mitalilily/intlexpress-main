@@ -69,7 +69,7 @@ where lower(business_type) = 'b2b'
     or lower(coalesce(courier_name, '')) like '%delhivery%'
     or courier_id in (99, 100, 1, 92, 93)
   )
-  and courier_id <> 21003;
+  and (courier_id is null or courier_id <> 21003);
 
 update shiplifi_b2b_zone_to_zone_rates
 set
@@ -80,7 +80,7 @@ where (
     lower(coalesce(service_provider, '')) = 'delhivery'
     or courier_id in (99, 100, 1, 92, 93)
   )
-  and courier_id <> 21003;
+  and (courier_id is null or courier_id <> 21003);
 
 update shiplifi_b2b_additional_charges
 set
@@ -91,7 +91,7 @@ where (
     lower(coalesce(service_provider, '')) = 'delhivery'
     or courier_id in (99, 100, 1, 92, 93)
   )
-  and courier_id <> 21003;
+  and (courier_id is null or courier_id <> 21003);
 
 update shiplifi_b2b_overhead_rules
 set
@@ -102,7 +102,7 @@ where (
     lower(coalesce(service_provider, '')) = 'delhivery'
     or courier_id in (99, 100, 1, 92, 93)
   )
-  and courier_id <> 21003;
+  and (courier_id is null or courier_id <> 21003);
 
 update shiplifi_b2b_pincodes
 set
@@ -113,7 +113,7 @@ where (
     lower(coalesce(service_provider, '')) = 'delhivery'
     or courier_id in (99, 100, 1, 92, 93)
   )
-  and courier_id <> 21003;
+  and (courier_id is null or courier_id <> 21003);
 
 update shiplifi_b2b_zone_states
 set
@@ -124,7 +124,7 @@ where (
     lower(coalesce(service_provider, '')) = 'delhivery'
     or courier_id in (99, 100, 1, 92, 93)
   )
-  and courier_id <> 21003;
+  and (courier_id is null or courier_id <> 21003);
 
 update shiplifi_b2b_zone_regions
 set
@@ -134,6 +134,6 @@ where (
     lower(coalesce(service_provider, '')) = 'delhivery'
     or courier_id in (99, 100, 1, 92, 93)
   )
-  and courier_id <> 21003;
+  and (courier_id is null or courier_id <> 21003);
 
 commit;
