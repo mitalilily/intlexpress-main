@@ -782,6 +782,7 @@ export const createDelhiveryB2BShipment = async ({
             const blob = new (globalThis as any).Blob([file.data], {
               type: file.contentType || 'application/octet-stream',
             })
+            form.append('doc_data', blob, file.filename)
             form.append('doc_file', blob, file.filename)
           })
 
