@@ -104,6 +104,7 @@ import {
 } from './amazonShippingCredentials.service'
 import {
   createDelhiveryB2BShipment,
+  createDelhiveryB2BPickupRequest,
   extractDelhiveryB2BJobId,
   loginDelhiveryB2B,
   DelhiveryService,
@@ -10732,11 +10733,16 @@ export const createB2BShipmentService = async (
       let nextProviderLastStatus = 'shipment_created'
       if (pickupLocationName) {
         try {
-          const pickupRequest = await delhivery.createPickupRequest({
-            pickup_date: delhiveryPickupSchedule.pickupDate,
-            pickup_time: delhiveryPickupSchedule.pickupTime,
-            pickup_location: pickupLocationName,
-            expected_package_count: expectedPackageCount,
+          const pickupRequest = await createDelhiveryB2BPickupRequest({
+            token: b2bLogin.token,
+            apiBase: resolvedDelhiveryAccount.apiBase,
+            requestId: providerRequestId,
+            payload: {
+              pickup_date: delhiveryPickupSchedule.pickupDate,
+              pickup_time: delhiveryPickupSchedule.pickupTime,
+              pickup_location: pickupLocationName,
+              expected_package_count: expectedPackageCount,
+            },
           })
           shipmentMeta.pickup_request = {
             provider: 'delhivery',
