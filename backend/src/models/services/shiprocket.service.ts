@@ -3538,6 +3538,9 @@ const buildDelhiveryB2BManifestPayload = ({
     },
     d_mode: paymentMode,
     payment_mode: delhiveryPaymentMode,
+    freight_mode: 'fop',
+    fm_pickup: 'True',
+    enable_paperless_movement: 'True',
     amount: codAmount,
     cod_amount: codAmount,
     invoices: invoiceRows.map((invoice, index) => {
