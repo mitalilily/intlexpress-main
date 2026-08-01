@@ -3521,18 +3521,22 @@ const buildDelhiveryB2BManifestPayload = ({
 
   const manifestPayload: Record<string, any> = {
     pickup_location: sanitize(pickupLocationName || payload.pickup?.warehouse_name),
+    pickup_location_name: sanitize(pickupLocationName || payload.pickup?.warehouse_name),
     dropoff_location: {
       consignee: sanitize(payload.consignee?.company_name || payload.consignee?.name),
+      consignee_name: sanitize(payload.consignee?.name || payload.consignee?.company_name),
       address: sanitize(
         [payload.consignee?.address, payload.consignee?.address_2].filter(Boolean).join(', '),
       ),
       city: sanitize(payload.consignee?.city),
       region: sanitize(payload.consignee?.state),
+      state: sanitize(payload.consignee?.state),
       zip: sanitize(payload.consignee?.pincode),
       phone: sanitizePhone(payload.consignee?.phone),
       email: sanitize(payload.consignee?.email),
     },
     d_mode: paymentMode,
+    payment_mode: paymentMode,
     amount: codAmount,
     invoices: invoiceRows.map((invoice, index) => {
       const ewaybill = sanitize(
@@ -3546,6 +3550,8 @@ const buildDelhiveryB2BManifestPayload = ({
       return {
         ident: sanitize(invoice.invoiceNumber, `${normalizedOrderNumber}-${index + 1}`),
         n_value: positiveNumber(invoice.invoiceValue, invoiceValue || 1),
+        inv_num: sanitize(invoice.invoiceNumber, `${normalizedOrderNumber}-${index + 1}`),
+        inv_amt: positiveNumber(invoice.invoiceValue, invoiceValue || 1),
         ...(ewaybill ? { ewaybill } : {}),
       }
     }),
@@ -3553,6 +3559,7 @@ const buildDelhiveryB2BManifestPayload = ({
     shipment_details: [
       {
         ident: normalizedOrderNumber,
+        order_id: normalizedOrderNumber,
         box_count: packageCount,
         description: productsDescription,
         master: true,
