@@ -3571,6 +3571,11 @@ const buildDelhiveryB2BManifestPayload = ({
     freight_mode: 'fop',
     fm_pickup: 'True',
     enable_paperless_movement: 'True',
+    rov_insurance:
+      Number(payload.is_insurance ?? 0) === 1 ||
+      String(payload.is_insurance || '').toLowerCase() === 'true'
+        ? 'True'
+        : 'False',
     billing_address: billingAddress,
     amount: codAmount,
     cod_amount: codAmount,
