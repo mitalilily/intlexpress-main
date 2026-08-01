@@ -3539,6 +3539,7 @@ const buildDelhiveryB2BManifestPayload = ({
     d_mode: paymentMode,
     payment_mode: delhiveryPaymentMode,
     amount: codAmount,
+    cod_amount: codAmount,
     invoices: invoiceRows.map((invoice, index) => {
       const invoiceIdent = sanitize(invoice.invoiceNumber, `${normalizedOrderNumber}-${index + 1}`)
       const delhiveryInvoiceNumber = invoiceIdent.slice(0, 25)
