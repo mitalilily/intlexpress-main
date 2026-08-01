@@ -407,6 +407,12 @@ export const importZoneRatesController = async (req: Request, res: Response) => 
 
     const result = await importZoneRatesFromCsv(req.file.buffer, {
       courierScope: parseCourierScope(req),
+      planId:
+        (req.body.plan_id as string) ??
+        (req.body.planId as string) ??
+        (req.query.plan_id as string) ??
+        (req.query.planId as string) ??
+        null,
     })
 
     res.json({ success: true, ...result })

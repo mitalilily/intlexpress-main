@@ -215,8 +215,27 @@ export const getShippingRates = async (filters: ShippingRateFilters = {}) => {
     }
 
     if (row.zone) {
-      grouped[key].rates[row.zone.name] = grouped[key].rates[row.zone.name] || {}
-      grouped[key].rates[row.zone.name][row.rate.type] = row.rate.rate.toString()
+      const zoneKeys = businessType === 'b2b'
+        ? [row.zone.name, row.zone.id, row.zone.code].filter(Boolean)
+        : [row.zone.name]
+      const rateValue = row.rate.rate.toString()
+
+      for (const zoneKey of zoneKeys) {
+        grouped[key].rates[zoneKey] = grouped[key].rates[zoneKey] || {}
+        grouped[key].rates[zoneKey][row.rate.type] = rateValue
+
+        if (businessType === 'b2b') {
+          if (row.rate.type === 'forward') {
+            grouped[key].rates[zoneKey].forward_per_kg = rateValue
+            grouped[key].rates[zoneKey].rate_per_kg = rateValue
+          }
+          if (row.rate.type === 'rto') {
+            grouped[key].rates[zoneKey].rto_per_kg = rateValue
+          }
+          grouped[key].rates[zoneKey].min_weight =
+            grouped[key].rates[zoneKey].min_weight ?? Number(row.rate.min_weight ?? 0)
+        }
+      }
 
       if (businessType === 'b2c') {
         grouped[key].zone_slabs[row.zone.name] = grouped[key].zone_slabs[row.zone.name] || {}

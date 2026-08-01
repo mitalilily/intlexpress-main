@@ -82,6 +82,12 @@ const getB2BLaneRate = (
   return null
 }
 
+const getB2BForwardRate = (rates: Record<string, any> | null | undefined) =>
+  rates?.forward_per_kg ?? rates?.rate_per_kg ?? rates?.forward
+
+const getB2BRtoRate = (rates: Record<string, any> | null | undefined) =>
+  rates?.rto_per_kg ?? rates?.rto
+
 // --- B2C Table ---
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const B2CClientTable = ({ data, zones }: { data: ShippingRate[]; zones: any[] }) => {
@@ -196,7 +202,7 @@ const B2BClientTable = ({
                             originZone,
                             destinationZone,
                           )
-                          const perKg = laneRate?.forward_per_kg ?? laneRate?.rate_per_kg
+                          const perKg = getB2BForwardRate(laneRate)
 
                           return (
                             <TableCell
@@ -230,8 +236,8 @@ const B2BClientTable = ({
                   return (
                     <TableRow key={zone.id || zone.code || zone.name}>
                       <TableCell>{zone.name || zone.code}</TableCell>
-                      <TableCell>₹{rates.forward_per_kg ?? 'NA'}</TableCell>
-                      <TableCell>₹{rates.rto_per_kg ?? 'NA'}</TableCell>
+                      <TableCell>₹{getB2BForwardRate(rates) ?? 'NA'}</TableCell>
+                      <TableCell>₹{getB2BRtoRate(rates) ?? 'NA'}</TableCell>
                       <TableCell>{rates.min_weight ?? courier.min_weight ?? 'NA'} kg</TableCell>
                     </TableRow>
                   )
@@ -280,8 +286,8 @@ const RateCard = () => {
         // should use the same to avoid returning NA for all values.
         const zoneRates = r.rates?.[zone.name] || {}
         if (businessType === 'b2b') {
-          base[`${zone.name} (Per Kg)`] = `F: ₹${zoneRates.forward_per_kg ?? 'NA'} | RTO: ₹${
-            zoneRates.rto_per_kg ?? 'NA'
+          base[`${zone.name} (Per Kg)`] = `F: ₹${getB2BForwardRate(zoneRates) ?? 'NA'} | RTO: ₹${
+            getB2BRtoRate(zoneRates) ?? 'NA'
           }`
         } else {
           base[`${zone.name} (F | RTO)`] = `F: ₹${zoneRates.forward ?? 'NA'} | RTO: ₹${

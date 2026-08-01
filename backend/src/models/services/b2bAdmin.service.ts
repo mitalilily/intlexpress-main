@@ -573,10 +573,6 @@ export const listZoneToZoneRates = async (params: {
       if (params.planId) {
         shouldFilterByPlan = true
         filters.push(eq(b2bZoneToZoneRates.plan_id, params.planId))
-      } else {
-        // If no plan_id provided, only show rates without plan_id (generic rates)
-        shouldFilterByPlan = true
-        filters.push(isNull(b2bZoneToZoneRates.plan_id))
       }
     }
 
@@ -615,6 +611,7 @@ export const listZoneToZoneRates = async (params: {
         id: b2bZoneToZoneRates.id,
         originZoneId: b2bZoneToZoneRates.origin_zone_id,
         destinationZoneId: b2bZoneToZoneRates.destination_zone_id,
+        planId: b2bZoneToZoneRates.plan_id,
         courierId: b2bZoneToZoneRates.courier_id,
         serviceProvider: b2bZoneToZoneRates.service_provider,
         // Rate per kg (only field)
@@ -697,6 +694,7 @@ export const listZoneToZoneRates = async (params: {
             id: b2bZoneToZoneRates.id,
             originZoneId: b2bZoneToZoneRates.origin_zone_id,
             destinationZoneId: b2bZoneToZoneRates.destination_zone_id,
+            planId: b2bZoneToZoneRates.plan_id,
             courierId: b2bZoneToZoneRates.courier_id,
             serviceProvider: b2bZoneToZoneRates.service_provider,
             // Core pricing fields
@@ -964,6 +962,7 @@ export const importZoneRatesFromCsv = async (
   fileBuffer: Buffer,
   options: {
     courierScope?: CourierScope
+    planId?: string | null
   },
 ) => {
   const csv = fileBuffer.toString('utf8')
@@ -1008,6 +1007,7 @@ export const importZoneRatesFromCsv = async (
         destinationZoneId,
         ratePerKg: Number(row.rate_per_kg),
         courierScope: options.courierScope,
+        planId: options.planId ?? null,
       })
 
       inserted += 1
