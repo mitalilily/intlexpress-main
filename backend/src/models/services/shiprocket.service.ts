@@ -83,6 +83,7 @@ import {
   normalizeB2CServiceProvider,
   normalizeB2CShippingMode,
 } from './b2cRateCard.service'
+import { getDelhiveryAccounts } from './delhiveryCredentials.service'
 import {
   AfterShipTrackingService,
   isAfterShipTrackingConfigured,
@@ -135,6 +136,13 @@ const pdfFonts = {
 
 const MAX_MANIFEST_RETRY_ATTEMPTS = 3
 const WALLET_TRANSACTION_GST_PERCENT = 18
+const DELHIVERY_B2B_ACCOUNT_CODES = new Set(['account_2', 'account_3'])
+const normalizeDelhiveryB2BAccountCode = (value: unknown) => {
+  const normalized = String(value || '').trim()
+  const accountCode = normalized.match(/account_[23]/)?.[0] || ''
+
+  return DELHIVERY_B2B_ACCOUNT_CODES.has(accountCode) ? accountCode : ''
+}
 export const ORIGINAL_WALLET_DEBIT_REASONS = [
   'B2C Prepaid Order Payment',
   'B2C COD Service Charges',
@@ -5744,6 +5752,8 @@ export const fetchAvailableCouriersWithRatesB2B = async (
       max_slab_weight?: number | null
     }) =>
       `${String(courier.id)}__${normalizeProviderKey(courier.integration_type || courier.serviceProvider || null)}__${courier.max_slab_weight ?? 'base'}`
+    const makeDelhiveryB2BAccountOptionKey = (courier: any, accountCode: string) =>
+      `${String(courier.courier_option_key || makeCourierIdentityKey(courier))}__${accountCode}`
 
     const requestedShadowfaxMode = normalizeShadowfaxForwardModeValue(
       (params as any).shadowfax_forward_mode || 'warehouse',
@@ -6143,6 +6153,37 @@ export const fetchAvailableCouriersWithRatesB2B = async (
       }
     }
 
+    const activeDelhiveryB2BAccounts = (await getDelhiveryAccounts()).filter(
+      (account) =>
+        account.accountCode !== 'account_1' &&
+        account.isActive === true &&
+        Boolean(String(account.username || '').trim()) &&
+        Boolean(String(account.password || account.b2bAuthToken || '').trim()),
+    )
+
+    combined = combined.flatMap((courier: any) => {
+      const providerKey = normalizeProviderKey(courier.integration_type || courier.serviceProvider)
+      if (providerKey !== 'delhivery') return [courier]
+
+      return activeDelhiveryB2BAccounts.map((account) => ({
+        ...courier,
+        name: `${courier.name || 'Delhivery B2B'} - ${account.accountLabel}`,
+        displayName: `${courier.displayName || courier.name || 'Delhivery B2B'} - ${account.accountLabel}`,
+        courier_option_key: makeDelhiveryB2BAccountOptionKey(courier, account.accountCode),
+        delhivery_account_code: account.accountCode,
+        delhivery_account_label: account.accountLabel,
+        delhivery_account: {
+          accountCode: account.accountCode,
+          accountLabel: account.accountLabel,
+        },
+        provider_serviceability: {
+          ...(courier.provider_serviceability || {}),
+          delhivery_account_code: account.accountCode,
+          delhivery_account_label: account.accountLabel,
+        },
+      }))
+    })
+
     return combined
   } catch (error: any) {
     console.error('Error fetching combined courier rates (B2B):', error.message)
@@ -6233,6 +6274,8 @@ export interface ShipmentParams {
   selected_rate_card_id?: string
   selected_max_slab_weight?: number
   courier_option_key?: string
+  delhivery_account_code?: string
+  delhiveryAccountCode?: string
   amazon_request_token?: string
   amazon_rate_id?: string
   amazon_service_id?: string
@@ -6447,7 +6490,6 @@ export async function createB2COrder({
 
     return null
   }
-
   const pickupDetails = normalizeJsonValue(params.pickup) ?? {}
   const rtoDetails = normalizeJsonValue(params.rto)
   const isCodOrder = params.payment_type === 'cod'
@@ -10043,6 +10085,7 @@ export const createB2BShipmentService = async (
   }
 
   let selectedDelhiveryShippingMode: DelhiveryShippingMode | null = null
+  let selectedDelhiveryB2BAccountCode = ''
   if (effectiveIntegrationType === 'delhivery') {
     selectedDelhiveryShippingMode = resolveDelhiveryShippingMode({
       courierId,
@@ -10056,6 +10099,11 @@ export const createB2BShipmentService = async (
       )
     }
     params.shipping_mode = selectedDelhiveryShippingMode
+    selectedDelhiveryB2BAccountCode =
+      normalizeDelhiveryB2BAccountCode(params.delhivery_account_code) ||
+      normalizeDelhiveryB2BAccountCode(params.delhiveryAccountCode) ||
+      normalizeDelhiveryB2BAccountCode(params.courier_option_key) ||
+      'account_2'
   }
 
   if (!['shadowfax', 'delhivery'].includes(effectiveIntegrationType)) {
@@ -10285,28 +10333,64 @@ export const createB2BShipmentService = async (
   if (selectedDelhiveryShippingMode) {
     payload.shipping_mode = selectedDelhiveryShippingMode
   }
+  if (selectedDelhiveryB2BAccountCode) {
+    payload.delhivery_account_code = selectedDelhiveryB2BAccountCode
+  }
 
   try {
     if (effectiveIntegrationType === 'delhivery') {
+      const delhiveryAccounts = await getDelhiveryAccounts()
+      const requestedDelhiveryAccount = delhiveryAccounts.find(
+        (account) => account.accountCode === selectedDelhiveryB2BAccountCode,
+      )
+
+      if (!requestedDelhiveryAccount) {
+        throw new HttpError(
+          400,
+          `Selected Delhivery B2B account ${selectedDelhiveryB2BAccountCode} was not found. Save both B2B credential cards before booking.`,
+        )
+      }
+
+      if (requestedDelhiveryAccount.isActive !== true) {
+        throw new HttpError(
+          400,
+          `${requestedDelhiveryAccount.accountLabel || selectedDelhiveryB2BAccountCode} is disabled. Enable this B2B account in Admin > Couriers > Credentials before booking.`,
+        )
+      }
+
+      if (!requestedDelhiveryAccount.username || !requestedDelhiveryAccount.password) {
+        throw new HttpError(
+          400,
+          `${requestedDelhiveryAccount.accountLabel || selectedDelhiveryB2BAccountCode} username/password are not configured. Save this B2B credential card before booking.`,
+        )
+      }
+
       const delhivery = new DelhiveryService({
-        preferredAccountCode: 'account_2',
+        preferredAccountCode: selectedDelhiveryB2BAccountCode,
         pickupLocationId: String(params.pickup_location_id || '').trim() || null,
         pickupLocationName: String(
           params.pickup?.warehouse_name || params.pickup_location_alias || params.pickup_location_id || '',
         ).trim(),
       })
       const resolvedDelhiveryAccount = await delhivery.getResolvedAccount()
+      if (resolvedDelhiveryAccount?.accountCode !== selectedDelhiveryB2BAccountCode) {
+        throw new HttpError(
+          400,
+          `Selected ${selectedDelhiveryB2BAccountCode} could not be resolved without fallback. Check the B2B credential card and try again.`,
+        )
+      }
+
       if (!resolvedDelhiveryAccount?.isConfigured) {
         throw new HttpError(
           400,
-          'Delhivery credentials are not configured. Save at least one Delhivery account in Admin > Couriers > Credentials before booking B2B shipments.',
+          `${resolvedDelhiveryAccount?.accountLabel || selectedDelhiveryB2BAccountCode} is not configured. Save this Delhivery B2B account before booking.`,
         )
       }
 
       if (!resolvedDelhiveryAccount.username || !resolvedDelhiveryAccount.password) {
         throw new HttpError(
           400,
-          'Delhivery B2B account_2 username/password are not configured. Save the B2B credentials before booking B2B shipments.',
+          `${resolvedDelhiveryAccount.accountLabel || selectedDelhiveryB2BAccountCode} username/password are not configured. Save this B2B credential card before booking.`,
         )
       }
 

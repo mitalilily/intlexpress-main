@@ -13,6 +13,7 @@ import {
   Input,
   Spinner,
   Stack,
+  Switch,
   Text,
   useToast,
   VStack,
@@ -29,7 +30,7 @@ import {
 const DELHIVERY_API_BASE = 'https://track.delhivery.com'
 const DELHIVERY_B2B_AUTH_API_BASE = 'https://ltl-clients-api.delhivery.com'
 const ACCOUNT_CODES = ['account_1', 'account_2', 'account_3']
-const AUTH_ACCOUNT_INDEXES = [0, 1]
+const AUTH_ACCOUNT_INDEXES = [0, 1, 2]
 const ACCOUNT_PRESETS = [
   {
     title: 'B2C API Authentication',
@@ -37,21 +38,21 @@ const ACCOUNT_PRESETS = [
     description: 'Token auth used by Delhivery B2C shipment APIs.',
   },
   {
-    title: 'B2B API Authentication',
-    defaultLabel: 'Delhivery B2B Account',
-    description: 'Username/password login used to obtain the B2B bearer token.',
+    title: 'B2B API Authentication 1',
+    defaultLabel: 'Delhivery B2B Account 1',
+    description: 'First independent Delhivery B2B account shown as its own courier option.',
   },
   {
-    title: 'Delhivery Backup Credentials',
-    defaultLabel: 'Delhivery Backup Account',
-    description: 'Hidden backup account retained for existing saved data.',
+    title: 'B2B API Authentication 2',
+    defaultLabel: 'Delhivery B2B Account 2',
+    description: 'Second independent Delhivery B2B account shown as its own courier option.',
   },
 ]
 
 const buildEmptyAccount = (index) => ({
   accountCode: ACCOUNT_CODES[index],
   accountLabel: ACCOUNT_PRESETS[index]?.defaultLabel || `Delhivery Account ${index + 1}`,
-  apiBase: index === 1 ? DELHIVERY_B2B_AUTH_API_BASE : DELHIVERY_API_BASE,
+  apiBase: index > 0 ? DELHIVERY_B2B_AUTH_API_BASE : DELHIVERY_API_BASE,
   clientName: '',
   apiKey: '',
   username: '',
@@ -62,7 +63,7 @@ const buildEmptyAccount = (index) => ({
   passwordMasked: '',
   hasB2BAuthToken: false,
   b2bAuthTokenExpiresAt: '',
-  isActive: index === 0,
+  isActive: true,
   isDefault: index === 0,
   pickupLocationIds: [],
   pickupLocationNames: [],
@@ -85,11 +86,11 @@ const normalizeArrayInput = (value) => {
 
 const normalizeApiBase = (value, index) => {
   const normalized = String(value || '').trim()
-  if (index === 1 && (!normalized || !normalized.toLowerCase().includes('ltl-clients-api'))) {
+  if (index > 0 && (!normalized || !normalized.toLowerCase().includes('ltl-clients-api'))) {
     return DELHIVERY_B2B_AUTH_API_BASE
   }
 
-  return normalized || (index === 1 ? DELHIVERY_B2B_AUTH_API_BASE : DELHIVERY_API_BASE)
+  return normalized || (index > 0 ? DELHIVERY_B2B_AUTH_API_BASE : DELHIVERY_API_BASE)
 }
 
 const normalizeAccounts = (accounts) =>
@@ -119,7 +120,7 @@ const normalizeAccounts = (accounts) =>
   }))
 
 const isConfiguredAccount = (account, index) => {
-  if (index === 1) {
+  if (index > 0) {
     return Boolean(String(account.username || '').trim()) && Boolean(account.hasPassword || account.password)
   }
 
@@ -161,7 +162,8 @@ const CourierCredentials = () => {
   const authSummary = useMemo(
     () => ({
       b2cReady: isConfiguredAccount(accounts[0] || buildEmptyAccount(0), 0),
-      b2bReady: isConfiguredAccount(accounts[1] || buildEmptyAccount(1), 1),
+      b2b1Ready: isConfiguredAccount(accounts[1] || buildEmptyAccount(1), 1),
+      b2b2Ready: isConfiguredAccount(accounts[2] || buildEmptyAccount(2), 2),
     }),
     [accounts],
   )
@@ -298,7 +300,7 @@ const CourierCredentials = () => {
           Courier Credentials
         </Text>
         <Text color="gray.500">
-          Manage the authentication fields used by Delhivery B2C and B2B APIs.
+          Manage Delhivery B2C plus two independent Delhivery B2B accounts.
         </Text>
       </Stack>
 
@@ -306,15 +308,18 @@ const CourierCredentials = () => {
         <Badge colorScheme={authSummary.b2cReady ? 'green' : 'orange'} px={3} py={1} borderRadius="full">
           B2C {authSummary.b2cReady ? 'ready' : 'missing token'}
         </Badge>
-        <Badge colorScheme={authSummary.b2bReady ? 'green' : 'orange'} px={3} py={1} borderRadius="full">
-          B2B {authSummary.b2bReady ? 'ready' : 'missing login'}
+        <Badge colorScheme={authSummary.b2b1Ready ? 'green' : 'orange'} px={3} py={1} borderRadius="full">
+          B2B 1 {authSummary.b2b1Ready ? 'ready' : 'missing login'}
+        </Badge>
+        <Badge colorScheme={authSummary.b2b2Ready ? 'green' : 'orange'} px={3} py={1} borderRadius="full">
+          B2B 2 {authSummary.b2b2Ready ? 'ready' : 'missing login'}
         </Badge>
       </Flex>
 
-      <Grid templateColumns={{ base: '1fr', lg: 'repeat(2, minmax(0, 1fr))' }} gap={4}>
+      <Grid templateColumns={{ base: '1fr', xl: 'repeat(3, minmax(0, 1fr))' }} gap={4}>
         {visibleAccounts.map((account, visibleIndex) => {
           const index = AUTH_ACCOUNT_INDEXES[visibleIndex]
-          const isB2BAccount = index === 1
+          const isB2BAccount = index > 0
           const isConfigured = isConfiguredAccount(account, index)
 
           return (
@@ -334,6 +339,14 @@ const CourierCredentials = () => {
                       {isConfigured ? 'Configured' : 'Missing'}
                     </Badge>
                   </Flex>
+
+                  <FormControl display="flex" alignItems="center" justifyContent="space-between">
+                    <FormLabel mb="0">Enable this account</FormLabel>
+                    <Switch
+                      isChecked={account.isActive !== false}
+                      onChange={(event) => updateAccount(index, { isActive: event.target.checked })}
+                    />
+                  </FormControl>
 
                   <FormControl>
                     <FormLabel>{isB2BAccount ? 'Auth API Base URL' : 'API Base URL'}</FormLabel>
@@ -381,7 +394,7 @@ const CourierCredentials = () => {
                         <Input
                           value={account.username || ''}
                           onChange={(event) =>
-                            updateAccount(index, { username: event.target.value })
+                            updateAccount(index, { username: event.target.value, isActive: true })
                           }
                           placeholder="Delhivery B2B username"
                         />
@@ -393,7 +406,7 @@ const CourierCredentials = () => {
                           type="password"
                           value={account.password || ''}
                           onChange={(event) =>
-                            updateAccount(index, { password: event.target.value })
+                            updateAccount(index, { password: event.target.value, isActive: true })
                           }
                           placeholder={account.passwordMasked || 'Delhivery B2B password'}
                         />

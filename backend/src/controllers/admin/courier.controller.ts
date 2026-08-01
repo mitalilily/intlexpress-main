@@ -516,13 +516,45 @@ const buildDelhiveryCredentialResponse = (accounts: DelhiveryAccountConfig[]) =>
 
 const getDefaultDelhiveryAccountLabel = (index: number) => {
   if (index === 0) return 'Delhivery B2C Account'
-  if (index === 1) return 'Delhivery B2B Account'
-  if (index === 2) return 'Delhivery Backup Account'
+  if (index === 1) return 'Delhivery B2B Account 1'
+  if (index === 2) return 'Delhivery B2B Account 2'
   return `Delhivery Account ${index + 1}`
 }
 
+const LEGACY_DELHIVERY_ACCOUNT_LABELS_BY_INDEX: Record<number, Set<string>> = {
+  1: new Set(['delhivery b2b account']),
+  2: new Set(['delhivery backup account', 'delhivery backup credentials']),
+}
+
+const normalizeDelhiveryAccountLabel = (value: unknown, index: number) => {
+  const normalized = String(value || '').trim()
+  const legacyLabels = LEGACY_DELHIVERY_ACCOUNT_LABELS_BY_INDEX[index]
+
+  if (!normalized || legacyLabels?.has(normalized.toLowerCase())) {
+    return getDefaultDelhiveryAccountLabel(index)
+  }
+
+  return normalized
+}
+
+const isDelhiveryB2BAccountIndex = (index: number) => index > 0
+
 const getDefaultDelhiveryAccountApiBase = (index: number) =>
-  index === 1 ? DEFAULT_DELHIVERY_B2B_API_BASE : DEFAULT_DELHIVERY_API_BASE
+  isDelhiveryB2BAccountIndex(index) ? DEFAULT_DELHIVERY_B2B_API_BASE : DEFAULT_DELHIVERY_API_BASE
+
+const isDelhiveryAccountConfiguredForAdmin = (params: {
+  index: number
+  apiKey: string
+  username: string
+  password: string
+  b2bAuthToken?: string
+}) => {
+  if (!isDelhiveryB2BAccountIndex(params.index)) {
+    return Boolean(params.apiKey)
+  }
+
+  return Boolean(params.username && (params.password || params.b2bAuthToken))
+}
 
 const shouldAutoActivateDelhiveryAccount = (params: {
   index: number
@@ -542,8 +574,7 @@ const shouldAutoActivateDelhiveryAccount = (params: {
       params.b2bAuthToken ||
       params.clientName ||
       params.pickupLocationIds.length ||
-      params.pickupLocationNames.length ||
-      params.apiBase.toLowerCase().includes('ltl-clients-api'),
+      params.pickupLocationNames.length,
   )
 }
 
@@ -594,10 +625,7 @@ const sanitizeDelhiveryAccountsPayload = (
 
     return {
       accountCode,
-      accountLabel:
-        String(record.accountLabel || '').trim() ||
-        existing?.accountLabel ||
-        getDefaultDelhiveryAccountLabel(index),
+      accountLabel: normalizeDelhiveryAccountLabel(record.accountLabel || existing?.accountLabel, index),
       apiBase,
       clientName,
       username: nextUsername || existing?.username || '',
@@ -609,7 +637,13 @@ const sanitizeDelhiveryAccountsPayload = (
       isDefault: record.isDefault === true,
       pickupLocationIds,
       pickupLocationNames,
-      isConfigured: Boolean(nextApiKey || existing?.apiKey || ''),
+      isConfigured: isDelhiveryAccountConfiguredForAdmin({
+        index,
+        apiKey: nextApiKey || existing?.apiKey || '',
+        username: nextUsername || existing?.username || '',
+        password: nextPassword || existing?.password || '',
+        b2bAuthToken,
+      }),
     } as DelhiveryAccountConfig
   })
 

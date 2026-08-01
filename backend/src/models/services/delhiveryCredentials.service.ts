@@ -11,9 +11,13 @@ const LEGACY_DELHIVERY_B2C_CLIENT_NAMES = new Set(['INTLEXPRESS'])
 const DELHIVERY_ACCOUNT_CODES = ['account_1', 'account_2', 'account_3'] as const
 const DELHIVERY_ACCOUNT_LABELS = [
   'Delhivery B2C Account',
-  'Delhivery B2B Account',
-  'Delhivery Backup Account',
+  'Delhivery B2B Account 1',
+  'Delhivery B2B Account 2',
 ] as const
+const LEGACY_DELHIVERY_ACCOUNT_LABELS_BY_INDEX: Record<number, Set<string>> = {
+  1: new Set(['delhivery b2b account']),
+  2: new Set(['delhivery backup account', 'delhivery backup credentials']),
+}
 export const HARDCODED_DELHIVERY_API_KEY =
   '7ebb0a19e281620bc670053bcde0c31746bc5f7f'
 
@@ -46,6 +50,16 @@ export interface DelhiveryResolutionContext {
 }
 
 const normalize = (value?: unknown) => String(value ?? '').trim()
+const normalizeDelhiveryAccountLabel = (value: unknown, index: number) => {
+  const normalized = normalize(value)
+  const legacyLabels = LEGACY_DELHIVERY_ACCOUNT_LABELS_BY_INDEX[index]
+
+  if (!normalized || legacyLabels?.has(normalized.toLowerCase())) {
+    return DELHIVERY_ACCOUNT_LABELS[index] || `Delhivery Account ${index + 1}`
+  }
+
+  return normalized
+}
 const normalizeDelhiveryClientName = (value: unknown, index: number) => {
   const normalized = normalize(value)
   if (index !== 0) return normalized
@@ -106,8 +120,24 @@ const normalizeStringArray = (value: unknown) => {
     .filter((entry, index, source) => source.indexOf(entry) === index)
 }
 
+const isDelhiveryB2BAccountIndex = (index: number) => index > 0
+
 const getDefaultDelhiveryAccountApiBase = (index: number) =>
-  index === 1 ? DEFAULT_DELHIVERY_B2B_API_BASE : DEFAULT_DELHIVERY_API_BASE
+  isDelhiveryB2BAccountIndex(index) ? DEFAULT_DELHIVERY_B2B_API_BASE : DEFAULT_DELHIVERY_API_BASE
+
+const isDelhiveryAccountConfigured = (params: {
+  index: number
+  apiKey: string
+  username: string
+  password: string
+  b2bAuthToken?: string
+}) => {
+  if (!isDelhiveryB2BAccountIndex(params.index)) {
+    return Boolean(params.apiKey)
+  }
+
+  return Boolean(params.username && (params.password || params.b2bAuthToken))
+}
 
 const inferDelhiveryAccountActive = ({
   index,
@@ -136,8 +166,7 @@ const inferDelhiveryAccountActive = ({
       b2bAuthToken ||
       clientName ||
       pickupLocationIds.length ||
-      pickupLocationNames.length ||
-      apiBase.toLowerCase().includes('ltl-clients-api'),
+      pickupLocationNames.length,
   )
 }
 
@@ -164,7 +193,13 @@ const buildEmptyAccount = (index: number): DelhiveryAccountConfig => ({
   isDefault: index === 0,
   pickupLocationIds: [],
   pickupLocationNames: [],
-  isConfigured: Boolean(resolveDelhiveryApiKey()),
+  isConfigured: isDelhiveryAccountConfigured({
+    index,
+    apiKey: resolveDelhiveryApiKey(),
+    username: '',
+    password: '',
+    b2bAuthToken: '',
+  }),
 })
 
 const maskApiKey = (value: string) =>
@@ -190,8 +225,7 @@ const normalizeAccount = (
   const b2bAuthTokenExpiresAt = normalize(
     raw.b2bAuthTokenExpiresAt || raw.b2b_auth_token_expires_at,
   )
-  const accountLabel =
-    normalize(raw.accountLabel) || DELHIVERY_ACCOUNT_LABELS[index] || `Delhivery Account ${index + 1}`
+  const accountLabel = normalizeDelhiveryAccountLabel(raw.accountLabel, index)
   const isDefault = raw.isDefault === true
   const pickupLocationIds = normalizeStringArray(raw.pickupLocationIds || raw.pickup_location_ids)
   const pickupLocationNames = normalizeStringArray(
@@ -225,7 +259,13 @@ const normalizeAccount = (
     isDefault,
     pickupLocationIds,
     pickupLocationNames,
-    isConfigured: Boolean(apiKey),
+    isConfigured: isDelhiveryAccountConfigured({
+      index,
+      apiKey,
+      username,
+      password,
+      b2bAuthToken,
+    }),
   }
 }
 
