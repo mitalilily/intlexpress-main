@@ -757,7 +757,12 @@ export const createDelhiveryB2BShipment = async ({
   token: string
   apiBase?: string | null
   payload: Record<string, any>
-  files?: Array<{ data: Uint8Array; filename: string; contentType?: string }>
+  files?: Array<{
+    data: Uint8Array
+    filename: string
+    contentType?: string
+    invoiceNumber?: string
+  }>
 }) => {
   const normalizedToken = ensureDelhiveryB2BToken(token)
   const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
@@ -777,12 +782,31 @@ export const createDelhiveryB2BShipment = async ({
           Object.entries(payload || {}).forEach(([key, value]) => {
             appendDelhiveryManifestField(form, key, value)
           })
+          const docData = files
+            .filter((file) => file?.data && file?.filename)
+            .map((file) => {
+              const fallbackInvoiceNumber = String(file.filename || '')
+                .replace(/\.[^.]+$/, '')
+                .trim()
+
+              return {
+                doc_type: 'INVOICE_COPY',
+                doc_meta: {
+                  invoice_num: [String(file.invoiceNumber || fallbackInvoiceNumber).trim()].filter(Boolean),
+                },
+              }
+            })
+
+          if (docData.length) {
+            form.append('doc_data', JSON.stringify(docData))
+          }
+
           files.forEach((file) => {
             if (!file?.data || !file?.filename) return
             const blob = new (globalThis as any).Blob([file.data], {
               type: file.contentType || 'application/octet-stream',
             })
-            form.append('doc_data', blob, file.filename)
+            form.append('doc_file', blob, file.filename)
           })
 
           return axios.post(`${resolvedApiBase}/manifest`, form, {

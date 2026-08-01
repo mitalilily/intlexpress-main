@@ -3593,6 +3593,7 @@ type DelhiveryB2BInvoiceDocument = {
   data: Uint8Array
   filename: string
   contentType?: string
+  invoiceNumber?: string
 }
 
 const sanitizeDelhiveryB2BInvoiceFilename = (value: unknown, fallback: string) => {
@@ -3701,6 +3702,7 @@ const generateDelhiveryB2BInvoiceDocument = async ({
     data: new Uint8Array(pdfBuffer),
     filename: sanitizeDelhiveryB2BInvoiceFilename(`${safeInvoiceNumber}.pdf`, `invoice-${index + 1}.pdf`),
     contentType: 'application/pdf',
+    invoiceNumber: safeInvoiceNumber,
   }
 }
 
@@ -3748,6 +3750,7 @@ const resolveDelhiveryB2BInvoiceDocument = async ({
       data: new Uint8Array(response.data),
       filename: sanitizeDelhiveryB2BInvoiceFilename(keyName || urlName || fallbackName, fallbackName),
       contentType: String(response.headers?.['content-type'] || 'application/pdf'),
+      invoiceNumber: String(invoice?.invoiceNumber || payload.invoice_number || normalizedOrderNumber).trim(),
     }
   } catch (error: any) {
     console.warn('Unable to read uploaded B2B invoice document; using generated invoice copy', {
