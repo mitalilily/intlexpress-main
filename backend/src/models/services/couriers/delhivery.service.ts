@@ -783,7 +783,6 @@ export const createDelhiveryB2BShipment = async ({
               type: file.contentType || 'application/octet-stream',
             })
             form.append('doc_data', blob, file.filename)
-            form.append('doc_file', blob, file.filename)
           })
 
           return axios.post(`${resolvedApiBase}/manifest`, form, {
