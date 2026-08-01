@@ -3519,6 +3519,34 @@ const buildDelhiveryB2BManifestPayload = ({
     'General Goods'
   const consigneeGstin = sanitize(payload.consignee?.gstin) || 'UR'
   const sellerGstin = sanitize(payload.company?.gst || payload.pickup?.gst_number) || 'UR'
+  const billingName = sanitize(
+    payload.company?.name || payload.pickup?.warehouse_name || payload.pickup?.name,
+    'Seller',
+  )
+  const billingGstin = sanitize(payload.company?.gst || payload.pickup?.gst_number)
+  const billingPan = sanitize(
+    (payload.company as any)?.panNumber ||
+      (payload.company as any)?.pan_number ||
+      (payload.company as any)?.pan ||
+      (payload.pickup as any)?.panNumber ||
+      (payload.pickup as any)?.pan_number ||
+      (payload.pickup as any)?.pan,
+  )
+  const billingAddress = {
+    name: billingName,
+    company: billingName,
+    consignor: sanitize(payload.pickup?.name || billingName, billingName),
+    address: sanitize(
+      [payload.pickup?.address, payload.pickup?.address_2].filter(Boolean).join(', '),
+      sanitize(payload.consignee?.address),
+    ),
+    city: sanitize(payload.pickup?.city),
+    state: sanitize(payload.pickup?.state),
+    pin: sanitize(payload.pickup?.pincode),
+    phone: sanitizePhone(payload.pickup?.phone),
+    ...(billingPan ? { pan_number: billingPan } : {}),
+    ...(billingGstin ? { gst_number: billingGstin } : {}),
+  }
 
   const manifestPayload: Record<string, any> = {
     pickup_location: sanitize(pickupLocationName || payload.pickup?.warehouse_name),
@@ -3541,6 +3569,7 @@ const buildDelhiveryB2BManifestPayload = ({
     freight_mode: 'fop',
     fm_pickup: 'True',
     enable_paperless_movement: 'True',
+    billing_address: billingAddress,
     amount: codAmount,
     cod_amount: codAmount,
     invoices: invoiceRows.map((invoice, index) => {
