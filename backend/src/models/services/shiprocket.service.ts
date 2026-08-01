@@ -3566,7 +3566,6 @@ const buildDelhiveryB2BManifestPayload = ({
         order_id: normalizedOrderNumber,
         box_count: packageCount,
         description: productsDescription,
-        master: true,
       },
     ],
     suborders: [
@@ -3575,7 +3574,6 @@ const buildDelhiveryB2BManifestPayload = ({
         count: packageCount,
         box_count: packageCount,
         description: productsDescription,
-        master: true,
       },
     ],
     dimensions: Array.from(dimensionMap.values()),
