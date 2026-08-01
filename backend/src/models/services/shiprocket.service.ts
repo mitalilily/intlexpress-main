@@ -5951,10 +5951,13 @@ export const fetchAvailableCouriersWithRatesB2B = async (
     const zoneToZoneRates = await db
       .select({
         id: b2bZoneToZoneRates.id,
+        planId: b2bZoneToZoneRates.plan_id,
         courierId: b2bZoneToZoneRates.courier_id,
         serviceProvider: b2bZoneToZoneRates.service_provider,
         ratePerKg: b2bZoneToZoneRates.rate_per_kg,
         volumetricFactor: b2bZoneToZoneRates.volumetric_factor,
+        effectiveFrom: b2bZoneToZoneRates.effective_from,
+        updatedAt: b2bZoneToZoneRates.updated_at,
       })
       .from(b2bZoneToZoneRates)
       .where(and(...rateConditions))
@@ -5962,8 +5965,44 @@ export const fetchAvailableCouriersWithRatesB2B = async (
 
     // Step 6: Build courier list with rates
     const courierMap = new Map<string, any>()
+    const zoneToZoneRateMap = new Map<string, (typeof zoneToZoneRates)[number]>()
+    const getRateSelectionRank = (rate: (typeof zoneToZoneRates)[number]) => {
+      const planRank =
+        activePlanId && rate.planId && String(rate.planId) === String(activePlanId) ? 2 : 1
+      const effectiveTime = rate.effectiveFrom ? new Date(rate.effectiveFrom).getTime() : 0
+      const updatedTime = rate.updatedAt ? new Date(rate.updatedAt).getTime() : 0
+
+      return { planRank, effectiveTime, updatedTime }
+    }
 
     for (const rate of zoneToZoneRates) {
+      if (!rate.courierId) continue
+      const providerKey = normalizeProviderKey(rate.serviceProvider)
+      if (!providerKey) continue
+
+      const key = `${Number(rate.courierId)}__${providerKey}`
+      const existing = zoneToZoneRateMap.get(key)
+      if (!existing) {
+        zoneToZoneRateMap.set(key, rate)
+        continue
+      }
+
+      const nextRank = getRateSelectionRank(rate)
+      const currentRank = getRateSelectionRank(existing)
+      const isBetter =
+        nextRank.planRank > currentRank.planRank ||
+        (nextRank.planRank === currentRank.planRank &&
+          nextRank.effectiveTime > currentRank.effectiveTime) ||
+        (nextRank.planRank === currentRank.planRank &&
+          nextRank.effectiveTime === currentRank.effectiveTime &&
+          nextRank.updatedTime > currentRank.updatedTime)
+
+      if (isBetter) {
+        zoneToZoneRateMap.set(key, rate)
+      }
+    }
+
+    for (const rate of Array.from(zoneToZoneRateMap.values())) {
       if (!rate.courierId) continue
 
       // Check if courier is enabled

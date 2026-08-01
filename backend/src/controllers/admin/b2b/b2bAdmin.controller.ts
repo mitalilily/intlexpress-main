@@ -485,7 +485,11 @@ export const calculateRateController = async (req: Request, res: Response) => {
         req.body.destinationPincode ?? req.body.destination_pincode ?? req.body.destination,
       weightKg: Number(req.body.weightKg ?? req.body.weight ?? 0),
       length: req.body.length ? Number(req.body.length) : undefined,
-      width: req.body.width ? Number(req.body.width) : undefined,
+      width: req.body.width
+        ? Number(req.body.width)
+        : req.body.breadth
+          ? Number(req.body.breadth)
+          : undefined,
       height: req.body.height ? Number(req.body.height) : undefined,
       invoiceValue: req.body.invoiceValue ?? req.body.invoice_value,
       paymentMode: (req.body.paymentMode ?? req.body.payment_mode ?? 'PREPAID').toUpperCase(),
