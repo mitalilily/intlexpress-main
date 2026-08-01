@@ -3507,6 +3507,7 @@ const buildDelhiveryB2BManifestPayload = ({
     positiveNumber(packageWeight, 0.5)
   const paymentMode =
     String(payload.payment_type || '').trim().toLowerCase() === 'cod' ? 'CoD' : 'Prepaid'
+  const delhiveryPaymentMode = paymentMode === 'CoD' ? 'cod' : 'prepaid'
   const codAmount =
     paymentMode === 'CoD' ? Math.max(1, Number(payload.order_amount ?? invoiceValue ?? 0)) : 0
   const productsDescription =
@@ -3536,9 +3537,11 @@ const buildDelhiveryB2BManifestPayload = ({
       email: sanitize(payload.consignee?.email),
     },
     d_mode: paymentMode,
-    payment_mode: paymentMode,
+    payment_mode: delhiveryPaymentMode,
     amount: codAmount,
     invoices: invoiceRows.map((invoice, index) => {
+      const invoiceIdent = sanitize(invoice.invoiceNumber, `${normalizedOrderNumber}-${index + 1}`)
+      const delhiveryInvoiceNumber = invoiceIdent.slice(0, 25)
       const ewaybill = sanitize(
         invoice.ewaybill ||
           invoice.ewbn ||
@@ -3548,9 +3551,9 @@ const buildDelhiveryB2BManifestPayload = ({
             : ''),
       )
       return {
-        ident: sanitize(invoice.invoiceNumber, `${normalizedOrderNumber}-${index + 1}`),
+        ident: invoiceIdent,
         n_value: positiveNumber(invoice.invoiceValue, invoiceValue || 1),
-        inv_num: sanitize(invoice.invoiceNumber, `${normalizedOrderNumber}-${index + 1}`),
+        inv_num: delhiveryInvoiceNumber,
         inv_amt: positiveNumber(invoice.invoiceValue, invoiceValue || 1),
         ...(ewaybill ? { ewaybill } : {}),
       }
