@@ -44,6 +44,7 @@ import { db } from '../client'
 import { b2b_orders } from '../schema/b2bOrders'
 import { b2c_orders } from '../schema/b2cOrders'
 import { invoicePreferences } from '../schema/invoicePreferences'
+import { kyc } from '../schema/kyc'
 import { ndr_events } from '../schema/ndr'
 // import { shippingRate, shippingRateCard } from '../schema/shippingRateCard'
 import dayjs from 'dayjs'
@@ -6454,7 +6455,7 @@ export interface ShipmentParams {
     phone: string
     addressNickname?: string
   }
-  company: { name?: string; gst?: string }
+  company: { name?: string; gst?: string; panNumber?: string; pan_number?: string; pan?: string }
   pickup_location_alias?: string
   return_location_alias?: string
   templateName?: string
@@ -10225,6 +10226,51 @@ export const createB2BShipmentService = async (
   const invoiceValue = Number(
     primaryInvoice?.invoiceValue ?? params.invoice_amount ?? params.order_amount ?? 0,
   )
+  const normalizeSellerTaxId = (value: unknown) =>
+    String(value ?? '')
+      .trim()
+      .toUpperCase()
+  const [sellerProfileRow] = await db
+    .select({
+      companyInfo: userProfiles.companyInfo,
+      gstDetails: userProfiles.gstDetails,
+    })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1)
+  const [sellerKycRow] = await db
+    .select({
+      gstin: kyc.gstin,
+      panNumber: kyc.panNumber,
+    })
+    .from(kyc)
+    .where(eq(kyc.userId, userId))
+    .limit(1)
+  const sellerCompanyInfo = (sellerProfileRow?.companyInfo || {}) as Record<string, any>
+  const sellerGstDetails = (sellerProfileRow?.gstDetails || {}) as Record<string, any>
+  const sellerGstin = normalizeSellerTaxId(
+    params.company?.gst ||
+      params.pickup?.gst_number ||
+      sellerKycRow?.gstin ||
+      sellerGstDetails.gstNumber ||
+      sellerGstDetails.gstin ||
+      sellerCompanyInfo.gstNumber ||
+      sellerCompanyInfo.gstin ||
+      sellerCompanyInfo.gst ||
+      sellerCompanyInfo.companyGst,
+  )
+  const sellerPanNumber = normalizeSellerTaxId(
+    params.company?.panNumber ||
+      params.company?.pan_number ||
+      params.company?.pan ||
+      (params.pickup as any)?.panNumber ||
+      (params.pickup as any)?.pan_number ||
+      (params.pickup as any)?.pan ||
+      sellerKycRow?.panNumber ||
+      sellerCompanyInfo.panNumber ||
+      sellerCompanyInfo.pan_number ||
+      sellerCompanyInfo.pan,
+  )
   const shadowfaxForwardMode = normalizeShadowfaxForwardModeValue(
     params.shadowfax_forward_mode || 'warehouse',
   )
@@ -10436,7 +10482,8 @@ export const createB2BShipmentService = async (
     invoice_amount: primaryInvoice?.invoiceValue ?? params.invoice_amount,
     company: {
       name: params.consignee?.company_name || params.company?.name || '',
-      gst: params.consignee?.gstin || params.company?.gst || '',
+      gst: params.consignee?.gstin || sellerGstin || '',
+      panNumber: sellerPanNumber || undefined,
     },
   }
   if (selectedDelhiveryShippingMode) {
