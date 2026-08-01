@@ -3473,7 +3473,7 @@ const buildDelhiveryB2BManifestPayload = ({
       ]
   const dimensionMap = new Map<
     string,
-    { length: number; width: number; height: number; count: number }
+    { length: number; width: number; height: number; count: number; box_count: number }
   >()
 
   for (const box of dimensionsSource) {
@@ -3494,8 +3494,9 @@ const buildDelhiveryB2BManifestPayload = ({
     const existing = dimensionMap.get(key)
     if (existing) {
       existing.count += count
+      existing.box_count += count
     } else {
-      dimensionMap.set(key, { length, width, height, count })
+      dimensionMap.set(key, { length, width, height, count, box_count: count })
     }
   }
 
@@ -3549,10 +3550,19 @@ const buildDelhiveryB2BManifestPayload = ({
       }
     }),
     weight: Math.max(1, Math.round(weightKg * 1000)),
+    shipment_details: [
+      {
+        ident: normalizedOrderNumber,
+        box_count: packageCount,
+        description: productsDescription,
+        master: true,
+      },
+    ],
     suborders: [
       {
         ident: normalizedOrderNumber,
         count: packageCount,
+        box_count: packageCount,
         description: productsDescription,
         master: true,
       },
