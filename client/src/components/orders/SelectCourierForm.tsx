@@ -95,7 +95,7 @@ export const SelectCourierForm = ({
         const breadth = Number(box.breadthCm ?? 0) // in cm
         const height = Number(box.heightCm ?? 0) // in cm
 
-        const VOLUMETRIC_DIVISOR = 5000
+        const VOLUMETRIC_DIVISOR = 4500
         const volumetricWeightKg =
           length > 0 && breadth > 0 && height > 0
             ? (length * breadth * height) / VOLUMETRIC_DIVISOR

@@ -15,7 +15,7 @@ const ProductBoxesForm = () => {
     loading: boolean
   }>({
     totalChargeableWeight: 0,
-    cftFactor: 5000,
+    cftFactor: 4500,
     loading: false,
   })
 
@@ -69,7 +69,7 @@ const ProductBoxesForm = () => {
           const totalActual = boxes.reduce((sum, box) => sum + Number(box.weightKg || 0), 0)
           setWeightCalculations({
             totalChargeableWeight: totalActual,
-            cftFactor: 5000,
+            cftFactor: 4500,
             loading: false,
           })
           return
@@ -132,7 +132,7 @@ const ProductBoxesForm = () => {
 
             // Get chargeable weight from backend (billableWeight)
             const totalChargeableWeight = Number(calc.billableWeight || totalActualWeight)
-            const cftFactor = Number(config.cftFactor || calc.cftFactor || 5000)
+            const cftFactor = Number(config.cftFactor || calc.cftFactor || 4500)
 
             setWeightCalculations({
               totalChargeableWeight,
@@ -143,7 +143,7 @@ const ProductBoxesForm = () => {
             // Fallback if API response structure is different
             setWeightCalculations({
               totalChargeableWeight: totalActualWeight,
-              cftFactor: 5000,
+              cftFactor: 4500,
               loading: false,
             })
           }
@@ -159,7 +159,7 @@ const ProductBoxesForm = () => {
             const breadth = Number(box.breadthCm || 0)
             const height = Number(box.heightCm || 0)
             if (length > 0 && breadth > 0 && height > 0) {
-              totalVolume += (length * breadth * height) / 5000
+              totalVolume += (length * breadth * height) / 4500
             }
           })
 
@@ -167,7 +167,7 @@ const ProductBoxesForm = () => {
 
           setWeightCalculations({
             totalChargeableWeight,
-            cftFactor: 5000,
+            cftFactor: 4500,
             loading: false,
           })
         }

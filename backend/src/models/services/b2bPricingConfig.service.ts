@@ -8,7 +8,7 @@ type CourierScope = {
   serviceProvider?: string | null
 }
 
-const DEFAULT_B2B_CFT_FACTOR = 5000
+const DEFAULT_B2B_CFT_FACTOR = 4500
 
 const normalizeCourierScope = (scope?: CourierScope) => {
   if (!scope || typeof scope !== 'object') {

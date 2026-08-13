@@ -49,7 +49,7 @@ const BaseChargesSection = memo(({ formData, onFieldChange }) => {
             <NumberInputField />
           </NumberInput>
           <FormHelperText fontSize="xs">
-            Used in (L x B x H) / divisor, for example 5000 cm3/kg
+            Used in (L x B x H) / divisor, for example 4500 cm3/kg
           </FormHelperText>
         </FormControl>
       </SimpleGrid>

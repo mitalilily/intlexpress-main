@@ -118,7 +118,7 @@ const ImportChargesModal = memo(
         service_provider: 'delhivery',
         plan_id: planId || '',
         awb_charges: '50',
-        cft_factor: '5000',
+        cft_factor: '4500',
         minimum_chargeable_amount: '100',
         minimum_chargeable_weight: '0.5',
         minimum_chargeable_method: 'whichever_is_higher',

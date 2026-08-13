@@ -59,7 +59,7 @@ const normalizeCourierScope = (scope?: CourierScope) => {
   return { courierId, serviceProvider }
 }
 
-const DEFAULT_B2B_CFT_FACTOR = 5000
+const DEFAULT_B2B_CFT_FACTOR = 4500
 
 const normalizeB2BCftFactor = (value: unknown) => {
   const parsed = Number(value)

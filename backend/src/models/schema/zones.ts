@@ -87,7 +87,7 @@ export const b2bZoneToZoneRates = createTable('b2b_zone_to_zone_rates', {
   // Rate per kg (only field needed)
   rate_per_kg: decimal('rate_per_kg', { precision: 12, scale: 4 }).notNull(), // Per kg rate - required
   // Volumetric weight calculation
-  volumetric_factor: decimal('volumetric_factor', { precision: 6, scale: 2 }).default('5000'), // e.g. 5000 or 6000
+  volumetric_factor: decimal('volumetric_factor', { precision: 6, scale: 2 }).default('4500'), // e.g. 4500 or 6000
   // Effective dates
   effective_from: timestamp('effective_from', { withTimezone: true }).defaultNow().notNull(),
   effective_to: timestamp('effective_to', { withTimezone: true }),
@@ -160,7 +160,7 @@ export const b2bAdditionalCharges = createTable('b2b_additional_charges', {
   awb_charges: decimal('awb_charges', { precision: 12, scale: 2 }).default('0'),
 
   // 2. CFT Factor - condition: "Higher of volumetric vs actual weight"
-  cft_factor: decimal('cft_factor', { precision: 6, scale: 2 }).default('5000'),
+  cft_factor: decimal('cft_factor', { precision: 6, scale: 2 }).default('4500'),
 
   // 3. Minimum Chargeable - condition: "Rs OR Kg" (admin-selectable method)
   minimum_chargeable_amount: decimal('minimum_chargeable_amount', {
@@ -306,8 +306,8 @@ export const b2bVolumetricRules = createTable('b2b_volumetric_rules', {
   id: uuid('id').defaultRandom().primaryKey(),
   courier_id: integer('courier_id'),
   service_provider: varchar('service_provider', { length: 100 }),
-  volumetric_divisor: decimal('volumetric_divisor', { precision: 10, scale: 2 }).default('5000'), // L*W*H / divisor
-  cft_factor: decimal('cft_factor', { precision: 6, scale: 2 }).default('5000'), // Volumetric divisor in cm3/kg
+  volumetric_divisor: decimal('volumetric_divisor', { precision: 10, scale: 2 }).default('4500'), // L*W*H / divisor
+  cft_factor: decimal('cft_factor', { precision: 6, scale: 2 }).default('4500'), // Volumetric divisor in cm3/kg
   minimum_volumetric_weight: decimal('minimum_volumetric_weight', {
     precision: 10,
     scale: 2,

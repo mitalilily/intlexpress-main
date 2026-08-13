@@ -3373,7 +3373,7 @@ const summarizeB2BBoxes = (boxes: any[]) => {
       const heightCm = Math.max(0, Number(box?.height ?? box?.heightCm ?? 0) || 0)
       const volumetricWeightPerPieceKg =
         lengthCm > 0 && breadthCm > 0 && heightCm > 0
-          ? (lengthCm * breadthCm * heightCm) / 5000
+          ? (lengthCm * breadthCm * heightCm) / 4500
           : 0
 
       summary.totalActualWeightKg += actualWeightKg * quantity
