@@ -8,6 +8,7 @@ import { plans } from '../models/schema/plans'
 import { shippingRates, shippingRateSlabs } from '../models/schema/shippingRates'
 import { userPlans } from '../models/schema/userPlans'
 import {
+  computeB2CRateCardChargeOptions,
   computeB2CRateCardCharge,
   computeEffectiveB2CCodCharge,
   formatCourierSlabDisplayName,
@@ -447,93 +448,108 @@ const buildLastResortB2CCouriersFromRateCards = async (
       base_rate: toNumber(row.rate),
       slabs: rowSlabs,
     }
-    const computed = computeB2CRateCardCharge({
+    const computedOptions = computeB2CRateCardChargeOptions({
       actual_weight_g: actualWeightG,
       length_cm: lengthCm,
       width_cm: breadthCm,
       height_cm: heightCm,
       rateCard,
     })
-    const freight = computed.freight > 0 ? computed.freight : toNumber(row.rate)
-    if (freight <= 0) continue
+    const fallbackComputedOptions = computedOptions.length
+      ? computedOptions
+      : [
+          computeB2CRateCardCharge({
+            actual_weight_g: actualWeightG,
+            length_cm: lengthCm,
+            width_cm: breadthCm,
+            height_cm: heightCm,
+            rateCard,
+          }),
+        ]
 
-    const codCharges = shouldIncludeCod
-      ? computeEffectiveB2CCodCharge({
-          cod_charges: toNumber(row.cod_charges),
-          cod_percent: toNumber(row.cod_percent),
-          order_amount: serviceParams?.order_amount,
-        })
-      : 0
-    const mode = normalizeB2CShippingMode(rateMeta.mode)
-    const maxSlabWeight = computed.max_slab_weight ?? null
-    const displayName =
-      computed.matched_by !== 'legacy'
-        ? formatCourierSlabDisplayName(rateMeta.courierName, maxSlabWeight)
-        : rateMeta.courierName
-    const optionKey = `${rateMeta.courierId}__${provider}__${row.id}__${maxSlabWeight ?? 'base'}`
-    const rateDetails = {
-      rate: freight,
-      cod_charges: codCharges,
-      cod_percent: shouldIncludeCod ? toNumber(row.cod_percent) : 0,
-      other_charges: toNumber(row.other_charges),
-      shipping_rate_id: row.id,
-      mode,
-      min_weight: toNumber(row.min_weight),
-      slabs: computed.slabs,
-      zone_id: row.zone_id,
-      zone: null,
-      zone_code: null,
-      zone_name: null,
-      selected_slab: computed.selected_slab,
-      slab_weight: computed.slab_weight,
-      chargeable_weight: computed.chargeable_weight,
-      volumetric_weight: computed.volumetric_weight,
-      slab_count: computed.slabs,
-      max_slab_weight: maxSlabWeight,
-      matched_by: computed.matched_by,
-    }
-    const card = {
-      id: rateMeta.courierId,
-      courier_id: rateMeta.courierId,
-      name: displayName,
-      displayName,
-      courier_option_key: optionKey,
-      rate_card_id: row.id,
-      integration_type: provider,
-      serviceProvider: provider,
-      cod: true,
-      prepaid: true,
-      edd: '3-5 Days',
-      localRates: { [rateType]: rateDetails, forward: rateDetails },
-      approxZone: null,
-      zone: null,
-      zone_id: row.zone_id,
-      zone_code: null,
-      zone_name: null,
-      shipping_mode: mode || null,
-      service_mode: mode || null,
-      provider_serviceability: {
-        fallback: true,
-        reason: 'last_resort_rate_card',
-        enabled_courier_name: enabledCourier.name,
+    for (const computed of fallbackComputedOptions) {
+      const freight = computed.freight > 0 ? computed.freight : toNumber(row.rate)
+      if (freight <= 0) continue
+
+      const codCharges = shouldIncludeCod
+        ? computeEffectiveB2CCodCharge({
+            cod_charges: toNumber(row.cod_charges),
+            cod_percent: toNumber(row.cod_percent),
+            order_amount: serviceParams?.order_amount,
+          })
+        : 0
+      const mode = normalizeB2CShippingMode(rateMeta.mode)
+      const maxSlabWeight = computed.max_slab_weight ?? null
+      const displayName =
+        computed.matched_by !== 'legacy'
+          ? formatCourierSlabDisplayName(rateMeta.courierName, maxSlabWeight)
+          : rateMeta.courierName
+      const optionKey = `${rateMeta.courierId}__${provider}__${row.id}__${maxSlabWeight ?? 'base'}`
+      const rateDetails = {
+        rate: freight,
+        cod_charges: codCharges,
+        cod_percent: shouldIncludeCod ? toNumber(row.cod_percent) : 0,
+        other_charges: toNumber(row.other_charges),
+        shipping_rate_id: row.id,
+        mode,
+        min_weight: toNumber(row.min_weight),
+        slabs: computed.slabs,
+        zone_id: row.zone_id,
+        zone: null,
+        zone_code: null,
+        zone_name: null,
+        selected_slab: computed.selected_slab,
+        slab_weight: computed.slab_weight,
+        chargeable_weight: computed.chargeable_weight,
+        volumetric_weight: computed.volumetric_weight,
+        slab_count: computed.slabs,
+        max_slab_weight: maxSlabWeight,
+        matched_by: computed.matched_by,
+        charge_breakdown: computed.charge_breakdown ?? [],
+      }
+      const card = {
+        id: rateMeta.courierId,
+        courier_id: rateMeta.courierId,
+        name: displayName,
+        displayName,
+        courier_option_key: optionKey,
+        rate_card_id: row.id,
+        integration_type: provider,
+        serviceProvider: provider,
+        cod: true,
+        prepaid: true,
+        edd: '3-5 Days',
+        localRates: { [rateType]: rateDetails, forward: rateDetails },
+        approxZone: null,
+        zone: null,
+        zone_id: row.zone_id,
+        zone_code: null,
+        zone_name: null,
         shipping_mode: mode || null,
         service_mode: mode || null,
-      },
-      courier_cost_estimate: freight + codCharges + toNumber(row.other_charges),
-      freight_charges: freight,
-      cod_charges: codCharges,
-      other_charges: toNumber(row.other_charges),
-      total_charges: freight + codCharges + toNumber(row.other_charges),
-      chargeable_weight: computed.chargeable_weight,
-      volumetric_weight: computed.volumetric_weight,
-      slabs: computed.slabs,
-      rate: freight,
-      max_slab_weight: maxSlabWeight,
-      rate_card_fallback: 'last_resort',
-    }
-    const existing = cardsByKey.get(optionKey)
-    if (!existing || Number(existing.rate || Infinity) > freight) {
-      cardsByKey.set(optionKey, card)
+        provider_serviceability: {
+          fallback: true,
+          reason: 'last_resort_rate_card',
+          enabled_courier_name: enabledCourier.name,
+          shipping_mode: mode || null,
+          service_mode: mode || null,
+        },
+        courier_cost_estimate: freight + codCharges + toNumber(row.other_charges),
+        freight_charges: freight,
+        cod_charges: codCharges,
+        other_charges: toNumber(row.other_charges),
+        total_charges: freight + codCharges + toNumber(row.other_charges),
+        chargeable_weight: computed.chargeable_weight,
+        volumetric_weight: computed.volumetric_weight,
+        slabs: computed.slabs,
+        rate: freight,
+        max_slab_weight: maxSlabWeight,
+        rate_card_fallback: 'last_resort',
+      }
+      const existing = cardsByKey.get(optionKey)
+      if (!existing || Number(existing.rate || Infinity) > freight) {
+        cardsByKey.set(optionKey, card)
+      }
     }
   }
 

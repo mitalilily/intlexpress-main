@@ -1142,6 +1142,40 @@ export const SelectCourierForm = ({
                       ))}
                     </Grid>
 
+                    {shipment_type === 'b2c' &&
+                      Array.isArray(activeLocalRate?.charge_breakdown) &&
+                      activeLocalRate.charge_breakdown.length > 0 && (
+                        <Box
+                          sx={{
+                            p: 0.9,
+                            borderRadius: 1.5,
+                            bgcolor: alpha(ACCENT, 0.04),
+                            border: `1px solid ${alpha(ACCENT, 0.1)}`,
+                          }}
+                        >
+                          <Typography sx={{ fontSize: 11, color: TEXT_SECONDARY, fontWeight: 800 }}>
+                            Applicable slab breakup
+                          </Typography>
+                          <Stack spacing={0.45} sx={{ mt: 0.7 }}>
+                            {activeLocalRate.charge_breakdown.map((line: any, index: number) => (
+                              <Stack
+                                key={`${line.label || 'slab'}-${index}`}
+                                direction="row"
+                                justifyContent="space-between"
+                              >
+                                <Typography sx={{ color: TEXT_SECONDARY, fontSize: 12 }}>
+                                  {line.label || 'Slab charge'}
+                                  {line.units ? ` × ${line.units}` : ''}
+                                </Typography>
+                                <Typography sx={{ color: TEXT_PRIMARY, fontWeight: 800, fontSize: 12 }}>
+                                  {formatCurrency(line.amount ?? line.rate ?? 0)}
+                                </Typography>
+                              </Stack>
+                            ))}
+                          </Stack>
+                        </Box>
+                      )}
+
                     {shipment_type === 'b2b' && b2bChargeLines.length > 0 && (
                       <Box
                         sx={{

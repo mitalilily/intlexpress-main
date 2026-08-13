@@ -52,9 +52,20 @@ export interface ComputedB2CRateCardCharge {
   selected_slab: ResolvedRateCardSlab | null
   max_slab_weight: number | null
   matched_by: 'slab' | 'last_slab_extra' | 'legacy'
+  charge_breakdown?: B2CRateCardChargeBreakdownLine[]
 }
 
 const B2C_MIN_CHARGEABLE_WEIGHT_G = 250
+
+export interface B2CRateCardChargeBreakdownLine {
+  label: string
+  weight_from: number | null
+  weight_to: number | null
+  rate: number
+  units?: number | null
+  unit_weight?: number | null
+  amount: number
+}
 
 export function computeEffectiveB2CCodCharge(params: {
   cod_charges?: number | null
@@ -622,7 +633,43 @@ function calculateSlabExtraFreight(chargeableWeightKg: number, slab: ResolvedRat
   return {
     freight: slab.rate + extraUnits * slab.extra_rate,
     slab_weight: slab.extra_weight_unit * 1000,
+    extra_units: extraUnits,
   }
+}
+
+const formatSlabWeight = (value: number | null) => {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return 'open'
+  const kg = Number(value)
+  return kg < 1 ? `${Math.round(kg * 1000)}gm` : `${Number(kg.toFixed(3))}kg`
+}
+
+const buildSlabBreakdown = (
+  slab: ResolvedRateCardSlab,
+  options: { extraUnits?: number; extraAmount?: number; extraUnitWeight?: number } = {},
+): B2CRateCardChargeBreakdownLine[] => {
+  const lines: B2CRateCardChargeBreakdownLine[] = [
+    {
+      label: `Base slab ${formatSlabWeight(slab.weight_from)}-${formatSlabWeight(slab.weight_to)}`,
+      weight_from: slab.weight_from,
+      weight_to: slab.weight_to,
+      rate: slab.rate,
+      amount: slab.rate,
+    },
+  ]
+
+  if ((options.extraUnits ?? 0) > 0 && (options.extraAmount ?? 0) > 0) {
+    lines.push({
+      label: `Additional ${formatSlabWeight(options.extraUnitWeight ?? null)}`,
+      weight_from: slab.weight_to,
+      weight_to: null,
+      rate: slab.extra_rate ?? 0,
+      units: options.extraUnits ?? null,
+      unit_weight: options.extraUnitWeight ?? null,
+      amount: options.extraAmount ?? 0,
+    })
+  }
+
+  return lines
 }
 
 function findPreviousAdditionalSlab(
@@ -667,6 +714,32 @@ function buildComputedSlabCharge(
     selected_slab: slab,
     max_slab_weight: slab.weight_to,
     matched_by: matchedBy,
+    charge_breakdown: buildSlabBreakdown(slab),
+  }
+}
+
+function buildComputedExtraSlabCharge(
+  preview: ReturnType<typeof calculateChargeableWeight>,
+  slab: ResolvedRateCardSlab,
+  extra: NonNullable<ReturnType<typeof calculateSlabExtraFreight>>,
+): ComputedB2CRateCardCharge {
+  const extraAmount = Math.max(0, extra.freight - slab.rate)
+  return {
+    actual_weight: preview.actual_weight,
+    volumetric_weight: preview.volumetric_weight,
+    chargeable_weight: preview.chargeable_weight,
+    slabs: null,
+    freight: extra.freight,
+    slab_weight: extra.slab_weight,
+    base_price: slab.rate,
+    selected_slab: slab,
+    max_slab_weight: slab.weight_to,
+    matched_by: 'last_slab_extra',
+    charge_breakdown: buildSlabBreakdown(slab, {
+      extraUnits: extra.extra_units,
+      extraAmount,
+      extraUnitWeight: slab.extra_weight_unit ?? undefined,
+    }),
   }
 }
 
@@ -713,6 +786,15 @@ export function computeB2CRateCardCharge(params: {
       selected_slab: null,
       max_slab_weight: params.rateCard.min_weight || null,
       matched_by: 'legacy',
+      charge_breakdown: [
+        {
+          label: `Legacy slab ${formatSlabWeight(params.rateCard.min_weight || null)}`,
+          weight_from: 0,
+          weight_to: params.rateCard.min_weight || null,
+          rate: params.rateCard.base_rate,
+          amount: params.rateCard.base_rate,
+        },
+      ],
     }
   }
 
@@ -747,23 +829,13 @@ export function computeB2CRateCardCharge(params: {
           selected_slab: explicitlySelectedSlab,
           max_slab_weight: explicitlySelectedSlab.weight_to,
           matched_by: 'slab',
+          charge_breakdown: buildSlabBreakdown(explicitlySelectedSlab),
         }
       }
 
       const selectedSlabExtra = calculateSlabExtraFreight(chargeableWeightKg, explicitlySelectedSlab)
       if (selectedSlabExtra) {
-        return {
-          actual_weight: preview.actual_weight,
-          volumetric_weight: preview.volumetric_weight,
-          chargeable_weight: ratedPreview.chargeable_weight,
-          slabs: null,
-          freight: selectedSlabExtra.freight,
-          slab_weight: selectedSlabExtra.slab_weight,
-          base_price: explicitlySelectedSlab.rate,
-          selected_slab: explicitlySelectedSlab,
-          max_slab_weight: explicitlySelectedSlab.weight_to,
-          matched_by: 'last_slab_extra',
-        }
+        return buildComputedExtraSlabCharge(ratedPreview, explicitlySelectedSlab, selectedSlabExtra)
       }
     }
   }
@@ -784,13 +856,7 @@ export function computeB2CRateCardCharge(params: {
     ? calculateSlabExtraFreight(chargeableWeightKg, previousAdditionalSlab)
     : null
   if (previousAdditionalSlab && previousAdditionalFreight) {
-    return buildComputedSlabCharge(
-      ratedPreview,
-      previousAdditionalSlab,
-      previousAdditionalFreight.freight,
-      previousAdditionalFreight.slab_weight,
-      'last_slab_extra',
-    )
+    return buildComputedExtraSlabCharge(ratedPreview, previousAdditionalSlab, previousAdditionalFreight)
   }
 
   const containingRangeSlab = findContainingRangeSlab(
@@ -822,13 +888,7 @@ export function computeB2CRateCardCharge(params: {
 
   const lastSlabExtra = lastFiniteSlab ? calculateSlabExtraFreight(chargeableWeightKg, lastFiniteSlab) : null
   if (lastFiniteSlab && lastSlabExtra) {
-    return buildComputedSlabCharge(
-      ratedPreview,
-      lastFiniteSlab,
-      lastSlabExtra.freight,
-      lastSlabExtra.slab_weight,
-      'last_slab_extra',
-    )
+    return buildComputedExtraSlabCharge(ratedPreview, lastFiniteSlab, lastSlabExtra)
   }
 
   return {
@@ -842,7 +902,59 @@ export function computeB2CRateCardCharge(params: {
     selected_slab: null,
     max_slab_weight: null,
     matched_by: 'slab',
+    charge_breakdown: [],
   }
+}
+
+export function computeB2CRateCardChargeOptions(params: {
+  actual_weight_g: number
+  length_cm: number
+  width_cm: number
+  height_cm: number
+  rateCard: ResolvedB2CRateCard
+}): ComputedB2CRateCardCharge[] {
+  const preview = calculateChargeableWeight({
+    actual_weight_g: params.actual_weight_g,
+    length_cm: params.length_cm,
+    width_cm: params.width_cm,
+    height_cm: params.height_cm,
+  })
+  const ratedPreview = {
+    ...preview,
+    chargeable_weight: Math.max(preview.chargeable_weight, B2C_MIN_CHARGEABLE_WEIGHT_G),
+  }
+
+  if (!params.rateCard.slabs.length) {
+    return [computeB2CRateCardCharge(params)]
+  }
+
+  const chargeableWeightKg = ratedPreview.chargeable_weight / 1000
+  const options = new Map<string, ComputedB2CRateCardCharge>()
+
+  for (const slab of params.rateCard.slabs) {
+    if (slab.weight_to !== null && chargeableWeightKg <= slab.weight_to + 0.0001) {
+      const computed = buildComputedSlabCharge(ratedPreview, slab, slab.rate, null, 'slab')
+      options.set(`${slab.weight_from}|${slab.weight_to}|slab`, computed)
+      continue
+    }
+
+    const extra = calculateSlabExtraFreight(chargeableWeightKg, slab)
+    if (extra) {
+      const computed = buildComputedExtraSlabCharge(ratedPreview, slab, extra)
+      options.set(`${slab.weight_from}|${slab.weight_to}|extra`, computed)
+    }
+  }
+
+  if (!options.size) {
+    const fallback = computeB2CRateCardCharge(params)
+    return fallback.freight > 0 ? [fallback] : []
+  }
+
+  return Array.from(options.values()).sort(
+    (a, b) =>
+      (a.max_slab_weight ?? Infinity) - (b.max_slab_weight ?? Infinity) ||
+      a.freight - b.freight,
+  )
 }
 
 export async function replaceShippingRateSlabs(shippingRateId: string, slabs: RateCardSlabInput[]) {

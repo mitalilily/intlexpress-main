@@ -77,6 +77,7 @@ import { userProfiles } from '../schema/userProfile'
 import { b2bZoneToZoneRates, zones } from '../schema/zones'
 import { calculateB2BRate, findZoneForPincode } from './b2bAdmin.service'
 import {
+  computeB2CRateCardChargeOptions,
   computeEffectiveB2CCodCharge,
   computeB2CRateCardCharge,
   fetchResolvedB2CRateCards,
@@ -3085,21 +3086,39 @@ const determineB2CZoneKey = (
  * Adjust the right-hand values if your zones.code uses different wording.
  */
 const ZONE_KEY_TO_DB_CODE: Record<string, string> = {
-  METRO_TO_METRO: 'METRO_TO_METRO',
-  ROI: 'ROI',
-  SPECIAL_ZONE: 'SPECIAL_ZONE',
-  WITHIN_CITY: 'WITHIN_CITY',
-  WITHIN_REGION: 'WITHIN_REGION',
+  METRO_TO_METRO: 'ZONE_C1',
+  ROI: 'ZONE_D1',
+  SPECIAL_ZONE: 'ZONE_F',
+  WITHIN_CITY: 'ZONE_A',
+  WITHIN_REGION: 'ZONE_B',
   WITHIN_STATE: 'WITHIN_STATE',
 }
 
 const B2C_ZONE_KEY_FALLBACK_CODES: Record<string, string[]> = {
-  METRO_TO_METRO: ['A_B2C', 'A', 'ZONE_A', 'ZONE A', 'ZONE A (B2C)'],
+  METRO_TO_METRO: ['C1', 'ZONE_C1', 'ZONE C1', 'A_B2C', 'A', 'ZONE_A', 'ZONE A', 'ZONE A (B2C)'],
   WITHIN_CITY: ['A_B2C', 'A', 'ZONE_A', 'ZONE A', 'ZONE A (B2C)'],
   WITHIN_STATE: ['B_B2C', 'B', 'ZONE_B', 'ZONE B', 'ZONE B (B2C)'],
-  WITHIN_REGION: ['C_B2C', 'C', 'ZONE_C', 'ZONE C', 'ZONE C (B2C)'],
-  ROI: ['D_B2C', 'E_B2C', 'D', 'E', 'ZONE_D', 'ZONE_E', 'ZONE D', 'ZONE E'],
-  SPECIAL_ZONE: ['SPECIAL_B2C', 'SPECIAL', 'E_B2C', 'E', 'ZONE_E', 'ZONE E'],
+  WITHIN_REGION: ['B', 'ZONE_B', 'ZONE B', 'C_B2C', 'C', 'ZONE_C', 'ZONE C', 'ZONE C (B2C)'],
+  ROI: [
+    'D1',
+    'ZONE_D1',
+    'ZONE D1',
+    'C2',
+    'ZONE_C2',
+    'ZONE C2',
+    'D2',
+    'ZONE_D2',
+    'ZONE D2',
+    'D_B2C',
+    'E_B2C',
+    'D',
+    'E',
+    'ZONE_D',
+    'ZONE_E',
+    'ZONE D',
+    'ZONE E',
+  ],
+  SPECIAL_ZONE: ['F', 'ZONE_F', 'ZONE F', 'SPECIAL_B2C', 'SPECIAL', 'E_B2C', 'E', 'ZONE_E', 'ZONE E'],
 }
 
 const uniqueZoneCandidates = (values: Array<string | null | undefined>) =>
@@ -5362,7 +5381,7 @@ export const fetchAvailableCouriersWithRates = async (
     const shouldIncludeCodCharges = params.payment_type === 'cod'
 
     const buildServiceabilityRateOptions = (rateCard: any) => {
-      const computed = computeB2CRateCardCharge({
+      const computedOptions = computeB2CRateCardChargeOptions({
         actual_weight_g: serviceabilityWeightG,
         length_cm: Number(params.length ?? 0),
         width_cm: Number(params.breadth ?? 0),
@@ -5377,31 +5396,30 @@ export const fetchAvailableCouriersWithRates = async (
           })
         : 0
 
-      return computed.freight > 0
-        ? [
-            {
-              rate: computed.freight,
-              cod_charges: effectiveCodCharge,
-              cod_percent: shouldIncludeCodCharges ? rateCard.cod_percent : 0,
-              other_charges: rateCard.other_charges,
-              shipping_rate_id: rateCard.shippingRateId,
-              mode: rateCard.mode,
-              min_weight: rateCard.min_weight,
-              slabs: rateCard.slabs,
-              zone_id: rateCard.zone_id,
-              zone: approxZone?.name || approxZone?.code || null,
-              zone_code: approxZone?.code || null,
-              zone_name: approxZone?.name || null,
-              selected_slab: computed.selected_slab,
-              slab_weight: computed.slab_weight,
-              chargeable_weight: computed.chargeable_weight,
-              volumetric_weight: computed.volumetric_weight,
-              slab_count: computed.slabs,
-              max_slab_weight: computed.max_slab_weight,
-              matched_by: computed.matched_by,
-            },
-          ]
-        : []
+      return computedOptions
+        .filter((computed) => computed.freight > 0)
+        .map((computed) => ({
+          rate: computed.freight,
+          cod_charges: effectiveCodCharge,
+          cod_percent: shouldIncludeCodCharges ? rateCard.cod_percent : 0,
+          other_charges: rateCard.other_charges,
+          shipping_rate_id: rateCard.shippingRateId,
+          mode: rateCard.mode,
+          min_weight: rateCard.min_weight,
+          slabs: rateCard.slabs,
+          zone_id: rateCard.zone_id,
+          zone: approxZone?.name || approxZone?.code || null,
+          zone_code: approxZone?.code || null,
+          zone_name: approxZone?.name || null,
+          selected_slab: computed.selected_slab,
+          slab_weight: computed.slab_weight,
+          chargeable_weight: computed.chargeable_weight,
+          volumetric_weight: computed.volumetric_weight,
+          slab_count: computed.slabs,
+          max_slab_weight: computed.max_slab_weight,
+          matched_by: computed.matched_by,
+          charge_breakdown: computed.charge_breakdown ?? [],
+        }))
     }
 
     let combined = combinedCouriers
