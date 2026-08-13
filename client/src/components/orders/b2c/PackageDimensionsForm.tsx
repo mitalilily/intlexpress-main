@@ -14,7 +14,6 @@ const TEXT_MUTED = '#496189'
 
 const formatWeightDisplay = (grams: number) => {
   if (!Number.isFinite(grams) || grams <= 0) return '-'
-  if (grams < 1000) return `${Math.round(grams).toLocaleString('en-IN')} g`
   return `${(grams / 1000).toFixed(2)} kg`
 }
 
@@ -56,7 +55,7 @@ const PackageDimensionsForm = () => {
           },
         }}
       >
-        Note: The minimum chargeable weight is {B2C_MIN_CHARGEABLE_WEIGHT_KG.toFixed(2)} Kg
+        Note: The minimum chargeable weight is {B2C_MIN_CHARGEABLE_WEIGHT_KG.toFixed(2)} kg
       </Alert>
 
       <Grid container spacing={0.9}>
@@ -111,7 +110,7 @@ const PackageDimensionsForm = () => {
           Package Weight Summary
         </Typography>
         <Typography variant="caption" sx={{ color: TEXT_MUTED, mb: 0.55, display: 'block', fontSize: '0.68rem' }}>
-          {`Chargeable weight is calculated as max of actual, volumetric, or minimum weight (${B2C_MIN_CHARGEABLE_WEIGHT_GRAMS} g)`}
+          {`Chargeable weight is calculated as max of actual, volumetric, or minimum weight (${B2C_MIN_CHARGEABLE_WEIGHT_KG.toFixed(2)} kg)`}
         </Typography>
 
         <Grid container spacing={0.65}>

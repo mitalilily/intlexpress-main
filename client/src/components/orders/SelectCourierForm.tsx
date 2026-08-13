@@ -277,7 +277,6 @@ export const SelectCourierForm = ({
   const formatWeightDisplay = (value?: number | string | null) => {
     const grams = Number(value ?? 0)
     if (!Number.isFinite(grams) || grams <= 0) return '-'
-    if (grams < 1000) return `${Math.round(grams).toLocaleString('en-IN')} g`
     return `${(grams / 1000).toFixed(2)} kg`
   }
   const formatKgDisplay = (value?: number | string | null) => {
