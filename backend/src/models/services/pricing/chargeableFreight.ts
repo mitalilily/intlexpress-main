@@ -14,7 +14,7 @@ export interface CalculateFreightInput {
   height_cm: number
   slab_weight_g: number // min_weight from rate card (grams)
   base_price: number // rate card price for the first slab
-  volumetric_divisor?: number // default 5000 (cm³ per kg)
+  volumetric_divisor?: number // default 4500 (cm³ per kg)
 }
 
 export interface CalculateFreightResult {
@@ -32,7 +32,7 @@ export function calculateFreight({
   height_cm,
   slab_weight_g,
   base_price,
-  volumetric_divisor = 5000,
+  volumetric_divisor = 4500,
 }: CalculateFreightInput): CalculateFreightResult {
   const safeActual = Math.max(0, Number(actual_weight_g) || 0)
   const safeL = Math.max(0, Number(length_cm) || 0)

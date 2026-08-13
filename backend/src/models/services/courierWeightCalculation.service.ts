@@ -6,20 +6,20 @@
 // Volumetric divisors for different couriers (in cm³/kg)
 export const VOLUMETRIC_DIVISORS: Record<string, number> = {
   // Common couriers
-  Delhivery: 5000,
-  BlueDart: 5000,
-  Ecom: 5000,
-  'Ecom Express': 5000,
-  DTDC: 5000,
-  Shadowfax: 5000,
+  Delhivery: 4500,
+  BlueDart: 4500,
+  Ecom: 4500,
+  'Ecom Express': 4500,
+  DTDC: 4500,
+  Shadowfax: 4500,
   'India Post': 4000,
-  Ekart: 5000,
-  Delivery: 5000,
-  Trackon: 5000,
-  'Professional Couriers': 5000,
+  Ekart: 4500,
+  Delivery: 4500,
+  Trackon: 4500,
+  'Professional Couriers': 4500,
   
   // Default fallback
-  DEFAULT: 5000,
+  DEFAULT: 4500,
 }
 
 // Weight slab increment for different couriers (in kg)

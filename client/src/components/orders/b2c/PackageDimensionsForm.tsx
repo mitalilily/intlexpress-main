@@ -27,7 +27,7 @@ const PackageDimensionsForm = () => {
 
   const actualWeightGrams = Number(weight) || 0
   const actualWeightKg = actualWeightGrams / 1000
-  const volumetricWeightKg = (Number(length) * Number(breadth) * Number(height)) / 5000
+  const volumetricWeightKg = (Number(length) * Number(breadth) * Number(height)) / 4500
   const volumetricWeightGrams = Math.round(Math.max(volumetricWeightKg, 0) * 1000)
   const chargedWeightGrams = Math.max(
     actualWeightGrams,
@@ -153,7 +153,7 @@ const PackageDimensionsForm = () => {
                 {formatWeightDisplay(volumetricWeightGrams)}
               </Typography>
               <Typography variant="caption" sx={{ color: TEXT_MUTED }}>
-                L×B×H ÷ 5000
+                L×B×H ÷ 4500
               </Typography>
             </Paper>
           </Grid>

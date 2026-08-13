@@ -27,7 +27,7 @@ export default function B2CForm({ formData, onChange, shipmentType }) {
   }, [length, breadth, height, weight])
 
   const volumetricWeightGrams = useMemo(() => {
-    const volKg = (Number(length) * Number(breadth) * Number(height)) / 5000
+    const volKg = (Number(length) * Number(breadth) * Number(height)) / 4500
     const volGrams = volKg * 1000
     return isNaN(volGrams) ? 0 : Math.round(volGrams)
   }, [length, breadth, height])

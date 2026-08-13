@@ -24,7 +24,7 @@ export default function B2CRateCalculator() {
 
   // Volumetric weight in grams (unchanged – API still expects grams)
   const volumetricWeightGrams = useMemo(() => {
-    const volKg = (Number(length) * Number(breadth) * Number(height)) / 5000
+    const volKg = (Number(length) * Number(breadth) * Number(height)) / 4500
     const volGrams = volKg * 1000
     return isNaN(volGrams) ? 0 : Math.round(volGrams)
   }, [length, breadth, height])

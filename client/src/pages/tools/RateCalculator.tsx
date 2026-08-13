@@ -36,8 +36,8 @@ const termsAndConditions = {
     'Prohibited item not to be ship, if any penalty will charge to seller.',
     'No Claim would be entertained for Glassware, Fragile products, Concealed damages and improper packaging.',
     'Any weight dispute due to incorrect weight declaration cannot be claimed.',
-    'Chargeable weight would be volumetric or actual weight, whichever is higher (LxBxH/5000).',
-    'Delhivery 2 KG, 5 KG & 10 KG accounts have 4000 volumetric divisor.',
+    'Chargeable weight would be volumetric or actual weight, whichever is higher (LxBxH/4500).',
+    'Delhivery B2C uses 4500 volumetric divisor.',
     'Liability of Reverse QC check - maximum limit INR 2000 or product value whichever is lower.',
   ],
   b2b: [
@@ -167,7 +167,7 @@ export function RateCalculator() {
         shipmentType === 'b2b' ? Number(formData.totalWeight) || 0 : Number(formData.weight) || 0 // kg from UI
 
       // volumetric weight in grams
-      const volumetricWeightGrams = ((length * breadth * height) / 5000) * 1000
+      const volumetricWeightGrams = ((length * breadth * height) / 4500) * 1000
       // convert actual weight from kg → grams
       const actualWeightGrams = actualWeightKg * 1000
       // applicable weight in grams
