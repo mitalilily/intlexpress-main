@@ -37,7 +37,6 @@ import {
   useRetryFailedManifest,
 } from '../../../hooks/Orders/useOrders'
 import { usePickupAddresses } from '../../../hooks/Pickup/usePickupAddresses'
-import { usePresignedDownloadMutation } from '../../../hooks/Uploads/usePresignedDownloadUrls'
 import useEmployeePermissions from '../../../hooks/User/useEmployeePermissions'
 import { useKycVerification } from '../../../hooks/User/useKycVerification'
 import type { B2COrder } from '../../../types/generic.types'
@@ -88,6 +87,7 @@ import { SupportTicketForm } from '../../support/SupportTicketForm'
 import {
   BULK_MANIFEST_LIMIT,
   downloadFile,
+  downloadStoredDocument,
   getActionableErrorMessage,
   getB2CManifestIdentifier,
   getB2CManifestProvider,
@@ -333,7 +333,6 @@ const B2COrdersList = () => {
   const { mutateAsync: regenerateDocuments, isPending: regeneratingDocuments } =
     useRegenerateOrderDocuments()
   const queryClient = useQueryClient()
-  const { mutateAsync: presignDownloads } = usePresignedDownloadMutation()
   const { canCancelOrders, canExportOrders, canViewCustomerDetails } = useEmployeePermissions()
   const { data: couriers } = useAllCouriersWithDetails()
   const { data: warehouses } = usePickupAddresses()
@@ -895,10 +894,6 @@ const B2COrdersList = () => {
       const directEntries = uniqueEntries.filter(
         (entry): entry is DocumentEntry & { url: string } => !entry.key && Boolean(entry.url),
       )
-      const presignedUrls = keyEntries.length
-        ? await presignDownloads({ keys: keyEntries.map((entry) => String(entry.key)) })
-        : []
-
       let downloadedCount = 0
       let skippedCount = documentEntries.length - uniqueEntries.length
       const unavailableOrders: string[] = []
@@ -914,17 +909,15 @@ const B2COrdersList = () => {
         }
       }
 
-      for (const [index, entry] of keyEntries.entries()) {
-        const resolvedUrl = Array.isArray(presignedUrls) ? presignedUrls[index] : null
-        const downloadUrl = resolvedUrl || (entry.url ? String(entry.url) : null)
-        if (!downloadUrl) {
+      for (const entry of keyEntries) {
+        if (!entry.key) {
           skippedCount += 1
           unavailableOrders.push(entry.orderLabel)
           continue
         }
 
         try {
-          await downloadFile(downloadUrl, entry.fileName)
+          await downloadStoredDocument(String(entry.key), entry.fileName)
           downloadedCount += 1
         } catch (error) {
           skippedCount += 1
@@ -1051,18 +1044,10 @@ const B2COrdersList = () => {
         return
       }
 
-      const downloadUrls = await presignDownloads({
-        keys: entries.map((e) => e.key),
-      })
-
       let downloadedCount = 0
-      for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i]
-        const downloadUrl = downloadUrls?.[i]
-        if (!downloadUrl) continue
-
+      for (const entry of entries) {
         try {
-          await downloadFile(downloadUrl, entry.fileName)
+          await downloadStoredDocument(entry.key, entry.fileName)
           downloadedCount += 1
         } catch (error) {
           console.warn(`Failed to download label for ${entry.orderLabel}:`, error)
@@ -1094,12 +1079,7 @@ const B2COrdersList = () => {
 
     if (keyValue) {
       try {
-        const urls = await presignDownloads({ keys: [keyValue] })
-        const signedUrl = Array.isArray(urls) ? urls[0] : urls
-        if (!signedUrl) {
-          throw new Error(`${type} is not available yet.`)
-        }
-        await downloadFile(signedUrl, getDownloadFileName(order, type, keyValue))
+        await downloadStoredDocument(keyValue, getDownloadFileName(order, type, keyValue))
         return
       } catch (error) {
         toast.open({

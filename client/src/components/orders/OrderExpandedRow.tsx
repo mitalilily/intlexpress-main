@@ -10,10 +10,10 @@ import {
   MdShoppingBag,
 } from 'react-icons/md'
 import useEmployeePermissions from '../../hooks/User/useEmployeePermissions'
-import { usePresignedDownloadMutation } from '../../hooks/Uploads/usePresignedDownloadUrls'
 import { getDelhiveryBookedAccount } from '../../utils/delhiveryAccount'
 import AWBLink from '../UI/AWBLink'
 import { toast } from '../UI/Toast'
+import { downloadStoredDocument } from './bulkActionUtils'
 
 interface OrderExpandedRowProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,8 +27,6 @@ export const OrderExpandedRow = ({ row, type = 'b2c' }: OrderExpandedRowProps) =
   const sortCodeValue = String(row?.sort_code || '').trim()
   const delhiveryAccount = getDelhiveryBookedAccount(row)
   const { canExportOrders, canViewCustomerDetails } = useEmployeePermissions()
-
-  const { mutateAsync, isPending } = usePresignedDownloadMutation()
 
   const maskedPhone = row?.buyer_phone ? 'Hidden by access policy' : 'Not available'
   const maskedAddress = 'Customer address is hidden for this employee account.'
@@ -52,23 +50,7 @@ export const OrderExpandedRow = ({ row, type = 'b2c' }: OrderExpandedRowProps) =
 
     try {
       setDownloadingKey(key)
-      const urls = await mutateAsync({ keys: [key] })
-      const url = Array.isArray(urls) ? urls[0] : urls
-
-      if (!url) {
-        toast.open({
-          message: getFriendlyMissingMessage(fileType),
-          severity: 'error',
-        })
-        return
-      }
-
-      const link = document.createElement('a')
-      link.href = url
-      link.download = key.split('/').pop() ?? ''
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      await downloadStoredDocument(key, key.split('/').pop() || `${fileType}.pdf`)
     } catch (err: unknown) {
       console.error('Download failed', err)
       const error = err as { response?: { data?: { message?: string } }; message?: string }
@@ -184,7 +166,7 @@ export const OrderExpandedRow = ({ row, type = 'b2c' }: OrderExpandedRowProps) =
                 severity: 'error',
               })
             }}
-            disabled={Boolean((isDownloading || isPending) && !urlValue)}
+            disabled={Boolean(isDownloading && !urlValue)}
           >
             {isDownloading ? 'Downloading...' : 'Download'}
           </Button>

@@ -55,7 +55,6 @@ import {
   useRetryFailedManifest,
 } from '../../hooks/Orders/useOrders'
 import { usePickupAddresses } from '../../hooks/Pickup/usePickupAddresses'
-import { usePresignedDownloadMutation } from '../../hooks/Uploads/usePresignedDownloadUrls'
 import { FilterBar, type FilterField } from '../FilterBar'
 import { SupportTicketForm } from '../support/SupportTicketForm'
 import StatusChip from '../UI/chip/StatusChip'
@@ -78,6 +77,7 @@ import { getDelhiveryBookedAccount } from '../../utils/delhiveryAccount'
 import {
   BULK_MANIFEST_LIMIT,
   downloadFile,
+  downloadStoredDocument,
   getActionableErrorMessage,
   getB2CManifestIdentifier,
   getB2CManifestProvider,
@@ -293,7 +293,6 @@ const AllOrders = () => {
     status: selectedTab || undefined,
   }
   const queryClient = useQueryClient()
-  const { mutateAsync: presignDownloads } = usePresignedDownloadMutation()
   const { mutateAsync: retryFailedManifest } = useRetryFailedManifest()
   const { mutateAsync: regenerateDocuments, isPending: regeneratingDocuments } =
     useRegenerateOrderDocuments()
@@ -871,10 +870,6 @@ const AllOrders = () => {
       const directEntries = uniqueEntries.filter(
         (entry): entry is DocumentEntry & { url: string } => !entry.key && Boolean(entry.url),
       )
-      const presignedUrls = keyEntries.length
-        ? await presignDownloads({ keys: keyEntries.map((entry) => String(entry.key)) })
-        : []
-
       let downloadedCount = 0
       let skippedCount = documentEntries.length - uniqueEntries.length
       const unavailableOrders: string[] = []
@@ -890,17 +885,15 @@ const AllOrders = () => {
         }
       }
 
-      for (const [index, entry] of keyEntries.entries()) {
-        const resolvedUrl = Array.isArray(presignedUrls) ? presignedUrls[index] : null
-        const downloadUrl = resolvedUrl || (entry.url ? String(entry.url) : null)
-        if (!downloadUrl) {
+      for (const entry of keyEntries) {
+        if (!entry.key) {
           skippedCount += 1
           unavailableOrders.push(entry.orderLabel)
           continue
         }
 
         try {
-          await downloadFile(downloadUrl, entry.fileName)
+          await downloadStoredDocument(String(entry.key), entry.fileName)
           downloadedCount += 1
         } catch (error) {
           skippedCount += 1
@@ -1027,18 +1020,10 @@ const AllOrders = () => {
         return
       }
 
-      const downloadUrls = await presignDownloads({
-        keys: entries.map((e) => e.key),
-      })
-
       let downloadedCount = 0
-      for (let i = 0; i < entries.length; i++) {
-        const entry = entries[i]
-        const downloadUrl = downloadUrls?.[i]
-        if (!downloadUrl) continue
-
+      for (const entry of entries) {
         try {
-          await downloadFile(downloadUrl, entry.fileName)
+          await downloadStoredDocument(entry.key, entry.fileName)
           downloadedCount += 1
         } catch (error) {
           console.warn(`Failed to download label for ${entry.orderLabel}:`, error)
@@ -1062,12 +1047,7 @@ const AllOrders = () => {
 
     if (keyValue) {
       try {
-        const urls = await presignDownloads({ keys: [keyValue] })
-        const signedUrl = Array.isArray(urls) ? urls[0] : urls
-        if (!signedUrl) {
-          throw new Error(`${type} is not available yet.`)
-        }
-        await downloadFile(signedUrl, getDownloadFileName(order, type, keyValue))
+        await downloadStoredDocument(keyValue, getDownloadFileName(order, type, keyValue))
         return
       } catch (error) {
         toast.open({

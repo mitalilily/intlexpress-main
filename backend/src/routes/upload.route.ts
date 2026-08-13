@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createPresignedUrl,
+  downloadStoredFile,
   getPresignedDownloadUrl,
   uploadFileToStorage,
 } from "../controllers/upload.controller";
@@ -12,5 +13,6 @@ const router = Router();
 router.post("/presign", requireAuth, createPresignedUrl);
 router.post("/direct", requireAuth, upload.single("file"), uploadFileToStorage);
 router.post("/presign-download-url", requireAuth, getPresignedDownloadUrl);
+router.get("/download", requireAuth, downloadStoredFile);
 
 export default router;

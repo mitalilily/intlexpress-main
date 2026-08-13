@@ -12418,7 +12418,7 @@ export const generateManifestService = async (params: {
       })
 
       const results = await Promise.allSettled(invoicePromisesDel)
-      results.forEach((result, index) => {
+      const invoiceUpdatePromisesDel = results.map(async (result, index) => {
         const order = fetchedOrders[index]
         if (result.status === 'fulfilled' && result.value) {
           const invoiceResult = result.value as {
@@ -12431,7 +12431,7 @@ export const generateManifestService = async (params: {
           if (invoiceKey && typeof invoiceKey === 'string' && invoiceKey.trim().length > 0) {
             const normalizedInvoiceKey = normalizeToR2KeyOutsideTransaction(invoiceKey.trim())
             if (normalizedInvoiceKey) {
-              db.update(table)
+              await db.update(table)
                 .set({
                   invoice_link: normalizedInvoiceKey,
                   invoice_number: invoiceResult.invoiceNumber ?? undefined,
@@ -12470,6 +12470,7 @@ export const generateManifestService = async (params: {
           console.warn(`⚠️ [Manifest] Invoice generation failed for order ${order.order_number}`)
         }
       })
+      await Promise.allSettled(invoiceUpdatePromisesDel)
 
       const manifestDownloadUrl = await resolveManifestUrlOutsideTransaction(manifestKey)
       console.log('✅ Delhivery manifest generation completed', {

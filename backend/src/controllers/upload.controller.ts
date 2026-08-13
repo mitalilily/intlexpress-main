@@ -8,6 +8,7 @@ import { getBucketName } from "../utils/functions";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { r2 } from "../config/r2Client";
+import path from "path";
 
 export const createPresignedUrl = async (
   req: any,
@@ -126,5 +127,82 @@ export const getPresignedDownloadUrl = async (
     return res
       .status(500)
       .json({ message: "Failed to generate download URL(s)" });
+  }
+};
+
+const sanitizeDownloadName = (value: unknown, fallback: string) => {
+  const candidate = String(value || "").trim();
+  const basename = path.basename(candidate || fallback);
+  const safe = basename
+    .replace(/[^\w.\- ()]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-. ]+|[-. ]+$/g, "");
+
+  return safe || fallback;
+};
+
+const streamToBuffer = async (body: any): Promise<Buffer> => {
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of body) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+};
+
+export const downloadStoredFile = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  const key = String(req.query.key || "").trim().replace(/^\/+/, "");
+
+  if (!key || /^https?:\/\//i.test(key) || key.includes("..")) {
+    return res.status(400).json({ message: "Valid storage key is required" });
+  }
+
+  const downloadName = sanitizeDownloadName(
+    req.query.filename,
+    path.basename(key) || "document.pdf"
+  );
+
+  try {
+    const result = await r2.send(
+      new GetObjectCommand({
+        Bucket: getBucketName(),
+        Key: key,
+      })
+    );
+
+    const contentType =
+      result.ContentType || "application/pdf";
+    const bodyBuffer = await streamToBuffer(result.Body);
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Length", String(bodyBuffer.length));
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${downloadName.replace(/"/g, "")}"`
+    );
+    res.setHeader("Cache-Control", "private, no-store");
+
+    return res.status(200).send(bodyBuffer);
+  } catch (error: any) {
+    const statusCode =
+      error?.name === "NoSuchKey" ||
+      error?.$metadata?.httpStatusCode === 404
+        ? 404
+        : 500;
+
+    console.error("Stored file download failed:", {
+      key,
+      statusCode,
+      message: error?.message || error,
+    });
+
+    return res.status(statusCode).json({
+      message:
+        statusCode === 404
+          ? "This file is not available yet. It may still be generating or may need to be regenerated."
+          : "Failed to download file",
+    });
   }
 };

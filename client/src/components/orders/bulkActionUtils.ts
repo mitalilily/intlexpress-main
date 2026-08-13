@@ -1,4 +1,5 @@
 import { saveAs } from 'file-saver'
+import axiosInstance from '../../api/axiosInstance'
 
 export type DocumentType = 'label' | 'invoice' | 'manifest'
 
@@ -212,6 +213,22 @@ export const downloadFile = async (url: string, fileName: string) => {
     console.warn('Falling back to browser download for bulk file:', error)
     triggerBrowserDownload(url, fileName)
   }
+}
+
+export const downloadStoredDocument = async (key: string, fileName: string) => {
+  const response = await axiosInstance.get('/uploads/download', {
+    params: { key, filename: fileName },
+    responseType: 'blob',
+    timeout: 120000,
+  })
+
+  const blob = response.data instanceof Blob
+    ? response.data
+    : new Blob([response.data], {
+        type: response.headers?.['content-type'] || 'application/pdf',
+      })
+
+  saveAs(blob, fileName)
 }
 
 export const getDocumentReference = (order: BulkOrderDocumentShape, type: DocumentType) => {
