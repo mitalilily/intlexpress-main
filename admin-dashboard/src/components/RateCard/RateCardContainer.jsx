@@ -86,9 +86,8 @@ const downloadCSV = (allCouriers = [], allZones = [], existingData = [], filters
   if (type === 'b2c') {
     const headers = [
       'Slab', 'Courier ID', 'Courier', 'Service Provider', 'Mode', 'Weight (KG)', 'Slab Type',
-      'Extra Weight Unit (KG)',
       ...allZones.map((z) => z.name),
-      'COD Rs', 'COD %', 'RTO %', 'Other Charges',
+      'COD Rs', 'COD %', 'RTO %',
     ]
 
     const rows = []
@@ -115,7 +114,6 @@ const downloadCSV = (allCouriers = [], allZones = [], existingData = [], filters
 
       const codRs = existing.cod_charges ?? ''
       const codPct = existing.cod_percent ?? ''
-      const otherCharges = existing.other_charges ?? ''
 
       for (let i = 0; i < slabDefs.length; i++) {
         const slab = slabDefs[i]
@@ -127,12 +125,9 @@ const downloadCSV = (allCouriers = [], allZones = [], existingData = [], filters
           const slabs = existing.zone_slabs?.[z.name]?.forward || []
           return slabs[i]?.extra_rate ?? ''
         })
-        const extraWeightUnit = allZones
-          .map((z) => existing.zone_slabs?.[z.name]?.forward?.[i]?.extra_weight_unit)
-          .find((value) => value !== undefined && value !== null && value !== '') ?? slab.weight
 
-        rows.push([slab.label, courier.id ?? '', courier.name ?? '', courier.serviceProvider || courier.service_provider || existing.service_provider || '', mode, slab.weight, 'First', '', ...firstZoneRates, codRs, codPct, rtoPercent, otherCharges])
-        rows.push([slab.label, courier.id ?? '', courier.name ?? '', courier.serviceProvider || courier.service_provider || existing.service_provider || '', mode, extraWeightUnit, 'Additional', extraWeightUnit, ...addZoneRates, '', '', '', ''])
+        rows.push([slab.label, courier.id ?? '', courier.name ?? '', courier.serviceProvider || courier.service_provider || existing.service_provider || '', mode, slab.weight, 'First', ...firstZoneRates, codRs, codPct, rtoPercent])
+        rows.push([slab.label, courier.id ?? '', courier.name ?? '', courier.serviceProvider || courier.service_provider || existing.service_provider || '', mode, slab.weight, 'Additional', ...addZoneRates, '', '', ''])
       }
     }
 

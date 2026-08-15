@@ -28,7 +28,6 @@
     "seed:holidays": "ts-node src/scripts/seedHolidays.ts",
     "seed:holidays:year": "ts-node src/scripts/seedHolidays.ts",
     "seed:delhivery-b2c": "ts-node src/scripts/seedDelhiveryB2CRatecard.ts",
-    "ensure:c2c-b2c-zones": "tsx src/scripts/ensureC2CB2CZones.ts",
     "prepare:delhivery-b2b": "tsx src/scripts/prepareDelhiveryB2B.ts",
     "seed:basic-b2c-ratecard": "ts-node src/scripts/seedBasicPlanB2CRatecard.ts",
     "seed:basic-provider-ratecards": "ts-node src/scripts/seedBasicProviderRateCards.ts",

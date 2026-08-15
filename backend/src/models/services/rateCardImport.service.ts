@@ -17,11 +17,7 @@ export type RateCardZone = {
   region?: string | null
 }
 
-type SlabRow = CSVRow & {
-  readonly _weight: number
-  readonly _type: 'first' | 'additional'
-  readonly _row_index: number
-}
+type SlabRow = CSVRow & { readonly _weight: number; readonly _type: 'first' | 'additional' }
 type ZoneHeaderMap = Record<string, string | undefined>
 type PreparedSlabRow = {
   readonly firstRow: SlabRow
@@ -82,14 +78,6 @@ const zoneHeaderAliases: Record<string, string[]> = {
   WITHIN_CITY: ['WITHIN CITY', 'Within City'],
   WITHIN_REGION: ['WITHIN REGION', 'Within Region'],
   WITHIN_STATE: ['WITHIN STATE', 'Within State'],
-  ZONE_A: ['A', 'ZONE A', 'Zone A', 'WITHIN CITY', 'Within City'],
-  ZONE_B: ['B', 'ZONE B', 'Zone B'],
-  ZONE_C1: ['C1', 'ZONE C1', 'Zone C1', 'METRO TO METRO', 'Metro to Metro'],
-  ZONE_C2: ['C2', 'ZONE C2', 'Zone C2'],
-  ZONE_D1: ['D1', 'ZONE D1', 'Zone D1', 'REST OF INDIA', 'Rest of India'],
-  ZONE_D2: ['D2', 'ZONE D2', 'Zone D2'],
-  ZONE_E: ['E', 'ZONE E', 'Zone E'],
-  ZONE_F: ['F', 'ZONE F', 'Zone F'],
 }
 
 const canonicalZoneCode = (code: unknown) =>
@@ -250,26 +238,13 @@ const findAdditionalRowForSlab = (rows: SlabRow[], firstRow: SlabRow) => {
   const matchingWeightRows = additionalRows.filter((row) =>
     weightsMatch(row._weight, firstRow._weight),
   )
-  if (matchingWeightRows.length === 1) return matchingWeightRows[0]
-
-  const nextFirstRow = rows
-    .filter((row) => row._type === 'first' && row._row_index > firstRow._row_index)
-    .sort((a, b) => a._row_index - b._row_index)[0]
-  const followingAdditionalRows = additionalRows
-    .filter(
-      (row) =>
-        row._row_index > firstRow._row_index &&
-        (!nextFirstRow || row._row_index < nextFirstRow._row_index),
-    )
-    .sort((a, b) => a._row_index - b._row_index)
-
-  return followingAdditionalRows[0]
+  return matchingWeightRows.length === 1 ? matchingWeightRows[0] : undefined
 }
 
 const prepareFirstSlabRows = (rows: SlabRow[]): PreparedSlabRow[] => {
   const firstRows = rows
     .filter((r) => r._type === 'first')
-    .sort((a, b) => a._row_index - b._row_index)
+    .sort((a, b) => a._weight - b._weight)
 
   let previousWeightTo = 0
   let previousAdditionalRow: SlabRow | undefined
@@ -300,7 +275,7 @@ export const importB2CSlabFormat = async (
   const groups = new Map<GroupKey, SlabRow[]>()
   let savedRows = 0
 
-  for (const [rowIndex, row] of data.entries()) {
+  for (const row of data) {
     const courierId = cell(row, 'Courier ID')
     const courierName = cell(row, 'Courier') || cell(row, 'Courier Name')
     const serviceProvider = inferServiceProvider(cell(row, 'Service Provider'), courierName)
@@ -331,7 +306,6 @@ export const importB2CSlabFormat = async (
           Mode: canonicalCourier.mode,
           _weight: weight,
           _type: slabType as 'first' | 'additional',
-          _row_index: rowIndex,
         }) as SlabRow,
       )
   }
@@ -346,14 +320,6 @@ export const importB2CSlabFormat = async (
     const mode = cell(first, 'Mode')
     const codCharges = toRateCardNumber(first['COD Rs'] ?? first['COD Charges'], 0) || null
     const codPercent = toRateCardNumber(first['COD %'] ?? first['COD Percent'], 0) || null
-    const otherCharges =
-      toRateCardNumber(
-        first['Other Charges'] ??
-          first['Waybill/Document Charge'] ??
-          first['Document Charge'] ??
-          first['Waybill Charge'],
-        0,
-      ) || null
     const rtoMultiplier = rtoMultiplierFromCell(first['RTO %'])
 
     const preparedFirstRows = prepareFirstSlabRows(rows)
@@ -381,17 +347,7 @@ export const importB2CSlabFormat = async (
         const extraRate = addRow
           ? toRateCardNumber(getZoneCell(addRow, zone, zoneHeaders)) || null
           : null
-        const explicitExtraWeightUnit = toRateCardNumber(
-          addRow?.['Extra Weight Unit (KG)'] ??
-            addRow?.['Extra Weight Unit'] ??
-            addRow?.['Per Extra Weight (KG)'] ??
-            addRow?.['Per Extra Weight'] ??
-            addRow?.['Extra Unit (KG)'],
-          0,
-        )
-        const extraWeightUnit = addRow && extraRate
-          ? explicitExtraWeightUnit || addRow._weight || null
-          : null
+        const extraWeightUnit = addRow && extraRate ? addRow._weight || null : null
 
         fwdSlabs.push({
           weight_from: weightFrom,
@@ -431,7 +387,7 @@ export const importB2CSlabFormat = async (
         business_type: 'b2c',
         cod_charges: codCharges,
         cod_percent: codPercent,
-        other_charges: otherCharges,
+        other_charges: null,
         rates: [{ zone_id: zone.id, type: 'forward', rate: fwdSlabs[0]?.rate ?? 0 }],
         zone_slabs: { [zone.id]: { forward: fwdSlabs } },
       })
@@ -447,7 +403,7 @@ export const importB2CSlabFormat = async (
           business_type: 'b2c',
           cod_charges: null,
           cod_percent: null,
-          other_charges: otherCharges,
+          other_charges: null,
           rates: [{ zone_id: zone.id, type: 'rto', rate: rtoSlabs[0]?.rate ?? 0 }],
           zone_slabs: { [zone.id]: { rto: rtoSlabs } },
         })
