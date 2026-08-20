@@ -1671,18 +1671,21 @@ const isGenericPickupWarehouseName = (value: unknown) => {
 const chooseConcretePickupWarehouseName = ({
   requested,
   warehouse,
+  fallbackNames = [],
   accountPickupNames = [],
 }: {
   requested?: unknown
   warehouse?: PickupWarehouseRecord | null
+  fallbackNames?: unknown[]
   accountPickupNames?: unknown[]
 }) => {
   const requestedName = trimText(requested)
   const warehouseName = trimText(warehouse?.addressNickname) || trimText(warehouse?.contactName)
+  const fallbackName = fallbackNames.map(trimText).find((value) => value && !isGenericPickupWarehouseName(value)) || ''
   const configuredAccountName = accountPickupNames.map(trimText).find(Boolean) || ''
 
   if (requestedName && !isGenericPickupWarehouseName(requestedName)) return requestedName
-  return warehouseName || configuredAccountName || requestedName
+  return warehouseName || fallbackName || configuredAccountName || ''
 }
 
 const normalizeAmazonGstNumber = (value: unknown) => {
@@ -7690,7 +7693,7 @@ export const createB2CShipmentService = async (
             ? pickupRow.addressNickname || pickup.warehouse_name || pickupRow.contactName || ''
             : chooseConcretePickupWarehouseName({
                 requested: pickup.warehouse_name,
-                warehouse: {
+          warehouse: {
                   pickupId: '',
                   addressNickname: pickupRow.addressNickname,
                   addressLine1: pickupRow.addressLine1 || '',
@@ -7702,6 +7705,7 @@ export const createB2CShipmentService = async (
                   contactPhone: pickupRow.contactPhone,
                   gstNumber: pickupRow.gstNumber,
                 },
+                fallbackNames: [pickup.name, pickupRow.contactName],
               })
         params.pickup = {
           warehouse_name: warehouseName,
@@ -10596,6 +10600,7 @@ export const createB2BShipmentService = async (
             params.pickup_location_id ||
             '',
           warehouse: selectedPickupWarehouseForDelhivery,
+          fallbackNames: [params.pickup?.name, params.pickup_location_alias],
         }),
       })
       const resolvedDelhiveryAccount = await delhivery.getResolvedAccount()
@@ -10642,6 +10647,7 @@ export const createB2BShipmentService = async (
           params.pickup_location_id ||
           '',
         warehouse: selectedPickupWarehouseForDelhivery,
+        fallbackNames: [payload.pickup?.name, params.pickup?.name, params.pickup_location_alias],
         accountPickupNames: resolvedDelhiveryAccount.pickupLocationNames,
       })
       if (!pickupLocationName) {
