@@ -171,8 +171,8 @@ export const getApproxZoneFromEDD = (edd: string): string => {
   const slaDays = calculateSLADays(edd)
   if (slaDays <= 2) return 'A'
   if (slaDays <= 4) return 'B'
-  if (slaDays <= 6) return 'C'
-  return 'D'
+  if (slaDays <= 6) return 'C1'
+  return 'D1'
 }
 
 //DETERMINE B2C ZONE

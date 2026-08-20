@@ -76,6 +76,14 @@ const normalizeHeaderKey = (value: unknown) =>
     .replace(/[^a-z0-9]+/g, '')
 
 const zoneHeaderAliases: Record<string, string[]> = {
+  A: ['ZONE A', 'Within City'],
+  B: ['ZONE B', 'Regional', 'Regional Single Connection', 'Regional Single Connection Less Than 500 Kms'],
+  C1: ['ZONE C1', 'C1', 'Metro to Metro 500-1400Kms', 'Metro to Metro 500-1400 Kms'],
+  C2: ['ZONE C2', 'C2', 'Metro to Metro 1400-2400Kms', 'Metro to Metro 1400-2400 Kms'],
+  D1: ['ZONE D1', 'D1', 'Rest of India Zone D', 'Rest of India 1400-2400Kms'],
+  D2: ['ZONE D2', 'D2', 'Rest of India Zone D1', 'Rest of India 1400-2400Kms'],
+  E: ['ZONE E', 'Jammu HP North East Excluding Manipur', 'Jammu,HP,North East Excluding Manipur'],
+  F: ['ZONE F', 'Kashmir Manipur Ladakh Andman Nicobar', 'Kashmir Manipur Ladakh Andaman Nicobar'],
   METRO_TO_METRO: ['METRO TO METRO', 'Metro to Metro'],
   ROI: ['ROI', 'Rest of India'],
   SPECIAL_ZONE: ['SPECIAL ZONE', 'Special Zone'],

@@ -45,80 +45,85 @@ const courierSeeds: CourierSeed[] = [
 
 const zoneSeeds: ZoneSeed[] = [
   {
-    code: 'METRO_TO_METRO',
-    name: 'Metro to Metro',
-    description: 'Shipments between major metros across the network.',
-    region: 'Metro to Metro',
-    metadata: {
-      note: 'Metro-to-metro corridor seeded 11 Feb 2026 16:34.',
-    },
-  },
-  {
-    code: 'ROI',
-    name: 'Metro to Metro',
-    description: 'Cover all metro city shipments when flows traverse the rest of India.',
-    region: 'Rest of India',
-    metadata: {
-      note: 'Created 11 Feb 2026 16:34 UTC',
-      origin: 'manual-injection',
-    },
-  },
-  {
-    code: 'SPECIAL_ZONE',
-    name: 'Special Zone',
-    description:
-      'Special Zones that need extra handling when the shipment leaves the regular network.',
-    region: 'Special Zones',
-    metadata: {
-      note: 'When shipment travels rest of India',
-    },
-  },
-  {
-    code: 'WITHIN_CITY',
-    name: 'Within City',
-    description: 'Shipments that stay within a single city boundary (incl. north-east metros).',
+    code: 'A',
+    name: 'Zone A',
+    description: 'C2C Surface Rate Card category: Within City. Pickup and delivery are in the same city.',
     region: 'Within City',
-    states: ['Nagaland', 'Mizoram', 'Manipur', 'Meghalaya', 'Assam', 'Sikkim'],
-    metadata: {
-      note: 'All seven sister states listed for the rollout (11 Feb 2026 16:34).',
-    },
+    metadata: { source: 'C2C Surface Rate Card', category: 'Within City' },
   },
   {
-    code: 'WITHIN_REGION',
-    name: 'Within Region',
-    description: 'When a shipment travels within a region comprising neighbouring states.',
-    region: 'Within Region',
-    metadata: {
-      note: 'Region-only movement',
-    },
+    code: 'B',
+    name: 'Zone B',
+    description: 'C2C Surface Rate Card category: Regional single connection and less than 500 kms.',
+    region: 'Regional',
+    metadata: { source: 'C2C Surface Rate Card', category: 'Regional single connection <500 kms' },
   },
   {
-    code: 'WITHIN_STATE',
-    name: 'Within State',
-    description: 'Shipment travels entirely within the same state.',
-    region: 'Within State',
-    metadata: {
-      note: 'Refer to 11 Feb 2026 change log for this zone',
-    },
+    code: 'C1',
+    name: 'Zone C1',
+    description: 'C2C Surface Rate Card category: Metro to Metro, 500-1400 kms.',
+    region: 'Metro to Metro',
+    metadata: { source: 'C2C Surface Rate Card', category: 'Metro to Metro 500-1400 kms' },
+  },
+  {
+    code: 'C2',
+    name: 'Zone C2',
+    description: 'C2C Surface Rate Card category: Metro to Metro, 1400-2400 kms.',
+    region: 'Metro to Metro',
+    metadata: { source: 'C2C Surface Rate Card', category: 'Metro to Metro 1400-2400 kms' },
+  },
+  {
+    code: 'D1',
+    name: 'Zone D1',
+    description: 'C2C Surface Rate Card category: Rest of India - Zone D, 1400-2400 kms.',
+    region: 'Rest of India',
+    metadata: { source: 'C2C Surface Rate Card', category: 'Rest of India Zone D 1400-2400 kms' },
+  },
+  {
+    code: 'D2',
+    name: 'Zone D2',
+    description: 'C2C Surface Rate Card category: Rest of India - Zone D1, 1400-2400 kms.',
+    region: 'Rest of India',
+    metadata: { source: 'C2C Surface Rate Card', category: 'Rest of India Zone D1 1400-2400 kms' },
+  },
+  {
+    code: 'E',
+    name: 'Zone E',
+    description: 'C2C Surface Rate Card category: Jammu, HP, and North East excluding Manipur.',
+    region: 'Special Region',
+    states: ['Jammu and Kashmir', 'Himachal Pradesh', 'Arunachal Pradesh', 'Assam', 'Meghalaya', 'Mizoram', 'Nagaland', 'Sikkim', 'Tripura'],
+    metadata: { source: 'C2C Surface Rate Card', category: 'Jammu, HP, North East excluding Manipur', excludes: ['Manipur'] },
+  },
+  {
+    code: 'F',
+    name: 'Zone F',
+    description: 'C2C Surface Rate Card category: Kashmir, Manipur, Ladakh, Andaman and Nicobar.',
+    region: 'Special Region',
+    states: ['Jammu and Kashmir', 'Manipur', 'Ladakh', 'Andaman and Nicobar Islands'],
+    metadata: { source: 'C2C Surface Rate Card', category: 'Kashmir, Manipur, Ladakh, Andaman and Nicobar' },
   },
 ]
 
 const forwardRateGuide: Record<string, number> = {
-  METRO_TO_METRO: 145,
-  ROI: 150,
-  SPECIAL_ZONE: 180,
-  WITHIN_CITY: 110,
-  WITHIN_REGION: 130,
-  WITHIN_STATE: 140,
+  A: 101,
+  B: 106,
+  C1: 107,
+  C2: 109,
+  D1: 110,
+  D2: 111,
+  E: 116,
+  F: 122,
 }
 
 const rtoRateGuide: Record<string, number> = {
-  METRO_TO_METRO: 95,
-  ROI: 90,
-  SPECIAL_ZONE: 110,
-  WITHIN_CITY: 70,
-  WITHIN_REGION: 80,
-  WITHIN_STATE: 85,
+  A: 101,
+  B: 106,
+  C1: 107,
+  C2: 109,
+  D1: 110,
+  D2: 111,
+  E: 116,
+  F: 122,
 }
 
 const codCharges = 45.0
@@ -195,6 +200,19 @@ async function upsertZones() {
 
     insertedZones.push({ id: zoneRow.id, code: zoneRow.code, name: zoneRow.name })
     console.log(`✅ Upserted zone ${seed.code} (${seed.name})`)
+  }
+
+  const targetCodes = new Set(zoneSeeds.map((seed) => seed.code))
+  const existingB2CZones = await db
+    .select({ id: zones.id, code: zones.code })
+    .from(zones)
+    .where(eq(zones.business_type, 'B2C'))
+
+  for (const staleZone of existingB2CZones) {
+    if (targetCodes.has(staleZone.code)) continue
+    await db.delete(shippingRates).where(eq(shippingRates.zone_id, staleZone.id))
+    await db.delete(zones).where(eq(zones.id, staleZone.id))
+    console.log(`Removed stale B2C zone ${staleZone.code}`)
   }
 
   return insertedZones

@@ -152,12 +152,12 @@ const hasTag = (loc: LocRow | null, tag: string) =>
   !!loc && Array.isArray(loc.tags) && loc.tags.includes(tag.toLowerCase())
 
 const ZONE_KEY_TO_DB_CODE: Record<string, string> = {
-  METRO_TO_METRO: 'METRO_TO_METRO',
-  ROI: 'ROI',
-  SPECIAL_ZONE: 'SPECIAL_ZONE',
-  WITHIN_CITY: 'WITHIN_CITY',
-  WITHIN_REGION: 'WITHIN_REGION',
-  WITHIN_STATE: 'WITHIN_STATE',
+  METRO_TO_METRO: 'C1',
+  ROI: 'D1',
+  SPECIAL_ZONE: 'E',
+  WITHIN_CITY: 'A',
+  WITHIN_REGION: 'B',
+  WITHIN_STATE: 'B',
 }
 
 function determineB2CZoneKey(

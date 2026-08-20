@@ -200,40 +200,54 @@ const ensureBasicPlan = async (client: PoolClient) => {
 const ensureB2CZones = async (client: PoolClient, zonesTable: string): Promise<ZoneRow[]> => {
   const seeds = [
     {
-      code: 'METRO_TO_METRO',
-      name: 'Metro to Metro',
-      description: 'Shipments moving between major metro cities.',
-      region: 'Metro to Metro',
-    },
-    {
-      code: 'ROI',
-      name: 'Rest of India',
-      description: 'Shipments outside same-city, same-state, same-region, and special zones.',
-      region: 'Rest of India',
-    },
-    {
-      code: 'SPECIAL_ZONE',
-      name: 'Special Zone',
-      description: 'Locations requiring special routing or handling.',
-      region: 'Special Zone',
-    },
-    {
-      code: 'WITHIN_CITY',
-      name: 'Within City',
-      description: 'Pickup and delivery within the same city.',
+      code: 'A',
+      name: 'Zone A',
+      description:
+        'C2C Surface Rate Card category: Within City. Pickup and delivery are in the same city.',
       region: 'Within City',
     },
     {
-      code: 'WITHIN_REGION',
-      name: 'Within Region',
-      description: 'Pickup and delivery within the same regional lane.',
-      region: 'Within Region',
+      code: 'B',
+      name: 'Zone B',
+      description:
+        'C2C Surface Rate Card category: Regional single connection and less than 500 kms.',
+      region: 'Regional',
     },
     {
-      code: 'WITHIN_STATE',
-      name: 'Within State',
-      description: 'Pickup and delivery within the same state.',
-      region: 'Within State',
+      code: 'C1',
+      name: 'Zone C1',
+      description: 'C2C Surface Rate Card category: Metro to Metro, 500-1400 kms.',
+      region: 'Metro to Metro',
+    },
+    {
+      code: 'C2',
+      name: 'Zone C2',
+      description: 'C2C Surface Rate Card category: Metro to Metro, 1400-2400 kms.',
+      region: 'Metro to Metro',
+    },
+    {
+      code: 'D1',
+      name: 'Zone D1',
+      description: 'C2C Surface Rate Card category: Rest of India - Zone D, 1400-2400 kms.',
+      region: 'Rest of India',
+    },
+    {
+      code: 'D2',
+      name: 'Zone D2',
+      description: 'C2C Surface Rate Card category: Rest of India - Zone D1, 1400-2400 kms.',
+      region: 'Rest of India',
+    },
+    {
+      code: 'E',
+      name: 'Zone E',
+      description: 'C2C Surface Rate Card category: Jammu, HP, and North East excluding Manipur.',
+      region: 'Special Region',
+    },
+    {
+      code: 'F',
+      name: 'Zone F',
+      description: 'C2C Surface Rate Card category: Kashmir, Manipur, Ladakh, Andaman and Nicobar.',
+      region: 'Special Region',
     },
   ]
 
@@ -266,6 +280,23 @@ const ensureB2CZones = async (client: PoolClient, zonesTable: string): Promise<Z
       )
     }
   }
+
+  const targetCodes = seeds.map((seed) => seed.code)
+  await client.query(
+    `delete from shipping_rates
+     where zone_id in (
+       select id from ${zonesTable}
+       where upper(business_type) = 'B2C'
+         and not (code = any($1))
+     )`,
+    [targetCodes],
+  )
+  await client.query(
+    `delete from ${zonesTable}
+     where upper(business_type) = 'B2C'
+       and not (code = any($1))`,
+    [targetCodes],
+  )
 
   const created = await client.query(
     `select id, code, name

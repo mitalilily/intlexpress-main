@@ -3278,21 +3278,21 @@ const determineB2CZoneKey = (
  * Adjust the right-hand values if your zones.code uses different wording.
  */
 const ZONE_KEY_TO_DB_CODE: Record<string, string> = {
-  METRO_TO_METRO: 'METRO_TO_METRO',
-  ROI: 'ROI',
-  SPECIAL_ZONE: 'SPECIAL_ZONE',
-  WITHIN_CITY: 'WITHIN_CITY',
-  WITHIN_REGION: 'WITHIN_REGION',
-  WITHIN_STATE: 'WITHIN_STATE',
+  METRO_TO_METRO: 'C1',
+  ROI: 'D1',
+  SPECIAL_ZONE: 'E',
+  WITHIN_CITY: 'A',
+  WITHIN_REGION: 'B',
+  WITHIN_STATE: 'B',
 }
 
 const B2C_ZONE_KEY_FALLBACK_CODES: Record<string, string[]> = {
-  METRO_TO_METRO: ['A_B2C', 'A', 'ZONE_A', 'ZONE A', 'ZONE A (B2C)'],
-  WITHIN_CITY: ['A_B2C', 'A', 'ZONE_A', 'ZONE A', 'ZONE A (B2C)'],
-  WITHIN_STATE: ['B_B2C', 'B', 'ZONE_B', 'ZONE B', 'ZONE B (B2C)'],
-  WITHIN_REGION: ['C_B2C', 'C', 'ZONE_C', 'ZONE C', 'ZONE C (B2C)'],
-  ROI: ['D_B2C', 'E_B2C', 'D', 'E', 'ZONE_D', 'ZONE_E', 'ZONE D', 'ZONE E'],
-  SPECIAL_ZONE: ['SPECIAL_B2C', 'SPECIAL', 'E_B2C', 'E', 'ZONE_E', 'ZONE E'],
+  METRO_TO_METRO: ['ZONE C1', 'C1', 'C2', 'ZONE C2', 'METRO_TO_METRO', 'Metro to Metro'],
+  WITHIN_CITY: ['ZONE A', 'A', 'WITHIN_CITY', 'Within City'],
+  WITHIN_STATE: ['ZONE B', 'B', 'WITHIN_STATE', 'Within State', 'Regional'],
+  WITHIN_REGION: ['ZONE B', 'B', 'WITHIN_REGION', 'Within Region', 'Regional'],
+  ROI: ['ZONE D1', 'D1', 'D2', 'ZONE D2', 'ROI', 'Rest of India'],
+  SPECIAL_ZONE: ['ZONE E', 'E', 'ZONE F', 'F', 'SPECIAL_ZONE', 'Special Zone'],
 }
 
 const uniqueZoneCandidates = (values: Array<string | null | undefined>) =>
