@@ -2,7 +2,11 @@ import { Button, Chip, Link, Stack, Typography } from '@mui/material'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import moment from 'moment'
-import { useB2BOrdersByUser, useGenerateManifest } from '../../../hooks/Orders/useOrders'
+import {
+  useB2BOrdersByUser,
+  useCancelShipment,
+  useGenerateManifest,
+} from '../../../hooks/Orders/useOrders'
 import type { B2BOrder } from '../../../types/generic.types'
 import { getDelhiveryBookedAccount } from '../../../utils/delhiveryAccount'
 import StatusChip from '../../UI/chip/StatusChip'
@@ -35,6 +39,20 @@ const getCourierDisplayName = (order: B2BOrder) =>
       '',
   ).trim() || '-'
 
+const NON_CANCELLABLE_STATUSES = new Set([
+  'cancelled',
+  'canceled',
+  'cancellation_requested',
+  'delivered',
+  'rto_delivered',
+])
+
+const getNormalizedOrderStatus = (order: B2BOrder) =>
+  String(order.order_status || '').trim().toLowerCase()
+
+const canCancelB2BOrder = (order: B2BOrder) =>
+  Boolean(order.id) && !NON_CANCELLABLE_STATUSES.has(getNormalizedOrderStatus(order))
+
 const B2BOrdersList = ({
   page,
   rowsPerPage,
@@ -48,7 +66,9 @@ const B2BOrdersList = ({
     filters,
   )
   const { mutate: triggerManifest, isPending: isGeneratingManifest } = useGenerateManifest()
+  const { mutateAsync: cancelShipment } = useCancelShipment()
   const [manifestingAwb, setManifestingAwb] = useState<string | null>(null)
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
 
   const handleGenerateManifest = (order: B2BOrder) => {
     if (!order.awb_number) return
@@ -61,6 +81,21 @@ const B2BOrdersList = ({
         },
       },
     )
+  }
+
+  const handleCancelOrder = async (order: B2BOrder) => {
+    const confirmed = window.confirm(
+      `Cancel B2B order ${order.order_number || order.id}? This will also request courier cancellation when the shipment is already booked.`,
+    )
+    if (!confirmed) return
+
+    const orderId = String(order.id)
+    setCancellingOrderId(orderId)
+    try {
+      await cancelShipment(orderId)
+    } finally {
+      setCancellingOrderId((current) => (current === orderId ? null : current))
+    }
   }
 
   const columns: Column<B2BOrder>[] = [
@@ -163,6 +198,25 @@ const B2BOrdersList = ({
             >
               View
             </Link>,
+          )
+        }
+
+        if (canCancelB2BOrder(row)) {
+          const isThisCancelling = cancellingOrderId === row.id
+          actions.push(
+            <Button
+              key="cancel"
+              size="small"
+              color="error"
+              variant="outlined"
+              disabled={isThisCancelling}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleCancelOrder(row)
+              }}
+            >
+              {isThisCancelling ? 'Cancelling...' : 'Cancel'}
+            </Button>,
           )
         }
 

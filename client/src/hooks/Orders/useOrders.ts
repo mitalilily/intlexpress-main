@@ -214,6 +214,7 @@ export const useCancelShipment = () => {
     onSuccess: () => {
       toast.open({ message: 'Cancellation request sent', severity: 'success' })
       queryClient.invalidateQueries({ queryKey: ['b2cOrdersByUser'] })
+      queryClient.invalidateQueries({ queryKey: ['b2bOrdersByUser'] })
       queryClient.invalidateQueries({ queryKey: ['orders'] })
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
