@@ -86,7 +86,10 @@ import {
   normalizeB2CServiceProvider,
   normalizeB2CShippingMode,
 } from './b2cRateCard.service'
-import { getDelhiveryAccounts } from './delhiveryCredentials.service'
+import {
+  getDelhiveryAccounts,
+  persistDelhiveryAccountRuntimeDetails,
+} from './delhiveryCredentials.service'
 import {
   AfterShipTrackingService,
   isAfterShipTrackingConfigured,
@@ -104,6 +107,7 @@ import {
   getStoredAmazonShippingCredentials,
 } from './amazonShippingCredentials.service'
 import {
+  createDelhiveryB2BClientWarehouse,
   createDelhiveryB2BShipment,
   createDelhiveryB2BPickupRequest,
   extractDelhiveryB2BJobId,
@@ -1689,6 +1693,99 @@ const chooseConcretePickupWarehouseName = ({
 
   if (requestedName && !isGenericPickupWarehouseName(requestedName)) return requestedName
   return warehouseName || fallbackName || configuredAccountName || ''
+}
+
+const isDuplicateDelhiveryWarehouseError = (message: unknown) => {
+  const normalized = trimText(message).toLowerCase()
+  return (
+    normalized.includes('already exists') ||
+    normalized.includes('client-warehouse of client')
+  )
+}
+
+const ensureDelhiveryB2BClientWarehouse = async ({
+  token,
+  apiBase,
+  accountCode,
+  pickupLocationId,
+  pickupLocationName,
+  pickup,
+  companyName,
+}: {
+  token: string
+  apiBase?: string | null
+  accountCode: string
+  pickupLocationId?: unknown
+  pickupLocationName: string
+  pickup?: ShipmentParams['pickup']
+  companyName?: unknown
+}) => {
+  const normalizedPickupLocationName = trimText(pickupLocationName)
+  if (!normalizedPickupLocationName) return
+
+  const pickupAddress = [pickup?.address, pickup?.address_2]
+    .map(trimText)
+    .filter(Boolean)
+    .join(', ')
+  const returnAddress = pickupAddress || trimText(pickup?.address)
+  const payload = {
+    name: normalizedPickupLocationName,
+    registered_name: trimText(companyName) || trimText(pickup?.name) || 'Intlexpress',
+    phone: trimText(pickup?.phone),
+    ...(trimText((pickup as any)?.email) ? { email: trimText((pickup as any)?.email) } : {}),
+    address: pickupAddress || trimText(pickup?.address),
+    city: trimText(pickup?.city),
+    pin: trimText(pickup?.pincode),
+    country: trimText((pickup as any)?.country) || 'India',
+    return_address: returnAddress,
+    return_city: trimText(pickup?.city),
+    return_pin: trimText(pickup?.pincode),
+    return_state: trimText(pickup?.state),
+    return_country: trimText((pickup as any)?.country) || 'India',
+  }
+
+  try {
+    const result = await createDelhiveryB2BClientWarehouse({
+      token,
+      apiBase,
+      payload,
+    })
+
+    await persistDelhiveryAccountRuntimeDetails({
+      accountCode,
+      clientName: trimText((result.data as any)?.data?.client || (result.data as any)?.client),
+      pickupLocationId: trimText(pickupLocationId),
+      pickupLocationName: normalizedPickupLocationName,
+    })
+
+    console.log('✅ Delhivery B2B client warehouse ensured before manifest', {
+      accountCode,
+      pickup_location: normalizedPickupLocationName,
+      status: result.status,
+    })
+  } catch (err: any) {
+    const providerMessage =
+      err?.response?.data?.error?.[0] ||
+      err?.response?.data?.message ||
+      err?.response?.data?.detail ||
+      err?.message ||
+      ''
+
+    if (isDuplicateDelhiveryWarehouseError(providerMessage)) {
+      await persistDelhiveryAccountRuntimeDetails({
+        accountCode,
+        pickupLocationId: trimText(pickupLocationId),
+        pickupLocationName: normalizedPickupLocationName,
+      })
+      console.warn('ℹ️ Delhivery B2B client warehouse already exists; continuing', {
+        accountCode,
+        pickup_location: normalizedPickupLocationName,
+      })
+      return
+    }
+
+    throw err
+  }
 }
 
 const normalizeAmazonGstNumber = (value: unknown) => {
@@ -10670,6 +10767,20 @@ export const createB2BShipmentService = async (
         name: params.pickup?.name || pickupLocationName,
       }
       params.pickup_location_alias = pickupLocationName
+      const isKnownDelhiveryB2BPickup = resolvedDelhiveryAccount.pickupLocationNames.some(
+        (entry) => trimText(entry).toLowerCase() === pickupLocationName.toLowerCase(),
+      )
+      if (!isKnownDelhiveryB2BPickup) {
+        await ensureDelhiveryB2BClientWarehouse({
+          token: b2bLogin.token,
+          apiBase: resolvedDelhiveryAccount.apiBase,
+          accountCode: resolvedDelhiveryAccount.accountCode,
+          pickupLocationId: params.pickup_location_id,
+          pickupLocationName,
+          pickup: payload.pickup,
+          companyName: payload.company?.name,
+        })
+      }
       const b2bManifestPayload = buildDelhiveryB2BManifestPayload({
         payload,
         normalizedOrderNumber,
