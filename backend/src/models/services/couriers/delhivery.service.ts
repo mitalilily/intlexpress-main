@@ -1045,7 +1045,17 @@ export const createDelhiveryB2BPickupRequest = async ({
   const normalizedToken = ensureDelhiveryB2BToken(token)
   const resolvedApiBase = normalizeDelhiveryB2BAuthApiBase(apiBase)
   const normalizedRequestId = String(requestId || '').trim()
-  const response = await axios.post(`${resolvedApiBase}/pickup_requests/`, payload, {
+  const requestPayload = { ...(payload || {}) }
+  if (!requestPayload.client_warehouse && requestPayload.pickup_location) {
+    requestPayload.client_warehouse = requestPayload.pickup_location
+  }
+  if (!requestPayload.start_time && requestPayload.pickup_time) {
+    requestPayload.start_time = requestPayload.pickup_time
+  }
+  delete requestPayload.pickup_location
+  delete requestPayload.pickup_time
+
+  const response = await axios.post(`${resolvedApiBase}/pickup_requests/`, requestPayload, {
     headers: {
       ...buildDelhiveryB2BAuthHeaders(normalizedToken),
       ...(normalizedRequestId ? { 'X-Request-Id': normalizedRequestId } : {}),
