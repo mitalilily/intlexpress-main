@@ -110,6 +110,7 @@ import {
   createDelhiveryB2BClientWarehouse,
   createDelhiveryB2BShipment,
   createDelhiveryB2BPickupRequest,
+  getDelhiveryB2BShipmentStatus,
   extractDelhiveryB2BJobId,
   loginDelhiveryB2B,
   DelhiveryService,
@@ -3570,6 +3571,79 @@ const extractDelhiveryB2BLrn = (value: unknown): string => {
     }
   }
   return ''
+}
+
+const isUuidLikeValue = (value: any) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(value || '').trim(),
+  )
+
+const normalizeDelhiveryB2BRealLrn = (value: unknown, rejectedValues: Array<any> = []) => {
+  const candidate = String(value || '').trim()
+  if (!candidate) return ''
+  const normalizedCandidate = candidate.toLowerCase()
+  const rejected = rejectedValues
+    .map((entry) => String(entry || '').trim().toLowerCase())
+    .filter(Boolean)
+
+  if (isUuidLikeValue(candidate)) return ''
+  if (normalizedCandidate.startsWith('ord-')) return ''
+  if (rejected.includes(normalizedCandidate)) return ''
+
+  return candidate
+}
+
+const waitForDelhiveryB2BManifestStatus = async ({
+  token,
+  apiBase,
+  jobId,
+  rejectedValues,
+  attempts = 4,
+  delayMs = 1500,
+}: {
+  token: string
+  apiBase?: string | null
+  jobId: string
+  rejectedValues: Array<any>
+  attempts?: number
+  delayMs?: number
+}) => {
+  const statusChecks: Array<Record<string, any>> = []
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    if (attempt > 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+
+    const statusResponse = await getDelhiveryB2BShipmentStatus({ token, apiBase, jobId })
+    const statusPayload = statusResponse?.data ?? statusResponse
+    statusChecks.push({
+      attempt,
+      status: statusResponse?.status,
+      data: statusPayload,
+      checked_at: new Date().toISOString(),
+    })
+
+    const lrn = normalizeDelhiveryB2BRealLrn(
+      extractDelhiveryB2BLrn(statusPayload),
+      rejectedValues,
+    )
+    if (lrn) {
+      return { lrn, statusResponse, statusPayload, statusChecks }
+    }
+
+    const statusText = String(
+      (statusPayload as any)?.status ||
+        (statusPayload as any)?.state ||
+        (statusPayload as any)?.message ||
+        '',
+    ).toLowerCase()
+    if (statusText.includes('fail') || statusText.includes('reject') || statusText.includes('error')) {
+      return { lrn: '', statusResponse, statusPayload, statusChecks }
+    }
+  }
+
+  return { lrn: '', statusResponse: null, statusPayload: null, statusChecks }
 }
 
 const normalizeDelhiveryB2BFreightMode = (value: any) => {
@@ -10881,16 +10955,85 @@ export const createB2BShipmentService = async (
         payload: b2bManifestPayload,
         files: invoiceDocuments,
       })
-      const providerResponse = shipmentData?.data ?? shipmentData
-      const delhiveryLrn = extractDelhiveryB2BLrn(providerResponse) || null
-      const delhiveryAwb = delhiveryLrn
+      let providerResponse = shipmentData?.data ?? shipmentData
+      const initialProviderRequestId =
+        String(
+          extractDelhiveryB2BJobId(providerResponse) ||
+            providerResponse?.request_id ||
+            providerResponse?.client_request_id ||
+            providerResponse?.job_id ||
+            normalizedOrderNumber,
+        ).trim() || normalizedOrderNumber
+      const rejectedLrnValues = [
+        initialProviderRequestId,
+        providerResponse?.request_id,
+        providerResponse?.job_id,
+        normalizedOrderNumber,
+      ]
+      let delhiveryLrn =
+        normalizeDelhiveryB2BRealLrn(extractDelhiveryB2BLrn(providerResponse), rejectedLrnValues) ||
+        ''
+
+      if (!delhiveryLrn && initialProviderRequestId && isUuidLikeValue(initialProviderRequestId)) {
+        try {
+          const statusResult = await waitForDelhiveryB2BManifestStatus({
+            token: b2bLogin.token,
+            apiBase: resolvedDelhiveryAccount.apiBase,
+            jobId: initialProviderRequestId,
+            rejectedValues: rejectedLrnValues,
+          })
+          if (statusResult.statusChecks.length) {
+            ;(shipmentData as any).manifest_status_checks = statusResult.statusChecks
+          }
+          if (statusResult.statusPayload) {
+            providerResponse = statusResult.statusPayload
+            ;(shipmentData as any).manifest_status = statusResult.statusResponse
+          }
+          if (statusResult.lrn) {
+            delhiveryLrn = statusResult.lrn
+          }
+        } catch (statusError: any) {
+          ;(shipmentData as any).manifest_status_error =
+            statusError?.response?.data || statusError?.message || statusError
+        }
+      }
+
+      const delhiveryAwb = delhiveryLrn || null
       const shipmentPackage = Array.isArray(providerResponse?.packages)
         ? providerResponse.packages[0]
         : providerResponse?.packages || null
 
-      if (false && !delhiveryAwb) {
-        console.error('âŒ Invalid Delhivery B2B shipment:', shipmentData)
-        throw new HttpError(500, 'Delhivery B2B shipment creation failed')
+      if (!delhiveryAwb) {
+        const providerMessage = getUserFacingManifestError(
+          { response: { data: providerResponse } },
+          'Delhivery B2B manifest did not return an LRN/AWB yet.',
+        )
+        const failureMessage = `${providerMessage} Delhivery job/request id: ${initialProviderRequestId}. Please retry after correcting the provider rejection reason.`
+        await db
+          .update(b2b_orders)
+          .set({
+            order_status: 'failed',
+            provider_last_status: 'manifest_failed',
+            provider_request_id: initialProviderRequestId,
+            provider_meta: {
+              ...shipmentData,
+              courier_name: 'Delhivery',
+              courier_id: courierId ?? null,
+              provider_request_id: initialProviderRequestId,
+              delhivery_account_code: resolvedDelhiveryAccount.accountCode,
+              delhivery_account_label: resolvedDelhiveryAccount.accountLabel,
+            },
+            delivery_message: failureMessage,
+            updated_at: new Date(),
+          } as any)
+          .where(eq(b2b_orders.id, pendingOrder.id))
+
+        console.error('❌ Invalid Delhivery B2B shipment response without real LRN/AWB', {
+          order_number: normalizedOrderNumber,
+          provider_request_id: initialProviderRequestId,
+          response: providerResponse,
+        })
+        throw new HttpError(502, failureMessage)
       }
 
       const providerReference =
