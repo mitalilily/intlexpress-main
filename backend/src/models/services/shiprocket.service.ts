@@ -1680,7 +1680,10 @@ const chooseConcretePickupWarehouseName = ({
   accountPickupNames?: unknown[]
 }) => {
   const requestedName = trimText(requested)
-  const warehouseName = trimText(warehouse?.addressNickname) || trimText(warehouse?.contactName)
+  const warehouseName =
+    [warehouse?.addressNickname, warehouse?.contactName]
+      .map(trimText)
+      .find((value) => value && !isGenericPickupWarehouseName(value)) || ''
   const fallbackName = fallbackNames.map(trimText).find((value) => value && !isGenericPickupWarehouseName(value)) || ''
   const configuredAccountName = accountPickupNames.map(trimText).find(Boolean) || ''
 
