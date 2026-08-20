@@ -952,11 +952,44 @@ const truncateColumnValue = (value: string, maxLength = 255) => {
 const getErrorStatusCode = (error: any, fallback = 500) =>
   typeof error?.statusCode === 'number' ? error.statusCode : fallback
 
+const extractNestedProviderMessage = (value: unknown, depth = 0): string => {
+  if (!value || depth > 4) return ''
+
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim()
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const message = extractNestedProviderMessage(entry, depth + 1)
+      if (message) return message
+    }
+    return ''
+  }
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    for (const key of ['reason', 'message', 'error', 'remarks', 'remark', 'status_message', 'detail']) {
+      const message = extractNestedProviderMessage(record[key], depth + 1)
+      if (message) return message
+    }
+
+    for (const nested of Object.values(record)) {
+      if (!nested || (typeof nested !== 'object' && !Array.isArray(nested))) continue
+      const message = extractNestedProviderMessage(nested, depth + 1)
+      if (message) return message
+    }
+  }
+
+  return ''
+}
+
 const getUserFacingManifestError = (
   error: any,
   fallback = 'Failed to generate manifest. Please try again.',
 ) => {
-  const rawMessage = typeof error?.message === 'string' ? error.message.trim() : ''
+  const rawMessage =
+    (typeof error?.message === 'string' ? error.message.trim() : '') ||
+    extractNestedProviderMessage(error?.response?.data ?? error?.details ?? error?.data)
   if (!rawMessage) {
     return fallback
   }
@@ -11067,7 +11100,7 @@ export const createB2BShipmentService = async (
               delhivery_account_code: resolvedDelhiveryAccount.accountCode,
               delhivery_account_label: resolvedDelhiveryAccount.accountLabel,
             },
-            delivery_message: failureMessage,
+            delivery_message: truncateColumnValue(failureMessage, 100),
             updated_at: new Date(),
           } as any)
           .where(eq(b2b_orders.id, pendingOrder.id))
