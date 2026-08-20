@@ -1,9 +1,22 @@
 import dayjs from 'dayjs'
-import { and, between, desc, eq, sql } from 'drizzle-orm'
+import { and, between, desc, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '../models/client'
 import { billingInvoices } from '../models/schema/billingInvoices'
 import { generateInvoiceForUser } from '../models/services/invoiceGeneration.service'
 import { b2b_orders, b2c_orders, billingPreferences, users } from '../schema/schema'
+
+const BILLABLE_ORDER_STATUSES = [
+  'shipment_created',
+  'booked',
+  'pickup_initiated',
+  'in_transit',
+  'out_for_delivery',
+  'delivered',
+  'ndr',
+  'rto',
+  'rto_in_transit',
+  'rto_delivered',
+] as const
 
 // 🕑 Runs every day at 2 AM
 export const generateAutoBillingInvoices = async ({ force = false } = {}) => {
@@ -99,7 +112,7 @@ export const generateAutoBillingInvoices = async ({ force = false } = {}) => {
           and(
             eq(b2c_orders.user_id, userId),
             between(b2c_orders.created_at, startDate, endDate),
-            eq(b2c_orders.order_status, 'pickup_initiated'),
+            inArray(b2c_orders.order_status, [...BILLABLE_ORDER_STATUSES]),
           ),
         )
 
@@ -110,13 +123,13 @@ export const generateAutoBillingInvoices = async ({ force = false } = {}) => {
           and(
             eq(b2b_orders.user_id, userId),
             between(b2b_orders.created_at, startDate, endDate),
-            eq(b2b_orders.order_status, 'pickup_initiated'),
+            inArray(b2b_orders.order_status, [...BILLABLE_ORDER_STATUSES]),
           ),
         )
 
       const totalOrders = (b2cCount?.count ?? 0) + (b2bCount?.count ?? 0)
       if (totalOrders === 0) {
-        console.log(`⚠️ Skipping user ${userId}: no delivered orders in this period.`)
+        console.log(`⚠️ Skipping user ${userId}: no billable orders in this period.`)
         continue
       }
 

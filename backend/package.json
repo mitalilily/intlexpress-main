@@ -16,6 +16,7 @@
     "check:shadowfax-apis": "node -r ts-node/register src/scripts/checkShadowfaxApis.ts",
     "check:delhivery-apis": "tsx src/scripts/checkDelhiveryApis.ts",
     "check:booking-wallet-gst": "tsx src/scripts/checkBookingWalletGstDebit.ts",
+    "check:booking-freight-qc": "tsx src/scripts/qcBookingFreightAndInvoices.ts",
     "check:wallet-awb-link": "tsx src/scripts/checkWalletTransactionAwbLink.ts",
     "check:order-csv-actions": "tsx src/scripts/checkOrderCsvAndActions.ts",
     "check:shopify-oauth": "node -r ts-node/register src/scripts/checkShopifyOAuth.ts",

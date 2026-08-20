@@ -159,7 +159,8 @@ export const generateInvoiceForUser = async (
 
   // Billing subtotal should reflect only costs we bill the seller for
   // Exclude customer-facing charges like transaction fee, gift wrap, discount
-  const subtotal = totalShipping + totalCOD
+  // Include courier/serviceability other_charges because booking wallet debit includes them.
+  const subtotal = totalShipping + totalOtherCharges + totalCOD
   // GST calculation (default 18%) — compute fully after fetching seller profile
   const gstRate = 0
 
@@ -224,16 +225,21 @@ export const generateInvoiceForUser = async (
   const csvPath = path.join(tmpDir, `${invoiceNo}.csv`)
 
   // 4️⃣ Generate CSV
-  const csvHeader = 'Order ID,Order Type,AWB,Freight Charges,COD Charges,Order Date\n'
+  const csvHeader =
+    'Order ID,Order Type,AWB,Freight Charges,Other Charges,COD Charges,Billed Amount,Order Date\n'
   const csvBody = allOrders
     .map((o) => {
       // Use order_type (prepaid/cod) instead of integration_type
       const orderType = (o as any).order_type || 'prepaid'
       const orderTypeDisplay = orderType.toLowerCase() === 'cod' ? 'COD' : 'Prepaid'
       const billedDate = (o as any).updated_at || (o as any).created_at
+      const freight = Number((o as any).freight_charges ?? (o as any).shipping_charges ?? 0) || 0
+      const other = Number((o as any).other_charges ?? 0) || 0
+      const cod = Number((o as any).cod_charges ?? 0) || 0
+      const billedAmount = freight + other + cod
       return `${o.order_id || o.order_number},${orderTypeDisplay},${o.awb_number || '-'},${
-        (o as any).freight_charges ?? (o as any).shipping_charges ?? 0
-      },${(o as any).cod_charges ?? 0},${dayjs(billedDate).format('YYYY-MM-DD')}`
+        freight
+      },${other},${cod},${billedAmount},${dayjs(billedDate).format('YYYY-MM-DD')}`
     })
     .join('\n')
 
@@ -559,6 +565,15 @@ export const generateInvoiceForUser = async (
                       ],
                     ]
                   : []),
+                ...(totalOtherCharges > 0
+                  ? [
+                      [
+                        { text: 'Other Charges', fontSize },
+                        { text: allOrders.length.toString(), fontSize, alignment: 'center' },
+                        { text: formatAmount(totalOtherCharges), fontSize, alignment: 'right' },
+                      ],
+                    ]
+                  : []),
               ],
             },
             layout: 'lightHorizontalLines',
@@ -755,6 +770,19 @@ export const generateInvoiceForUser = async (
                         { text: 'COD Charges', style: 'tableCell' },
                         { text: allOrders.length.toString(), style: 'tableCellCenter' },
                         { text: formatAmount(totalCOD), style: 'tableCellRight' },
+                      ],
+                    ]
+                  : []),
+                ...(totalOtherCharges > 0
+                  ? [
+                      [
+                        {
+                          text: String((totalShipping > 0 ? 1 : 0) + (totalCOD > 0 ? 1 : 0) + 1),
+                          style: 'tableCell',
+                        },
+                        { text: 'Other Charges', style: 'tableCell' },
+                        { text: allOrders.length.toString(), style: 'tableCellCenter' },
+                        { text: formatAmount(totalOtherCharges), style: 'tableCellRight' },
                       ],
                     ]
                   : []),
