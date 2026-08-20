@@ -21,6 +21,7 @@ import {
   fetchAvailableCouriersWithRatesAdmin,
   fetchAvailableCouriersWithRatesB2B,
 } from '../../models/services/shiprocket.service'
+import { DELHIVERY_B2B_ACCOUNT_COURIER_IDS } from '../../utils/delhiveryCourier'
 import { courier_credentials } from '../../models/schema/courierCredentials'
 import { couriers } from '../../models/schema/couriers'
 import { getAllZones } from '../../models/services/zone.service'
@@ -228,6 +229,11 @@ export const getAllCouriersListController = async (req: Request, res: Response) 
             `'${jsonbArrayStr.replace(/'/g, "''")}'::jsonb`,
           )}`,
         )
+
+        if (normalizedBusinessType === 'b2b') {
+          whereClauses.push(sql`lower(${couriers.serviceProvider}) = 'delhivery'`)
+          whereClauses.push(inArray(couriers.id, Object.values(DELHIVERY_B2B_ACCOUNT_COURIER_IDS)))
+        }
       }
     }
 

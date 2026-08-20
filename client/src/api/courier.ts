@@ -141,6 +141,33 @@ const isDelhiveryCourier = (item: any) => {
 const filterDelhiveryCouriers = <T>(items: T[] | null | undefined): T[] =>
   Array.isArray(items) ? items.filter(isDelhiveryCourier) : []
 
+const isDelhiveryB2BAccountCourier = (item: any) => {
+  if (!item || typeof item === 'string') return false
+
+  const id = Number(item?.id ?? item?.courier_id)
+  if ([21002, 21003].includes(id)) return true
+
+  const label = [
+    item?.name,
+    item?.displayName,
+    item?.courier_name,
+    item?.delhivery_account_label,
+    item?.delhivery_account?.accountLabel,
+  ]
+    .map((value) => String(value || '').toLowerCase())
+    .join(' ')
+
+  return label.includes('delhivery') && label.includes('b2b') && label.includes('account')
+}
+
+const filterCouriersForBusinessType = <T>(items: T[] | null | undefined, businessType?: unknown): T[] => {
+  const delhiveryCouriers = filterDelhiveryCouriers(items)
+  if (String(businessType || '').toLowerCase() === 'b2b') {
+    return delhiveryCouriers.filter(isDelhiveryB2BAccountCourier)
+  }
+  return delhiveryCouriers
+}
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Courier selection can briefly fail during backend restarts or upstream gateway hiccups.
@@ -174,7 +201,7 @@ export const fetchAvailableCouriers = async (params: any): Promise<any[]> => {
         throw new Error(res.data.error || 'Failed to fetch couriers')
       }
 
-      return filterDelhiveryCouriers(res.data.data)
+      return filterCouriersForBusinessType(res.data.data, params?.shipment_type)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('fetchAvailableCouriers error:', error.response?.data || error.message)
@@ -206,7 +233,7 @@ export const fetchShippingRates = async (filters: ShippingRatesFilters = {}): Pr
   if (filters.businessType) params.businessType = filters.businessType
 
   const response = await axiosInstance.get('/couriers/shipping-rates', { params })
-  return filterDelhiveryCouriers(response.data.data || [])
+  return filterCouriersForBusinessType(response.data.data || [], filters.businessType)
 }
 
 export const fetchAllCouriers = async (): Promise<string[]> => {

@@ -61,7 +61,7 @@ const B2BRateMatrix = ({ planId }) => {
   const [serviceProvider, setServiceProvider] = useState('')
   const [importFile, setImportFile] = useState(null)
 
-  const { data: couriers = [] } = useCouriers()
+  const { data: couriers = [] } = useCouriers({ businessType: 'b2b' })
 
   // Handle combined courier-service provider selection
   const handleCourierServiceChange = (value) => {

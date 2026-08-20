@@ -65,7 +65,7 @@ const B2BSurchargeManagement = ({
   const serviceProvider = propServiceProvider || localServiceProvider
 
   const [searchQuery, setSearchQuery] = useState('')
-  const { data: couriers = [] } = useCouriers()
+  const { data: couriers = [] } = useCouriers({ businessType: 'b2b' })
   const borderColor = useColorModeValue('gray.200', 'gray.700')
   const hoverBg = useColorModeValue('gray.50', 'gray.700')
   const cardBg = useColorModeValue('white', 'gray.800')
@@ -412,7 +412,7 @@ const SurchargeModal = ({ isOpen, onClose, rule, courierId, serviceProvider, pla
   })
 
   // Fetch couriers for courier selection
-  const { data: couriers = [] } = useCouriers()
+  const { data: couriers = [] } = useCouriers({ businessType: 'b2b' })
 
   const [formData, setFormData] = useState({
     name: '',

@@ -43,7 +43,7 @@ const B2BAdditionalCharges = ({
   const courierId = propCourierId || localCourierId
   const serviceProvider = propServiceProvider || localServiceProvider
 
-  const { data: couriers = [] } = useCouriers()
+  const { data: couriers = [] } = useCouriers({ businessType: 'b2b' })
 
   // Handle combined courier-service provider selection
   const handleCourierServiceChange = (value) => {

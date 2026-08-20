@@ -62,7 +62,7 @@ export const ZoneRateMatrix = ({ embedded = false } = {}) => {
     destinationZoneId: '',
   })
 
-  const { data: couriers = [] } = useCouriers()
+  const { data: couriers = [] } = useCouriers({ businessType: 'b2b' })
   const { zones: b2bZones = [] } = useZones('B2B', { include_global: true })
 
   const courierScope = buildCourierScope(filters.courierId, couriers)

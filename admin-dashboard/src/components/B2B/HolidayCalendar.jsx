@@ -93,7 +93,7 @@ const HolidayCalendar = () => {
     serviceProvider: '',
   })
 
-  const { data: couriers = [] } = useCouriers()
+  const { data: couriers = [] } = useCouriers({ businessType: 'b2b' })
 
   // Form state
   const [formData, setFormData] = useState({

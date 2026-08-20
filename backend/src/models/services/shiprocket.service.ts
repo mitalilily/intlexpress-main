@@ -28,6 +28,7 @@ import {
   resolveCourierProviderKeyFromFields,
 } from '../../utils/courierProvider'
 import {
+  DELHIVERY_B2B_ACCOUNT_COURIER_IDS,
   type DelhiveryShippingMode,
   getDelhiveryB2BAccountCodeByCourierId,
   getCanonicalDelhiveryCourierIdByMode,
@@ -5953,7 +5954,14 @@ export const fetchAvailableCouriersWithRatesB2B = async (
     const systemCourierRows = await db
       .select({ id: couriers.id, serviceProvider: couriers.serviceProvider, name: couriers.name })
       .from(couriers)
-      .where(and(eq(couriers.isEnabled, true), sql`${couriers.businessType} @> '["b2b"]'::jsonb`))
+      .where(
+        and(
+          eq(couriers.isEnabled, true),
+          sql`${couriers.businessType} @> '["b2b"]'::jsonb`,
+          sql`lower(${couriers.serviceProvider}) = 'delhivery'`,
+          inArray(couriers.id, Object.values(DELHIVERY_B2B_ACCOUNT_COURIER_IDS)),
+        ),
+      )
 
     const shadowfaxRows = systemCourierRows.filter(
       (row) => normalizeProviderKey(row.serviceProvider) === 'shadowfax',
@@ -6266,6 +6274,7 @@ export const fetchAvailableCouriersWithRatesB2B = async (
       const providerKey = normalizeProviderKey(courier.integration_type || courier.serviceProvider)
       if (providerKey !== 'delhivery') return [courier]
       const accountCodeFromCourierId = getDelhiveryB2BAccountCodeByCourierId(courier.id)
+      if (!accountCodeFromCourierId) return []
       const accountsForCourier = accountCodeFromCourierId
         ? activeDelhiveryB2BAccounts.filter(
             (account) => account.accountCode === accountCodeFromCourierId,
