@@ -26,6 +26,13 @@ interface GenerateInvoiceParams {
 }
 
 const formatAmount = (value: number) => `Rs. ${Number(value || 0).toFixed(2)}`
+const PLATFORM_BRAND_NAME = 'Intlexpress'
+const LEGACY_PLATFORM_BRAND_RE = /\b(shipli+fi|shiplifi|shipzilla)\b/i
+const normalizePlatformBrand = (value?: string | null, fallback = PLATFORM_BRAND_NAME) => {
+  const trimmed = String(value ?? '').trim()
+  if (!trimmed) return fallback
+  return LEGACY_PLATFORM_BRAND_RE.test(trimmed) ? PLATFORM_BRAND_NAME : trimmed
+}
 const BILLABLE_ORDER_STATUSES = [
   'shipment_created',
   'booked',
@@ -239,7 +246,7 @@ export const generateInvoiceForUser = async (
     .where(eq(userProfiles.userId, userId))
     .limit(1)
 
-  const issuerName = adminPrefs?.brandName || 'Intlexpress'
+  const issuerName = normalizePlatformBrand(adminPrefs?.brandName)
   const issuerAddress = adminPrefs?.sellerAddress || 'N/A'
   const issuerStateCode = adminPrefs?.stateCode || 'N/A'
   const issuerGST = adminPrefs?.gstNumber || 'N/A'

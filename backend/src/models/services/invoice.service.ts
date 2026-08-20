@@ -74,6 +74,14 @@ interface InvoiceData {
 // ----------------------
 // Generate Invoice PDF
 // ----------------------
+const PLATFORM_BRAND_NAME = 'Intlexpress'
+const LEGACY_PLATFORM_BRAND_RE = /\b(shipli+fi|shiplifi|shipzilla)\b/i
+const normalizePlatformBrand = (value?: string | null) => {
+  const trimmed = String(value ?? '').trim()
+  if (!trimmed) return ''
+  return LEGACY_PLATFORM_BRAND_RE.test(trimmed) ? PLATFORM_BRAND_NAME : trimmed
+}
+
 export const generateInvoicePDF = async (invoice: InvoiceData): Promise<Buffer> => {
   const merchantFontPath = path.join(process.cwd(), 'src', 'assets', 'fonts', 'Merchant.ttf')
   const hasMerchantFont = fs.existsSync(merchantFontPath)
@@ -460,7 +468,7 @@ export const generateInvoicePDF = async (invoice: InvoiceData): Promise<Buffer> 
     vLineWidth: () => 0.8,
   }
 
-  const toSafeString = (value?: string | null) => (value ? value.trim() : '')
+  const toSafeString = (value?: string | null) => normalizePlatformBrand(value)
   const sellerDisplayName =
     toSafeString(invoice.brandName) || toSafeString(invoice.sellerName) || toSafeString(invoice.companyName)
   const sellerAddressLines = (invoice.sellerAddress || '')

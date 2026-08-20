@@ -3,6 +3,15 @@ import { db } from '../client'
 import { invoicePreferences } from '../schema/invoicePreferences'
 import { users } from '../schema/users'
 
+const PLATFORM_BRAND_NAME = 'Intlexpress'
+const LEGACY_PLATFORM_BRAND_RE = /\b(shipli+fi|shiplifi|shipzilla)\b/i
+const normalizeLegacyPlatformBrand = (value: any) => {
+  if (typeof value !== 'string') return value
+  const trimmed = value.trim()
+  if (!trimmed) return trimmed
+  return LEGACY_PLATFORM_BRAND_RE.test(trimmed) ? PLATFORM_BRAND_NAME : trimmed
+}
+
 export async function upsertInvoicePreferences(userId: string, data: any) {
   const {
     prefix,
@@ -47,7 +56,7 @@ export async function upsertInvoicePreferences(userId: string, data: any) {
 
         const setField = (key: keyof typeof invoicePreferences, value: any) => {
           if (value !== undefined) {
-            updateData[key] = value
+            updateData[key] = normalizeLegacyPlatformBrand(value)
           }
         }
 
@@ -119,8 +128,8 @@ export async function upsertInvoicePreferences(userId: string, data: any) {
         includeSignature: includeSignature ?? true,
         logoFile: logoFile && logoFile.trim() !== '' ? logoFile : null,
         signatureFile: signatureFile && signatureFile.trim() !== '' ? signatureFile : null,
-        sellerName: sellerName && sellerName.trim() !== '' ? sellerName.trim() : null,
-        brandName: brandName && brandName.trim() !== '' ? brandName.trim() : null,
+        sellerName: sellerName && sellerName.trim() !== '' ? normalizeLegacyPlatformBrand(sellerName) : null,
+        brandName: brandName && brandName.trim() !== '' ? normalizeLegacyPlatformBrand(brandName) : null,
         gstNumber: gstNumber && gstNumber.trim() !== '' ? gstNumber.trim() : null,
         panNumber: panNumber && panNumber.trim() !== '' ? panNumber.trim() : null,
         sellerAddress: sellerAddress && sellerAddress.trim() !== '' ? sellerAddress.trim() : null,
