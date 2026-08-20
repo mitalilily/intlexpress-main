@@ -27,6 +27,9 @@ type DashboardOrder = {
   updated_at: Date | null
 }
 
+const notFailedB2COrder = sql`lower(coalesce(${b2c_orders.order_status}, '')) <> 'failed'`
+const notFailedB2BOrder = sql`lower(coalesce(${b2b_orders.order_status}, '')) <> 'failed'`
+
 export const getIncomingPickups = async (userId: string) => {
   // 🔹 Fetch top 3 pickups from B2C
   const b2cPickups = await db
@@ -132,7 +135,7 @@ export const getTopDestinations = async (userId: string, limit = 10) => {
       count: count(),
     })
     .from(b2c_orders)
-    .where(eq(b2c_orders.user_id, userId))
+    .where(and(eq(b2c_orders.user_id, userId), notFailedB2COrder))
     .groupBy(b2c_orders.city, b2c_orders.state)
     .orderBy(sql`count(*) DESC`)
 
@@ -144,7 +147,7 @@ export const getTopDestinations = async (userId: string, limit = 10) => {
       count: count(),
     })
     .from(b2b_orders)
-    .where(eq(b2b_orders.user_id, userId))
+    .where(and(eq(b2b_orders.user_id, userId), notFailedB2BOrder))
     .groupBy(b2b_orders.city, b2b_orders.state)
     .orderBy(sql`count(*) DESC`)
 
@@ -185,7 +188,13 @@ export const getCourierDistribution = async (userId: string) => {
       count: count(),
     })
     .from(b2c_orders)
-    .where(and(eq(b2c_orders.user_id, userId), sql`${b2c_orders.courier_partner} IS NOT NULL`))
+    .where(
+      and(
+        eq(b2c_orders.user_id, userId),
+        sql`${b2c_orders.courier_partner} IS NOT NULL`,
+        notFailedB2COrder,
+      ),
+    )
     .groupBy(b2c_orders.courier_partner)
 
   // Get courier distribution from B2B orders
@@ -195,7 +204,13 @@ export const getCourierDistribution = async (userId: string) => {
       count: count(),
     })
     .from(b2b_orders)
-    .where(and(eq(b2b_orders.user_id, userId), sql`${b2b_orders.courier_partner} IS NOT NULL`))
+    .where(
+      and(
+        eq(b2b_orders.user_id, userId),
+        sql`${b2b_orders.courier_partner} IS NOT NULL`,
+        notFailedB2BOrder,
+      ),
+    )
     .groupBy(b2b_orders.courier_partner)
 
   // Merge and aggregate
@@ -241,7 +256,7 @@ export const getMerchantDashboardStats = async (userId: string, selectedDate?: D
   const b2cOrders = await db
     .select(dashboardOrderColumns)
     .from(b2c_orders)
-    .where(eq(b2c_orders.user_id, userId))
+    .where(and(eq(b2c_orders.user_id, userId), notFailedB2COrder))
   const b2bOrders = await db
     .select({
       id: b2b_orders.id,
@@ -259,7 +274,7 @@ export const getMerchantDashboardStats = async (userId: string, selectedDate?: D
       updated_at: b2b_orders.updated_at,
     })
     .from(b2b_orders)
-    .where(eq(b2b_orders.user_id, userId))
+    .where(and(eq(b2b_orders.user_id, userId), notFailedB2BOrder))
   const allOrders: DashboardOrder[] = [...b2cOrders, ...b2bOrders]
 
   const [wallet] = await db.select().from(wallets).where(eq(wallets.userId, userId)).limit(1)

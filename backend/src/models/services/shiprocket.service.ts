@@ -11486,7 +11486,10 @@ export const getB2COrdersByUserService = async (
   const offset = (page - 1) * limit
 
   // Build conditions array (explicit type)
-  const conditions: SQL<unknown>[] = [eq(b2c_orders.user_id, userId)]
+  const conditions: SQL<unknown>[] = [
+    eq(b2c_orders.user_id, userId),
+    sql`lower(coalesce(${b2c_orders.order_status}, '')) <> 'failed'`,
+  ]
 
   // 🔹 Status filter (single or multiple)
   if (filters.status) {
@@ -11653,7 +11656,10 @@ export const getB2BOrdersByUserService = async (
 ) => {
   const offset = (page - 1) * limit
 
-  const conditions: any[] = [sql`${b2b_orders.user_id} = ${userId}::uuid`]
+  const conditions: any[] = [
+    sql`${b2b_orders.user_id} = ${userId}::uuid`,
+    sql`lower(coalesce(${b2b_orders.order_status}, '')) <> 'failed'`,
+  ]
 
   // if (filters.status) conditions.push(eq(b2b_orders.order_status, filters.status))
   if (filters.fromDate)

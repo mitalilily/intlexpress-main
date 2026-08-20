@@ -147,7 +147,7 @@ const buildOrderTypeCondition = (alias: 'b2c' | 'b2b', orderType?: string) => {
 }
 
 const buildOrderConditions = (alias: 'b2c' | 'b2b', filters: CombinedOrderFilters) => {
-  const conditions: SQL[] = [sql`true`]
+  const conditions: SQL[] = [sql`lower(coalesce(${sql.raw(`${alias}.order_status`)}, '')) <> 'failed'`]
 
   if (filters.userId) {
     conditions.push(sql`${sql.raw(`${alias}.user_id`)} = ${filters.userId}`)
