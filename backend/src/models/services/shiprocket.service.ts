@@ -3712,7 +3712,7 @@ const buildDelhiveryB2BManifestPayload = ({
     payment_mode: delhiveryPaymentMode,
     freight_mode: 'fop',
     fm_pickup: 'True',
-    enable_paperless_movement: 'True',
+    enable_paperless_movement: 'False',
     rov_insurance:
       Number(payload.is_insurance ?? 0) === 1 ||
       String(payload.is_insurance || '').toLowerCase() === 'true'
