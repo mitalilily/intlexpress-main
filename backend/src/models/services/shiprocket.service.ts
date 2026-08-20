@@ -3549,24 +3549,67 @@ const isUsableDelhiveryB2BToken = (token?: string | null, expiresAt?: string | n
   return expiry > Date.now() + 5 * 60 * 1000
 }
 
-const extractDelhiveryB2BLrn = (value: unknown): string => {
+const DELHIVERY_B2B_LRN_KEYS = new Set([
+  'lrnum',
+  'lrn',
+  'lrn_number',
+  'lrnnumber',
+  'lrn_no',
+  'lrnno',
+  'awb',
+  'awb_number',
+  'awbnumber',
+  'waybill',
+  'waybill_no',
+  'waybillno',
+])
+
+const DELHIVERY_B2B_NON_LRN_VALUES = new Set([
+  'processing',
+  'processed',
+  'pending',
+  'queued',
+  'success',
+  'successful',
+  'submitted',
+  'created',
+  'accepted',
+  'failed',
+  'failure',
+  'rejected',
+  'error',
+  'none',
+  'null',
+  'undefined',
+])
+
+const extractDelhiveryB2BLrn = (value: unknown, allowPlainString = true): string => {
   if (!value) return ''
-  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'string') return allowPlainString ? value.trim() : ''
+  if (typeof value === 'number') return allowPlainString ? String(value).trim() : ''
   if (Array.isArray(value)) {
     for (const entry of value) {
-      const lrn = extractDelhiveryB2BLrn(entry)
+      const lrn = extractDelhiveryB2BLrn(entry, typeof entry !== 'string')
       if (lrn) return lrn
     }
     return ''
   }
   if (typeof value === 'object') {
     const record = value as Record<string, unknown>
-    for (const key of ['lrnum', 'lrn', 'lrn_number', 'LRN', 'ident']) {
-      const direct = record[key]
-      if (typeof direct === 'string' && direct.trim()) return direct.trim()
+    for (const [key, direct] of Object.entries(record)) {
+      if (!DELHIVERY_B2B_LRN_KEYS.has(key.toLowerCase())) continue
+      if (typeof direct === 'string' || typeof direct === 'number') {
+        const directValue = String(direct).trim()
+        if (directValue) return directValue
+      }
+      if (direct && (Array.isArray(direct) || typeof direct === 'object')) {
+        const lrn = extractDelhiveryB2BLrn(direct, true)
+        if (lrn) return lrn
+      }
     }
     for (const nested of Object.values(record)) {
-      const lrn = extractDelhiveryB2BLrn(nested)
+      if (!nested || (typeof nested !== 'object' && !Array.isArray(nested))) continue
+      const lrn = extractDelhiveryB2BLrn(nested, false)
       if (lrn) return lrn
     }
   }
@@ -3588,6 +3631,7 @@ const normalizeDelhiveryB2BRealLrn = (value: unknown, rejectedValues: Array<any>
 
   if (isUuidLikeValue(candidate)) return ''
   if (normalizedCandidate.startsWith('ord-')) return ''
+  if (DELHIVERY_B2B_NON_LRN_VALUES.has(normalizedCandidate)) return ''
   if (rejected.includes(normalizedCandidate)) return ''
 
   return candidate
@@ -3598,8 +3642,8 @@ const waitForDelhiveryB2BManifestStatus = async ({
   apiBase,
   jobId,
   rejectedValues,
-  attempts = 4,
-  delayMs = 1500,
+  attempts = 10,
+  delayMs = 3000,
 }: {
   token: string
   apiBase?: string | null
