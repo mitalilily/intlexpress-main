@@ -113,11 +113,23 @@ export const updateShippingRate = async (id, updates, planId) => {
   return data
 }
 
-export const uploadShippingRates = async ({ file, planId, businessType }) => {
+export const uploadShippingRates = async ({
+  file,
+  planId,
+  businessType,
+  courierId,
+  courierName,
+  serviceProvider,
+  mode,
+}) => {
   if (!file) throw new Error('No file provided for import')
 
   const formData = new FormData()
   formData.append('file', file?.file) // must be File or Blob
+  if (courierId) formData.append('courierId', courierId)
+  if (courierName) formData.append('courierName', courierName)
+  if (serviceProvider) formData.append('serviceProvider', serviceProvider)
+  if (mode) formData.append('mode', mode)
 
   const { data } = await api.post(
     `/admin/couriers/shipping-rates/import?planId=${planId}&businessType=${businessType.toLowerCase()}`,

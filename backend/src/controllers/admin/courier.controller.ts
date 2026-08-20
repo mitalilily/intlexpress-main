@@ -2041,7 +2041,15 @@ export const importShippingRatesController = async (req: any, res: Response) => 
     let savedRows = 0
 
     if (normalizedBusinessType === 'b2c' && isSlabFormat) {
-      savedRows = await importB2CSlabFormat(data as CSVRow[], plan_id as string, zonesList)
+      savedRows = await importB2CSlabFormat(data as CSVRow[], plan_id as string, zonesList, {
+        courierId: String(req.body?.courierId || req.body?.courier_id || '').trim() || undefined,
+        courierName:
+          String(req.body?.courierName || req.body?.courier_name || '').trim() || undefined,
+        serviceProvider:
+          String(req.body?.serviceProvider || req.body?.service_provider || '').trim() ||
+          undefined,
+        mode: String(req.body?.mode || '').trim() || undefined,
+      })
     } else {
       savedRows = await importFlatFormat(data as CSVRow[], plan_id as string, normalizedBusinessType, zonesList)
     }

@@ -3,6 +3,8 @@ import {
   Button,
   Divider,
   Flex,
+  FormControl,
+  FormLabel,
   Grid,
   HStack,
   Select,
@@ -86,7 +88,7 @@ const downloadCSV = (allCouriers = [], allZones = [], existingData = [], filters
   if (type === 'b2c') {
     const headers = [
       'Slab', 'Courier ID', 'Courier', 'Service Provider', 'Mode', 'Weight (KG)', 'Slab Type',
-      ...allZones.map((z) => z.name),
+      ...allZones.flatMap((z) => [`${z.name} (Forward)`, `${z.name} (RTO)`]),
       'COD Rs', 'COD %', 'RTO %',
     ]
 
@@ -117,13 +119,15 @@ const downloadCSV = (allCouriers = [], allZones = [], existingData = [], filters
 
       for (let i = 0; i < slabDefs.length; i++) {
         const slab = slabDefs[i]
-        const firstZoneRates = allZones.map((z) => {
-          const slabs = existing.zone_slabs?.[z.name]?.forward || []
-          return slabs[i]?.rate ?? ''
+        const firstZoneRates = allZones.flatMap((z) => {
+          const forwardSlabs = existing.zone_slabs?.[z.name]?.forward || []
+          const rtoSlabs = existing.zone_slabs?.[z.name]?.rto || []
+          return [forwardSlabs[i]?.rate ?? '', rtoSlabs[i]?.rate ?? '']
         })
-        const addZoneRates = allZones.map((z) => {
-          const slabs = existing.zone_slabs?.[z.name]?.forward || []
-          return slabs[i]?.extra_rate ?? ''
+        const addZoneRates = allZones.flatMap((z) => {
+          const forwardSlabs = existing.zone_slabs?.[z.name]?.forward || []
+          const rtoSlabs = existing.zone_slabs?.[z.name]?.rto || []
+          return [forwardSlabs[i]?.extra_rate ?? '', rtoSlabs[i]?.extra_rate ?? '']
         })
 
         rows.push([slab.label, courier.id ?? '', courier.name ?? '', courier.serviceProvider || courier.service_provider || existing.service_provider || '', mode, slab.weight, 'First', ...firstZoneRates, codRs, codPct, rtoPercent])
@@ -191,6 +195,7 @@ export const RateCardContainer = ({ forceBusinessType = null, embedded = false }
   const [selectedRate, setSelectedRate] = useState(null)
   const [isModalOpen, setModalOpen] = useState(false)
   const [isImportModalOpen, setImportModalOpen] = useState(false)
+  const [selectedImportCourierId, setSelectedImportCourierId] = useState('')
 
   // Default to first plan if available
   const [selectedPlanId, setSelectedPlanId] = useState('')
@@ -204,6 +209,10 @@ export const RateCardContainer = ({ forceBusinessType = null, embedded = false }
       }
     }
   }, [plans, selectedPlanId])
+
+  useEffect(() => {
+    setSelectedImportCourierId('')
+  }, [selectedBusinessType])
 
   // Combine user filters with internal query constraints for API
   const queryFilters = useMemo(() => {
@@ -231,6 +240,14 @@ export const RateCardContainer = ({ forceBusinessType = null, embedded = false }
   }
 
   const handleImportRates = () => setImportModalOpen(true)
+
+  const selectedImportCourier = useMemo(
+    () =>
+      selectedImportCourierId
+        ? courierList?.find((courier) => String(courier.id) === String(selectedImportCourierId))
+        : null,
+    [courierList, selectedImportCourierId],
+  )
 
   const filterOptions = useMemo(
     () => {
@@ -414,12 +431,44 @@ export const RateCardContainer = ({ forceBusinessType = null, embedded = false }
               <Button
                 size="sm"
                 colorScheme="blue"
-                onClick={() => downloadCSV(courierList || [], zones || [], data || [], queryFilters)}
+                onClick={() =>
+                  downloadCSV(
+                    selectedBusinessType === 'b2c' && selectedImportCourier
+                      ? [selectedImportCourier]
+                      : courierList || [],
+                    zones || [],
+                    data || [],
+                    queryFilters,
+                  )
+                }
+                isDisabled={selectedBusinessType === 'b2c' && !selectedImportCourier}
               >
                 Download CSV
               </Button>
             }
           >
+            {selectedBusinessType === 'b2c' && (
+              <Stack spacing={2} mb={4}>
+                <FormControl isRequired>
+                  <FormLabel>Select courier for this B2C import</FormLabel>
+                  <Select
+                    placeholder="Select one Delhivery courier"
+                    value={selectedImportCourierId}
+                    onChange={(e) => setSelectedImportCourierId(e.target.value)}
+                  >
+                    {(courierList || []).map((courier) => (
+                      <option key={courier.id} value={courier.id}>
+                        {courier.name} {courier.mode ? `(${courier.mode})` : ''}
+                      </option>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Text fontSize="sm" color="gray.600">
+                  B2C import updates one courier at a time. Download the sample after selecting the
+                  courier, then fill the Forward and RTO columns for each zone.
+                </Text>
+              </Stack>
+            )}
             <FileUploader
               maxSizeMb={5}
               folderKey="rates"
@@ -427,11 +476,27 @@ export const RateCardContainer = ({ forceBusinessType = null, embedded = false }
               uploadLoading={isImporting}
               onUploaded={(files) => {
                 if (!files.length) return
+                if (selectedBusinessType === 'b2c' && !selectedImportCourier) {
+                  toast({
+                    title: 'Select one courier first',
+                    description: 'B2C rate-card import is courier-specific.',
+                    status: 'warning',
+                    duration: 3000,
+                    isClosable: true,
+                  })
+                  return
+                }
                 importRates(
                   {
                     file: files[0],
                     planId: selectedPlanId || queryFilters?.planId,
                     businessType: queryFilters?.businessType || selectedBusinessType,
+                    courierId: selectedImportCourier?.id,
+                    courierName: selectedImportCourier?.name,
+                    serviceProvider:
+                      selectedImportCourier?.serviceProvider ||
+                      selectedImportCourier?.service_provider,
+                    mode: selectedImportCourier?.mode,
                   },
                   {
                     onSuccess: (result) => {

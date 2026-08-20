@@ -24,6 +24,7 @@ import CustomModal from 'components/Modal/CustomModal'
 import FileUploader from 'components/upload/FileUploader'
 import { useCouriers } from 'hooks/useCouriers'
 import { useZones } from 'hooks/useZones'
+import Papa from 'papaparse'
 import { useState } from 'react'
 import { GenericTable } from 'views/Dashboard/Tables/components/GenericTable'
 import { useB2BZoneRates } from '../../hooks/useB2BZoneRates'
@@ -37,6 +38,16 @@ const buildCourierScope = (courierId, couriers = []) => {
     service_provider: courier?.serviceProvider ?? courier?.service_provider,
     serviceProvider: courier?.serviceProvider ?? courier?.service_provider,
   }
+}
+
+const triggerDownload = (csv, filename) => {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 export const ZoneRateMatrix = ({ embedded = false } = {}) => {
@@ -148,6 +159,38 @@ export const ZoneRateMatrix = ({ embedded = false } = {}) => {
       setUploading(false)
       onImportClose()
     }
+  }
+
+  const handleDownloadSample = () => {
+    const zoneCodes = sortedZones.map((zone) => zone.code)
+    const fallbackOrigin = zoneCodes[0] || 'NORTH'
+    const fallbackDestination = zoneCodes[1] || zoneCodes[0] || 'WEST'
+    const rows =
+      rates.length > 0
+        ? rates.map((rate) => {
+            const origin = b2bZones.find((zone) => zone.id === rate.origin_zone_id)
+            const destination = b2bZones.find((zone) => zone.id === rate.destination_zone_id)
+            return {
+              origin_zone_code: origin?.code || rate.origin_zone_id,
+              destination_zone_code: destination?.code || rate.destination_zone_id,
+              rate_per_kg: rate.rate_per_kg || rate.ratePerKg || '',
+            }
+          })
+        : [
+            {
+              origin_zone_code: fallbackOrigin,
+              destination_zone_code: fallbackDestination,
+              rate_per_kg: '45',
+            },
+          ]
+
+    triggerDownload(
+      Papa.unparse({
+        fields: ['origin_zone_code', 'destination_zone_code', 'rate_per_kg'],
+        data: rows,
+      }),
+      'b2b_zone_rate_card_sample.csv',
+    )
   }
 
   const sortedZones = b2bZones.slice().sort((a, b) => a.code.localeCompare(b.code))
@@ -424,6 +467,9 @@ export const ZoneRateMatrix = ({ embedded = false } = {}) => {
         title="Import Zone Rates"
         footer={
           <HStack>
+            <Button variant="outline" onClick={handleDownloadSample}>
+              Download Sample CSV
+            </Button>
             <Button variant="ghost" onClick={onImportClose}>
               Close
             </Button>
@@ -431,8 +477,9 @@ export const ZoneRateMatrix = ({ embedded = false } = {}) => {
         }
       >
         <Text fontSize="sm" mb={3}>
-          Upload a CSV file with columns:{' '}
-          <b>origin_zone_code, destination_zone_code, rate_per_kg, min_charge, max_weight_limit</b>.
+          Upload a CSV file with columns: <b>origin_zone_code, destination_zone_code, rate_per_kg</b>.
+          Select a courier above to import courier-specific B2B rates; leave courier as Global
+          Rates for global rates.
         </Text>
         <FileUploader
           maxSizeMb={5}

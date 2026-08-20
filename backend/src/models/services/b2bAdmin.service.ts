@@ -969,6 +969,7 @@ export const importZoneRatesFromCsv = async (
   const parsed = Papa.parse<ZoneRateCsvRecord>(csv, {
     header: true,
     skipEmptyLines: true,
+    transformHeader: (header) => header.trim(),
   })
 
   if (parsed.errors?.length) {
@@ -999,13 +1000,18 @@ export const importZoneRatesFromCsv = async (
 
   for (const row of rows) {
     try {
+      const ratePerKg = Number(String(row.rate_per_kg ?? '').replace(/[^\d.-]/g, ''))
+      if (!Number.isFinite(ratePerKg) || ratePerKg <= 0) {
+        throw new Error('rate_per_kg is required and must be greater than 0')
+      }
+
       const originZoneId = await resolveZoneId(row.origin_zone_code)
       const destinationZoneId = await resolveZoneId(row.destination_zone_code)
 
       await upsertZoneToZoneRate({
         originZoneId,
         destinationZoneId,
-        ratePerKg: Number(row.rate_per_kg),
+        ratePerKg,
         courierScope: options.courierScope,
         planId: options.planId ?? null,
       })

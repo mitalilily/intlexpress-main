@@ -19,6 +19,10 @@ export type RateCardZone = {
 
 type SlabRow = CSVRow & { readonly _weight: number; readonly _type: 'first' | 'additional' }
 type ZoneHeaderMap = Record<string, string | undefined>
+type DirectionalZoneHeaderMap = Record<
+  string,
+  { forward?: string; rto?: string; legacy?: string }
+>
 type PreparedSlabRow = {
   readonly firstRow: SlabRow
   readonly additionalRow?: SlabRow
@@ -153,8 +157,43 @@ const resolveZoneHeaders = (row: CSVRow, zonesList: RateCardZone[]): ZoneHeaderM
   return resolved
 }
 
+const resolveDirectionalZoneHeaders = (
+  row: CSVRow,
+  zonesList: RateCardZone[],
+): DirectionalZoneHeaderMap => {
+  const headerLookup = buildHeaderLookup(row)
+  const resolved: DirectionalZoneHeaderMap = {}
+
+  for (const zone of zonesList) {
+    const aliases = Array.from(new Set(getZoneAliases(zone)))
+    const result: { forward?: string; rto?: string; legacy?: string } = {}
+
+    for (const alias of aliases) {
+      result.forward ||= headerLookup.get(`${alias}forward`)?.[0]
+      result.forward ||= headerLookup.get(`${alias}perkgforward`)?.[0]
+      result.rto ||= headerLookup.get(`${alias}rto`)?.[0]
+      result.rto ||= headerLookup.get(`${alias}perkgrto`)?.[0]
+      result.legacy ||= headerLookup.get(alias)?.[0]
+    }
+
+    resolved[zone.id] = result
+  }
+
+  return resolved
+}
+
 const getZoneCell = (row: CSVRow, zone: RateCardZone, zoneHeaders: ZoneHeaderMap): RateCardCell => {
   const key = zoneHeaders[zone.id]
+  return key ? row[key] : undefined
+}
+
+const getDirectionalZoneCell = (
+  row: CSVRow,
+  zone: RateCardZone,
+  zoneHeaders: DirectionalZoneHeaderMap,
+  direction: 'forward' | 'rto',
+): RateCardCell => {
+  const key = zoneHeaders[zone.id]?.[direction]
   return key ? row[key] : undefined
 }
 
@@ -269,6 +308,12 @@ export const importB2CSlabFormat = async (
   data: CSVRow[],
   plan_id: string,
   zonesList: RateCardZone[],
+  options: {
+    courierId?: string
+    courierName?: string
+    serviceProvider?: string
+    mode?: string
+  } = {},
 ) => {
   type GroupKey = string
 
@@ -276,10 +321,11 @@ export const importB2CSlabFormat = async (
   let savedRows = 0
 
   for (const row of data) {
-    const courierId = cell(row, 'Courier ID')
-    const courierName = cell(row, 'Courier') || cell(row, 'Courier Name')
-    const serviceProvider = inferServiceProvider(cell(row, 'Service Provider'), courierName)
-    const mode = cell(row, 'Mode')
+    const courierId = options.courierId || cell(row, 'Courier ID')
+    const courierName = options.courierName || cell(row, 'Courier') || cell(row, 'Courier Name')
+    const serviceProvider =
+      options.serviceProvider || inferServiceProvider(cell(row, 'Service Provider'), courierName)
+    const mode = options.mode || cell(row, 'Mode')
     const slabType = cell(row, 'Slab Type').toLowerCase()
     if (!courierId || !mode) continue
     if (slabType !== 'first' && slabType !== 'additional') continue
@@ -310,6 +356,12 @@ export const importB2CSlabFormat = async (
       )
   }
 
+  if (groups.size > 1) {
+    throw new Error(
+      'B2C rate-card import supports one courier/mode at a time. Select one courier and upload only that courier CSV.',
+    )
+  }
+
   for (const rows of groups.values()) {
     const first = rows.find((r) => r._type === 'first')
     if (!first) continue
@@ -323,7 +375,8 @@ export const importB2CSlabFormat = async (
     const rtoMultiplier = rtoMultiplierFromCell(first['RTO %'])
 
     const preparedFirstRows = prepareFirstSlabRows(rows)
-    const zoneHeaders = resolveZoneHeaders(first, zonesList)
+    const legacyZoneHeaders = resolveZoneHeaders(first, zonesList)
+    const directionalZoneHeaders = resolveDirectionalZoneHeaders(first, zonesList)
 
     const zoneForwardSlabs: Record<string, any[]> = {}
     const zoneRtoSlabs: Record<string, any[]> = {}
@@ -339,13 +392,19 @@ export const importB2CSlabFormat = async (
           weight_from: weightFrom,
           weight_to: weightTo,
         } = preparedSlab
-        const fwdRate = toRateCardNumber(getZoneCell(fr, zone, zoneHeaders))
+        const fwdRate = toRateCardNumber(
+          getDirectionalZoneCell(fr, zone, directionalZoneHeaders, 'forward') ??
+            getZoneCell(fr, zone, legacyZoneHeaders),
+        )
         if (!fwdRate) {
           continue
         }
 
         const extraRate = addRow
-          ? toRateCardNumber(getZoneCell(addRow, zone, zoneHeaders)) || null
+          ? toRateCardNumber(
+              getDirectionalZoneCell(addRow, zone, directionalZoneHeaders, 'forward') ??
+                getZoneCell(addRow, zone, legacyZoneHeaders),
+            ) || null
           : null
         const extraWeightUnit = addRow && extraRate ? addRow._weight || null : null
 
@@ -357,12 +416,24 @@ export const importB2CSlabFormat = async (
           extra_weight_unit: extraWeightUnit,
         })
 
-        if (rtoMultiplier > 0) {
+        const explicitRtoRate = toRateCardNumber(
+          getDirectionalZoneCell(fr, zone, directionalZoneHeaders, 'rto'),
+        )
+        const explicitExtraRtoRate = addRow
+          ? toRateCardNumber(getDirectionalZoneCell(addRow, zone, directionalZoneHeaders, 'rto'))
+          : 0
+
+        if (explicitRtoRate > 0 || rtoMultiplier > 0) {
           rtoSlabs.push({
             weight_from: weightFrom,
             weight_to: weightTo,
-            rate: roundMoney(fwdRate * rtoMultiplier),
-            extra_rate: extraRate ? roundMoney(extraRate * rtoMultiplier) : null,
+            rate: explicitRtoRate > 0 ? explicitRtoRate : roundMoney(fwdRate * rtoMultiplier),
+            extra_rate:
+              explicitExtraRtoRate > 0
+                ? explicitExtraRtoRate
+                : extraRate && rtoMultiplier > 0
+                  ? roundMoney(extraRate * rtoMultiplier)
+                  : null,
             extra_weight_unit: extraWeightUnit,
           })
         }
