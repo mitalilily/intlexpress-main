@@ -1731,17 +1731,18 @@ const ensureDelhiveryB2BClientWarehouse = async ({
   const payload = {
     name: normalizedPickupLocationName,
     registered_name: trimText(companyName) || trimText(pickup?.name) || 'Intlexpress',
-    phone: trimText(pickup?.phone),
-    ...(trimText((pickup as any)?.email) ? { email: trimText((pickup as any)?.email) } : {}),
-    address: pickupAddress || trimText(pickup?.address),
+    pin_code: trimText(pickup?.pincode),
     city: trimText(pickup?.city),
-    pin: trimText(pickup?.pincode),
+    state: trimText(pickup?.state),
     country: trimText((pickup as any)?.country) || 'India',
-    return_address: returnAddress,
-    return_city: trimText(pickup?.city),
-    return_pin: trimText(pickup?.pincode),
-    return_state: trimText(pickup?.state),
-    return_country: trimText((pickup as any)?.country) || 'India',
+    address_details: {
+      address: pickupAddress || trimText(pickup?.address),
+      phone_number: trimText(pickup?.phone),
+    },
+    ret_address: {
+      address: returnAddress,
+      pin: trimText(pickup?.pincode),
+    },
   }
 
   try {
@@ -1753,7 +1754,11 @@ const ensureDelhiveryB2BClientWarehouse = async ({
 
     await persistDelhiveryAccountRuntimeDetails({
       accountCode,
-      clientName: trimText((result.data as any)?.data?.client || (result.data as any)?.client),
+      clientName: trimText(
+        (result.data as any)?.data?.result?.client_name ||
+          (result.data as any)?.data?.client ||
+          (result.data as any)?.client,
+      ),
       pickupLocationId: trimText(pickupLocationId),
       pickupLocationName: normalizedPickupLocationName,
     })
