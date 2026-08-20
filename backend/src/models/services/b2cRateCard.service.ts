@@ -96,6 +96,9 @@ function toNumber(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+const isBlankOptionalValue = (value: unknown) =>
+  value === undefined || value === null || String(value).trim() === ''
+
 const DELHIVERY_B2C_COURIER_IDS = new Set([99, 100, 1, 92, 93])
 
 function inferB2CServiceProvider(row: typeof shippingRates.$inferSelect): string {
@@ -134,16 +137,14 @@ const getCanonicalDelhiveryRateMeta = (row: typeof shippingRates.$inferSelect) =
 
 function normaliseSlabInput(slab: RateCardSlabInput): ResolvedRateCardSlab {
   const weightFrom = Math.max(0, toNumber(slab.weight_from))
-  const rawWeightTo = slab.weight_to === undefined || slab.weight_to === null ? null : toNumber(slab.weight_to)
+  const rawWeightTo = isBlankOptionalValue(slab.weight_to) ? null : toNumber(slab.weight_to)
   const weightTo = rawWeightTo !== null && rawWeightTo < weightFrom ? weightFrom : rawWeightTo
-  const extraWeightUnitRaw =
-    slab.extra_weight_unit === undefined || slab.extra_weight_unit === null
-      ? null
-      : toNumber(slab.extra_weight_unit)
+  const extraWeightUnitRaw = isBlankOptionalValue(slab.extra_weight_unit)
+    ? null
+    : toNumber(slab.extra_weight_unit)
   const extraWeightUnit =
     extraWeightUnitRaw !== null && extraWeightUnitRaw > 0 ? extraWeightUnitRaw : null
-  const extraRateRaw =
-    slab.extra_rate === undefined || slab.extra_rate === null ? null : toNumber(slab.extra_rate)
+  const extraRateRaw = isBlankOptionalValue(slab.extra_rate) ? null : toNumber(slab.extra_rate)
   const extraRate = extraRateRaw !== null && extraRateRaw >= 0 ? extraRateRaw : null
 
   return {
