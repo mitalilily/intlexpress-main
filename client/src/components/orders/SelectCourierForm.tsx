@@ -53,6 +53,8 @@ export const SelectCourierForm = ({
   const selectedCourierOptionKey = watch('courierOptionKey') ?? ''
   const selectedShadowfaxForwardMode = watch('shadowfaxForwardMode') ?? undefined
   const selectedShadowfaxServiceMode = watch('shadowfaxServiceMode') ?? undefined
+  const freightMode = watchFormValue('freightMode') ?? 'bill_to_client'
+  const rovType = watchFormValue('rovType') ?? 'owner_risk'
   const shippingCharges = Number(watch('shippingCharges') || 0)
   const transactionFee = Number(watch('transactionFee') || 0)
   const giftWrap = Number(watch('giftWrap') || 0)
@@ -83,12 +85,12 @@ export const SelectCourierForm = ({
   // COMPUTE TOTAL WEIGHT AND PRICE
   let totalWeight = 0
   let totalProductPrice = 0
+  const b2bBoxes = shipment_type === 'b2b' ? ((watch('boxes') as B2BBox[] | undefined) ?? []) : []
 
   if (shipment_type === 'b2b') {
     // B2B uses flat boxes array, not nested in products
-    const boxes = watch('boxes') as B2BBox[] | undefined
-    if (boxes && Array.isArray(boxes)) {
-      boxes.forEach((box: B2BBox) => {
+    if (b2bBoxes && Array.isArray(b2bBoxes)) {
+      b2bBoxes.forEach((box: B2BBox) => {
         // Calculate chargeable weight per box (max of actual and volumetric)
         const actualWeightKg = Number(box.weightKg ?? 0) // in kg
         const length = Number(box.lengthCm ?? 0) // in cm
@@ -109,7 +111,10 @@ export const SelectCourierForm = ({
       })
     }
     // For B2B, product price is not stored in boxes, it's in invoices
-    // totalProductPrice remains 0 or can be calculated from invoices if needed
+    const invoices = watchFormValue('invoices') ?? []
+    totalProductPrice = Array.isArray(invoices)
+      ? invoices.reduce((sum: number, invoice: any) => sum + Number(invoice?.invoiceValue || 0), 0)
+      : 0
   } else if (shipment_type === 'b2c') {
     totalWeight = watch('weight') ?? 0
     totalProductPrice = products?.reduce(
@@ -176,6 +181,17 @@ export const SelectCourierForm = ({
     ...(preferredShadowfaxForwardMode ? { shadowfax_forward_mode: preferredShadowfaxForwardMode } : {}),
     shadowfax_service_mode: selectedShadowfaxServiceMode ?? undefined,
     isReverse: isReverseMode,
+  }
+
+  if (shipment_type === 'b2b') {
+    courierPayload.freight_mode = freightMode
+    courierPayload.rov_type = rovType
+    courierPayload.boxes = b2bBoxes.map((box) => ({
+      lengthCm: Number(box.lengthCm || 0),
+      breadthCm: Number(box.breadthCm || 0),
+      heightCm: Number(box.heightCm || 0),
+      weightKg: Number(box.weightKg || 0),
+    }))
   }
 
   if (shipment_type === 'b2c') {

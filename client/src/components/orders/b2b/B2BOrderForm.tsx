@@ -55,6 +55,10 @@ export type B2BFormData = {
   // Boxes array (top level)
   boxes: Box[]
 
+  // B2B shipment preferences
+  freightMode: 'bill_to_client' | 'freight_on_delivery'
+  rovType: 'owner_risk' | 'carrier_risk'
+
   // Invoices array
   invoices: Invoice[]
 
@@ -158,6 +162,8 @@ export default function B2BOrderForm({ onClose }: { onClose?: () => void }) {
       length: 0,
       breadth: 0,
       height: 0,
+      freightMode: 'bill_to_client',
+      rovType: 'owner_risk',
       orderType: getDefaultOrderType(),
     },
   })
@@ -226,6 +232,8 @@ export default function B2BOrderForm({ onClose }: { onClose?: () => void }) {
         discount: data.discount ?? 0,
         gift_wrap: 0,
         prepaid_amount: data.prepaidAmount ?? 0,
+        freight_mode: data.freightMode,
+        rov_type: data.rovType,
         consignee: {
           name: data.buyerName,
           phone: data.buyerPhone,
@@ -276,7 +284,7 @@ export default function B2BOrderForm({ onClose }: { onClose?: () => void }) {
         courier_id: Number(data.courierPartnerId),
         courier_partner: data.courierPartner,
         courier_option_key: data.courierOptionKey,
-        is_insurance: !!data.isInsurance,
+        is_insurance: data.rovType === 'carrier_risk' || !!data.isInsurance,
         is_rto_different: data.isRtoSame === false ? 'yes' : 'no',
         request_auto_pickup: 'no',
         tags: '',
@@ -433,11 +441,6 @@ export default function B2BOrderForm({ onClose }: { onClose?: () => void }) {
 
               <FormSectionAccordion title="Recipient Details" icon={<FaUser />} defaultExpanded compact>
                 <DeliveryDetailsForm type="b2b" />
-              </FormSectionAccordion>
-
-              {/* Boxes */}
-              <FormSectionAccordion title="Boxes" icon={<FaBox />} defaultExpanded compact>
-                <B2BProductsForm />
               </FormSectionAccordion>
 
               {/* Invoices */}

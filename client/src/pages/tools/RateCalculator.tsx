@@ -128,6 +128,8 @@ export function RateCalculator() {
       weight: '',
       totalWeight: '',
       numberOfBoxes: '',
+      freightMode: 'bill_to_client',
+      rovType: 'owner_risk',
       orderAmount: '', // ✅ added shipment value
     },
   })
@@ -191,6 +193,8 @@ export function RateCalculator() {
         orderAmount: orderAmountValue > 0 ? orderAmountValue : undefined,
         shipmentType: shipmentType,
         payment_type: formData?.paymentType,
+        freight_mode: formData.freightMode,
+        rov_type: formData.rovType,
         // Hint to backend that this is just a rate calculator call (can skip heavy live checks)
         context: 'rate_calculator',
       }

@@ -52,6 +52,15 @@ export interface UseAvailableCouriersParams {
   isReverse?: boolean
   shadowfax_forward_mode?: 'marketplace' | 'warehouse'
   shadowfax_service_mode?: 'regular' | 'surface'
+  freight_mode?: string
+  rov_type?: string
+  boxes?: Array<{
+    lengthCm?: number
+    breadthCm?: number
+    heightCm?: number
+    weightKg?: number
+    quantity?: number
+  }>
 }
 
 export const useAvailableCouriers = (params: UseAvailableCouriersParams) => {
@@ -121,6 +130,9 @@ export const useAvailableCouriers = (params: UseAvailableCouriersParams) => {
       params?.isReverse,
       params?.shadowfax_forward_mode,
       params?.shadowfax_service_mode,
+      params?.freight_mode,
+      params?.rov_type,
+      params?.boxes,
     ],
     queryFn: () =>
       fetchAvailableCouriers({
@@ -148,6 +160,9 @@ export const useAvailableCouriers = (params: UseAvailableCouriersParams) => {
         isReverse: params.isReverse,
         shadowfax_forward_mode: params.shadowfax_forward_mode,
         shadowfax_service_mode: params.shadowfax_service_mode,
+        freight_mode: params.freight_mode,
+        rov_type: params.rov_type,
+        boxes: params.boxes,
         breadth,
         height,
       }),
@@ -193,6 +208,9 @@ export const useAvailableCouriersMutation = () => {
         isReverse: params.isReverse,
         shadowfax_forward_mode: params.shadowfax_forward_mode,
         shadowfax_service_mode: params.shadowfax_service_mode,
+        freight_mode: params.freight_mode,
+        rov_type: params.rov_type,
+        boxes: params.boxes,
       })
     },
     retry: 1,

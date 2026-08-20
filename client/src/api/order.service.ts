@@ -223,6 +223,8 @@ export type CreateB2BShipmentParams = {
   discount?: number
   gift_wrap?: number
   prepaid_amount?: number
+  freight_mode?: 'bill_to_client' | 'freight_on_delivery' | string
+  rov_type?: 'owner_risk' | 'carrier_risk' | string
 
   consignee: {
     name: string

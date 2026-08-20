@@ -517,6 +517,15 @@ export const calculateRateController = async (req: Request, res: Response) => {
         req.body.deliveryAddress ?? req.body.delivery_address ?? req.body.address ?? undefined,
       // Optional: Plan ID to fetch plan-specific additional charges
       planId: req.body.planId ?? req.body.plan_id ?? undefined,
+      boxes: Array.isArray(req.body.boxes) ? req.body.boxes : undefined,
+      freightMode: req.body.freightMode ?? req.body.freight_mode ?? undefined,
+      rovType: req.body.rovType ?? req.body.rov_type ?? undefined,
+      isInsurance:
+        req.body.isInsurance ??
+        req.body.is_insurance ??
+        (String(req.body.rovType ?? req.body.rov_type ?? '').toLowerCase() === 'carrier_risk'
+          ? true
+          : undefined),
     })
 
     res.json({ success: true, data: result })

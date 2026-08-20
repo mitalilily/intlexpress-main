@@ -674,6 +674,11 @@ export const fetchAvailableCouriers = async (req: Request, res: Response) => {
       breadth,
       height,
       shipment_type,
+      freight_mode,
+      freightMode,
+      rov_type,
+      rovType,
+      boxes,
     } = req.body
     if (!origin || !destination) {
       return res.status(400).json({
@@ -704,6 +709,9 @@ export const fetchAvailableCouriers = async (req: Request, res: Response) => {
       length: Number(length),
       breadth: Number(breadth),
       height: Number(height),
+      freight_mode: freight_mode ?? freightMode,
+      rov_type: rov_type ?? rovType,
+      boxes: Array.isArray(boxes) ? boxes : undefined,
       ...serviceabilityOptions,
     }
 
@@ -826,6 +834,11 @@ export const fetchAvailableCouriersToUser = async (req: Request, res: Response) 
       breadth,
       height,
       shipment_type,
+      freight_mode,
+      freightMode,
+      rov_type,
+      rovType,
+      boxes,
     } = req.body
     if (!origin || !destination) {
       return res.status(400).json({
@@ -856,6 +869,9 @@ export const fetchAvailableCouriersToUser = async (req: Request, res: Response) 
       length: Number(length),
       breadth: Number(breadth),
       height: Number(height),
+      freight_mode: freight_mode ?? freightMode,
+      rov_type: rov_type ?? rovType,
+      boxes: Array.isArray(boxes) ? boxes : undefined,
       ...serviceabilityOptions,
     }
 

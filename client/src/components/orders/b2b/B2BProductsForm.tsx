@@ -1,7 +1,18 @@
-import { Box, Button, CircularProgress, IconButton, Paper, Stack, Typography } from '@mui/material'
+import {
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  MenuItem,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
 import { useState } from 'react'
 import { Controller, useFieldArray, useFormContext, useWatch } from 'react-hook-form'
 import { AiOutlineDelete } from 'react-icons/ai'
+import { MdContentCopy } from 'react-icons/md'
 import axiosInstance from '../../../api/axiosInstance'
 import { useDebouncedEffect } from '../../../hooks/useDebounceEffect'
 import CustomInput from '../../UI/inputs/CustomInput'
@@ -78,30 +89,13 @@ const ProductBoxesForm = () => {
         setWeightCalculations((prev) => ({ ...prev, loading: true }))
 
         try {
-          // Calculate total actual weight for API call
-          const totalActualWeight = boxes.reduce((sum, box) => sum + Number(box.weightKg || 0), 0)
-
-          // For rate calculation, we need to send dimensions
-          // We'll use the largest box dimensions as representative
-          let maxLength = 0
-          let maxBreadth = 0
-          let maxHeight = 0
-
-          boxes.forEach((box) => {
-            const length = Number(box.lengthCm || 0)
-            const breadth = Number(box.breadthCm || 0)
-            const height = Number(box.heightCm || 0)
-            if (length > 0 && breadth > 0 && height > 0) {
-              maxLength = Math.max(maxLength, length)
-              maxBreadth = Math.max(maxBreadth, breadth)
-              maxHeight = Math.max(maxHeight, height)
-            }
-          })
-
-          // Use largest dimensions
-          const length = maxLength > 0 ? maxLength : undefined
-          const width = maxBreadth > 0 ? maxBreadth : undefined
-          const height = maxHeight > 0 ? maxHeight : undefined
+          const normalizedBoxes = boxes.map((box) => ({
+            lengthCm: Number(box.lengthCm || 0),
+            breadthCm: Number(box.breadthCm || 0),
+            heightCm: Number(box.heightCm || 0),
+            weightKg: Number(box.weightKg || 0),
+          }))
+          const totalActualWeight = normalizedBoxes.reduce((sum, box) => sum + box.weightKg, 0)
 
           // Call backend to get chargeable weight
           // Use default pincodes if not available (for weight calculation only)
@@ -113,15 +107,13 @@ const ProductBoxesForm = () => {
             width?: number
             height?: number
             planId?: string
+            boxes?: typeof normalizedBoxes
           } = {
             originPincode: pickupPincode || '110001',
             destinationPincode: deliveryPincode || '110001',
             weightKg: totalActualWeight,
+            boxes: normalizedBoxes,
           }
-
-          if (length) apiPayload.length = length
-          if (width) apiPayload.width = width
-          if (height) apiPayload.height = height
           // planId is always undefined for now, so we skip it
 
           const response = await axiosInstance.post('/admin/b2b/calculate-rate', apiPayload)
@@ -208,10 +200,54 @@ const ProductBoxesForm = () => {
     })
   }
 
+  const handleDuplicateBox = (index: number) => {
+    const sourceBox = allBoxes[index]
+    appendBox({
+      lengthCm: Number(sourceBox?.lengthCm || 0),
+      breadthCm: Number(sourceBox?.breadthCm || 0),
+      heightCm: Number(sourceBox?.heightCm || 0),
+      weightKg: Number(sourceBox?.weightKg || 0),
+    })
+  }
+
   const allBoxes = useWatch({ control, name: 'boxes' }) || []
 
   return (
     <Box mt={2}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          mb: 2,
+          borderRadius: 2,
+          border: '1px solid #E0E6ED',
+          background: '#F8FAFC',
+        }}
+      >
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+          <Controller
+            name="freightMode"
+            control={control}
+            render={({ field }) => (
+              <TextField {...field} select fullWidth label="Freight Mode" size="small">
+                <MenuItem value="bill_to_client">Bill to client</MenuItem>
+                <MenuItem value="freight_on_delivery">Freight on delivery</MenuItem>
+              </TextField>
+            )}
+          />
+          <Controller
+            name="rovType"
+            control={control}
+            render={({ field }) => (
+              <TextField {...field} select fullWidth label="ROV Type" size="small">
+                <MenuItem value="owner_risk">ROV by owner</MenuItem>
+                <MenuItem value="carrier_risk">ROV by courier</MenuItem>
+              </TextField>
+            )}
+          />
+        </Stack>
+      </Paper>
+
       {/* Table Header */}
       <Box display="grid" gridTemplateColumns="repeat(5, 1fr)" gap={2} mb={1}>
         {columns.map((col) => (
@@ -247,16 +283,25 @@ const ProductBoxesForm = () => {
             />
           ))}
 
-          <IconButton color="error" sx={{ mb: 4 }} onClick={() => removeBox(bIndex)}>
-            <AiOutlineDelete />
-          </IconButton>
+          <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 4 }}>
+            <IconButton color="primary" onClick={() => handleDuplicateBox(bIndex)}>
+              <MdContentCopy />
+            </IconButton>
+            <IconButton
+              color="error"
+              onClick={() => (boxFields.length > 1 ? removeBox(bIndex) : undefined)}
+              disabled={boxFields.length <= 1}
+            >
+              <AiOutlineDelete />
+            </IconButton>
+          </Stack>
         </Box>
       ))}
 
       {/* Add Box Button */}
       <Box mt={1}>
         <Button variant="outlined" onClick={handleAddBox}>
-          + Add Box
+          + Add another box
         </Button>
       </Box>
 

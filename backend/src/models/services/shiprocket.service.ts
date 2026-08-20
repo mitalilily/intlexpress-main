@@ -3095,6 +3095,24 @@ interface NimbusServiceabilityParams {
   deliveryState?: string
   shadowfax_forward_mode?: string
   shadowfax_service_mode?: 'regular' | 'surface'
+  freight_mode?: string
+  freightMode?: string
+  rov_type?: string
+  rovType?: string
+  boxes?: Array<{
+    length?: number
+    lengthCm?: number
+    breadth?: number
+    breadthCm?: number
+    width?: number
+    widthCm?: number
+    height?: number
+    heightCm?: number
+    weight?: number
+    weightKg?: number
+    quantity?: number | string
+    qty?: number | string
+  }>
   product_type?: string
   productType?: string
   // Hint that this call is coming from a rate calculator UI (we can skip heavy live checks)
@@ -3554,6 +3572,34 @@ const extractDelhiveryB2BLrn = (value: unknown): string => {
   return ''
 }
 
+const normalizeDelhiveryB2BFreightMode = (value: any) => {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (
+    ['fod', 'freight_on_delivery', 'freight on delivery', 'freight-on-delivery'].includes(
+      normalized,
+    )
+  ) {
+    return 'fod'
+  }
+  return 'fop'
+}
+
+const normalizeDelhiveryB2BRovInsurance = (payload: ShipmentParams) => {
+  const rovType = String((payload as any).rov_type ?? (payload as any).rovType ?? '')
+    .trim()
+    .toLowerCase()
+  if (['carrier_risk', 'courier_risk', 'rov_by_courier', 'rov by courier'].includes(rovType)) {
+    return 'True'
+  }
+  if (['owner_risk', 'rov_by_owner', 'rov by owner'].includes(rovType)) {
+    return 'False'
+  }
+  return Number(payload.is_insurance ?? 0) === 1 ||
+    String(payload.is_insurance || '').toLowerCase() === 'true'
+    ? 'True'
+    : 'False'
+}
+
 const buildDelhiveryB2BManifestPayload = ({
   payload,
   normalizedOrderNumber,
@@ -3710,14 +3756,12 @@ const buildDelhiveryB2BManifestPayload = ({
     },
     d_mode: paymentMode,
     payment_mode: delhiveryPaymentMode,
-    freight_mode: 'fop',
+    freight_mode: normalizeDelhiveryB2BFreightMode(
+      (payload as any).freight_mode ?? (payload as any).freightMode,
+    ),
     fm_pickup: 'True',
     enable_paperless_movement: 'False',
-    rov_insurance:
-      Number(payload.is_insurance ?? 0) === 1 ||
-      String(payload.is_insurance || '').toLowerCase() === 'true'
-        ? 'True'
-        : 'False',
+    rov_insurance: normalizeDelhiveryB2BRovInsurance(payload),
     billing_address: billingAddress,
     amount: codAmount,
     cod_amount: codAmount,
@@ -6293,6 +6337,7 @@ export const fetchAvailableCouriersWithRatesB2B = async (
             length: Number(params.length ?? 0) || undefined,
             width: Number(params.breadth ?? 0) || undefined,
             height: Number(params.height ?? 0) || undefined,
+            boxes: Array.isArray((params as any).boxes) ? (params as any).boxes : undefined,
             invoiceValue: Number(params.order_amount ?? 0),
             paymentMode:
               (params.payment_type ?? 'prepaid').toUpperCase() === 'COD' ? 'COD' : 'PREPAID',
@@ -6303,11 +6348,15 @@ export const fetchAvailableCouriersWithRatesB2B = async (
             pickupDate: (params as any).pickup_date,
             deliveryAddress: '',
             planId: activePlanId ?? undefined,
+            freightMode: (params as any).freight_mode ?? (params as any).freightMode,
+            rovType: (params as any).rov_type ?? (params as any).rovType,
             isInsurance:
               (params as any).is_insurance === 1 ||
               (params as any).is_insurance === true ||
               String((params as any).is_insurance || '').toLowerCase() === '1' ||
-              String((params as any).is_insurance || '').toLowerCase() === 'true',
+              String((params as any).is_insurance || '').toLowerCase() === 'true' ||
+              String((params as any).rov_type ?? (params as any).rovType ?? '').toLowerCase() ===
+                'carrier_risk',
           })
           const billableWeightKg = Number(rateResult?.calculation?.billableWeight ?? 0) || null
           const volumetricWeightKg = Number(rateResult?.calculation?.volumetricWeight ?? 0) || null
@@ -6648,6 +6697,10 @@ export interface ShipmentParams {
   invoice_date?: string
   invoice_amount?: string | number
   is_insurance?: 0 | 1
+  freight_mode?: string
+  freightMode?: string
+  rov_type?: string
+  rovType?: string
   gift_wrap?: string
   tags?: string
   original_order_id?: string
@@ -10501,6 +10554,7 @@ export const createB2BShipmentService = async (
       length: inferredBoxes.length ? undefined : Number(params.package_length ?? 0) || undefined,
       width: inferredBoxes.length ? undefined : Number(params.package_breadth ?? 0) || undefined,
       height: inferredBoxes.length ? undefined : Number(params.package_height ?? 0) || undefined,
+      boxes: inferredBoxes.length ? inferredBoxes : undefined,
       invoiceValue,
       paymentMode: (params.payment_type ?? 'prepaid').toUpperCase() === 'COD' ? 'COD' : 'PREPAID',
       courierScope: {
@@ -10510,7 +10564,11 @@ export const createB2BShipmentService = async (
       pickupDate: params.pickup?.pickup_date,
       deliveryAddress: params.consignee.address,
       planId: activePlanId ?? undefined,
-      isInsurance: params.is_insurance === 1,
+      freightMode: params.freight_mode ?? params.freightMode,
+      rovType: params.rov_type ?? params.rovType,
+      isInsurance:
+        params.is_insurance === 1 ||
+        String(params.rov_type ?? params.rovType ?? '').toLowerCase() === 'carrier_risk',
     })
 
     if (rateResult?.charges) {

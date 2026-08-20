@@ -104,6 +104,11 @@ export const fetchAvailableCouriersForAdmin = async (req: Request, res: Response
       shadowfaxForwardMode,
       shadowfax_service_mode,
       shadowfaxServiceMode,
+      freight_mode,
+      freightMode,
+      rov_type,
+      rovType,
+      boxes,
     } = req.body
     if (!origin || !destination) {
       return res.status(400).json({
@@ -125,6 +130,9 @@ export const fetchAvailableCouriersForAdmin = async (req: Request, res: Response
       isCalculator: isCalculator === true || context === 'rate_calculator',
       shadowfax_forward_mode: shadowfax_forward_mode ?? shadowfaxForwardMode,
       shadowfax_service_mode: shadowfax_service_mode ?? shadowfaxServiceMode,
+      freight_mode: freight_mode ?? freightMode,
+      rov_type: rov_type ?? rovType,
+      boxes: Array.isArray(boxes) ? boxes : undefined,
     }
 
     const couriers =

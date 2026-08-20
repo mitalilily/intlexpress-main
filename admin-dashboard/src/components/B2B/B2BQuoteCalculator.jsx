@@ -36,6 +36,8 @@ const B2BQuoteCalculator = ({ planId }) => {
     height: '',
     invoiceValue: '',
     paymentMode: 'PREPAID',
+    freightMode: 'bill_to_client',
+    rovType: 'owner_risk',
     courierId: '',
     serviceProvider: '',
   })
@@ -66,6 +68,8 @@ const B2BQuoteCalculator = ({ planId }) => {
         height: formData.height ? Number(formData.height) : undefined,
         invoiceValue: formData.invoiceValue ? Number(formData.invoiceValue) : undefined,
         paymentMode: formData.paymentMode,
+        freightMode: formData.freightMode,
+        rovType: formData.rovType,
         courier_id: formData.courierId || undefined,
         service_provider: formData.serviceProvider || undefined,
         plan_id: planId || undefined,
@@ -134,6 +138,29 @@ const B2BQuoteCalculator = ({ planId }) => {
                 >
                   <option value="PREPAID">Prepaid</option>
                   <option value="COD">COD</option>
+                </Select>
+              </FormControl>
+            </SimpleGrid>
+
+            <SimpleGrid columns={2} spacing={4}>
+              <FormControl>
+                <FormLabel>Freight Mode</FormLabel>
+                <Select
+                  value={formData.freightMode}
+                  onChange={(e) => setFormData({ ...formData, freightMode: e.target.value })}
+                >
+                  <option value="bill_to_client">Bill to client</option>
+                  <option value="freight_on_delivery">Freight on delivery</option>
+                </Select>
+              </FormControl>
+              <FormControl>
+                <FormLabel>ROV Type</FormLabel>
+                <Select
+                  value={formData.rovType}
+                  onChange={(e) => setFormData({ ...formData, rovType: e.target.value })}
+                >
+                  <option value="owner_risk">ROV by owner</option>
+                  <option value="carrier_risk">ROV by courier</option>
                 </Select>
               </FormControl>
             </SimpleGrid>

@@ -160,6 +160,36 @@ export default function B2BForm({
               ))}
             </Select>
           </FormControl>
+
+          <FormControl>
+            <FormLabel color={labelColor}>Freight Mode</FormLabel>
+            <Select
+              name="freightMode"
+              value={formData.freightMode || 'bill_to_client'}
+              onChange={(e) => onChange('freightMode', e.target.value)}
+              bg={inputBg}
+              borderColor={borderColor}
+              _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 3px rgba(31,79,168,0.12)' }}
+            >
+              <option value="bill_to_client">Bill to client</option>
+              <option value="freight_on_delivery">Freight on delivery</option>
+            </Select>
+          </FormControl>
+
+          <FormControl>
+            <FormLabel color={labelColor}>ROV Type</FormLabel>
+            <Select
+              name="rovType"
+              value={formData.rovType || 'owner_risk'}
+              onChange={(e) => onChange('rovType', e.target.value)}
+              bg={inputBg}
+              borderColor={borderColor}
+              _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 3px rgba(31,79,168,0.12)' }}
+            >
+              <option value="owner_risk">ROV by owner</option>
+              <option value="carrier_risk">ROV by courier</option>
+            </Select>
+          </FormControl>
         </SimpleGrid>
       </Box>
 

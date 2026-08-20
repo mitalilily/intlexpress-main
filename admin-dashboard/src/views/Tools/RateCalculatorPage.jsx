@@ -230,6 +230,8 @@ export default function RateCalculatorPage() {
     pickupDate: '',
     orderId: '',
     awbNumber: '',
+    freightMode: 'bill_to_client',
+    rovType: 'owner_risk',
   })
 
   const handleChange = (field, value) => {
@@ -372,6 +374,8 @@ export default function RateCalculatorPage() {
           length: formData.length ? Number(formData.length) : undefined,
           breadth: formData.width ? Number(formData.width) : undefined,
           height: formData.height ? Number(formData.height) : undefined,
+          freight_mode: formData.freightMode,
+          rov_type: formData.rovType,
           context: 'rate_calculator',
           isCalculator: true,
         }

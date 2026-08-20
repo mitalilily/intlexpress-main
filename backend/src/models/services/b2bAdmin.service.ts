@@ -1532,8 +1532,58 @@ export const calculateB2BChargeableWeight = (params: {
   width?: number
   height?: number
   cftFactor: number
+  boxes?: Array<{
+    length?: number
+    lengthCm?: number
+    breadth?: number
+    breadthCm?: number
+    width?: number
+    widthCm?: number
+    height?: number
+    heightCm?: number
+    weight?: number
+    weightKg?: number
+    quantity?: number | string
+    qty?: number | string
+  }>
 }) => {
   const { weightKg, length, width, height, cftFactor } = params
+
+  const normalizedBoxes = Array.isArray(params.boxes)
+    ? params.boxes
+        .map((box) => {
+          const boxLength = Number(box.length ?? box.lengthCm ?? 0)
+          const boxWidth = Number(box.width ?? box.widthCm ?? box.breadth ?? box.breadthCm ?? 0)
+          const boxHeight = Number(box.height ?? box.heightCm ?? 0)
+          const boxWeight = Number(box.weight ?? box.weightKg ?? 0)
+          const quantity = Math.max(1, Number(box.quantity ?? box.qty ?? 1) || 1)
+          return { length: boxLength, width: boxWidth, height: boxHeight, weight: boxWeight, quantity }
+        })
+        .filter(
+          (box) =>
+            box.length > 0 ||
+            box.width > 0 ||
+            box.height > 0 ||
+            box.weight > 0,
+        )
+    : []
+
+  if (normalizedBoxes.length > 0) {
+    const actualWeight = normalizedBoxes.reduce(
+      (sum, box) => sum + Math.max(0, box.weight) * box.quantity,
+      0,
+    )
+    const volumetricWeight = normalizedBoxes.reduce((sum, box) => {
+      if (box.length > 0 && box.width > 0 && box.height > 0) {
+        return sum + ((box.length * box.width * box.height) / cftFactor) * box.quantity
+      }
+      return sum
+    }, 0)
+    const fallbackWeight = actualWeight > 0 ? actualWeight : weightKg
+    const billableWeight = Math.max(fallbackWeight, volumetricWeight)
+
+    return { billableWeight, volumetricWeight, actualWeight }
+  }
 
   // Calculate volumetric weight if dimensions provided
   let volumetricWeight = weightKg
@@ -1545,7 +1595,7 @@ export const calculateB2BChargeableWeight = (params: {
   // Billable weight is max of actual and volumetric (ALWAYS applies)
   const billableWeight = Math.max(weightKg, volumetricWeight)
 
-  return { billableWeight, volumetricWeight }
+  return { billableWeight, volumetricWeight, actualWeight: weightKg }
 }
 
 export const calculateB2BRate = async (params: {
@@ -1575,6 +1625,9 @@ export const calculateB2BRate = async (params: {
   deliveryAddress?: string // Optional: Delivery address - used to detect CSD locations via keywords
   planId?: string // Optional: Plan ID to fetch plan-specific additional charges
   isInsurance?: boolean // Optional: apply ROV only when insurance is enabled for the shipment
+  freightMode?: string
+  rovType?: string
+  boxes?: Parameters<typeof calculateB2BChargeableWeight>[0]['boxes']
 }) => {
   const { courierId, serviceProvider } = normalizeCourierScope(params.courierScope)
   const effectiveDate = params.effectiveDate ?? new Date()
@@ -1636,12 +1689,13 @@ export const calculateB2BRate = async (params: {
   const cftFactor = normalizeB2BCftFactor(additionalCharges.cft_factor)
 
   // Use shared helper for weight calculation
-  const { billableWeight, volumetricWeight } = calculateB2BChargeableWeight({
+  const { billableWeight, volumetricWeight, actualWeight } = calculateB2BChargeableWeight({
     weightKg: params.weightKg,
     length: params.length,
     width: params.width,
     height: params.height,
     cftFactor,
+    boxes: params.boxes,
   })
 
   // Fetch admin-controlled pricing flags (if needed)
@@ -1772,10 +1826,12 @@ export const calculateB2BRate = async (params: {
     isTimeSpecific: params.deliveryTime ? true : false, // Apply if delivery time window is provided from frontend
     isFragile: false, // TODO: Add support for fragile items flag
     isInsurance: Boolean(params.isInsurance),
+    freightMode: params.freightMode || null,
+    rovType: params.rovType || null,
     courierId: courierId || null,
     origin,
     destination,
-    weightKg: params.weightKg,
+    weightKg: actualWeight,
     billableWeight,
     volumetricWeight,
     invoiceValue: params.invoiceValue ?? 0,
@@ -2461,12 +2517,14 @@ export const calculateB2BRate = async (params: {
     destination,
     rate,
     calculation: {
-      actualWeight: params.weightKg,
+      actualWeight,
       volumetricWeight,
       billableWeight,
       cftFactor,
       volumetricDivisor: cftFactor,
-      usedVolumetric: volumetricWeight > params.weightKg,
+      usedVolumetric: volumetricWeight > actualWeight,
+      freightMode: params.freightMode || null,
+      rovType: params.rovType || null,
     },
     charges: {
       baseFreight,
