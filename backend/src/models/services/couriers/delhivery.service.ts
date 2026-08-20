@@ -1055,18 +1055,43 @@ export const createDelhiveryB2BPickupRequest = async ({
   delete requestPayload.pickup_location
   delete requestPayload.pickup_time
 
-  const response = await axios.post(`${resolvedApiBase}/pickup_requests/`, requestPayload, {
-    headers: {
-      ...buildDelhiveryB2BAuthHeaders(normalizedToken),
-      ...(normalizedRequestId ? { 'X-Request-Id': normalizedRequestId } : {}),
-    },
-    timeout: 30000,
-  })
+  try {
+    const response = await axios.post(`${resolvedApiBase}/pickup_requests/`, requestPayload, {
+      headers: {
+        ...buildDelhiveryB2BAuthHeaders(normalizedToken),
+        ...(normalizedRequestId ? { 'X-Request-Id': normalizedRequestId } : {}),
+      },
+      timeout: 30000,
+    })
 
-  return {
-    apiBase: resolvedApiBase,
-    status: response.status,
-    data: response.data,
+    return {
+      apiBase: resolvedApiBase,
+      status: response.status,
+      data: response.data,
+    }
+  } catch (err: any) {
+    const providerMessage =
+      extractProviderErrorMessage(err?.response?.data) ||
+      err?.response?.data?.error?.message ||
+      err?.response?.data?.message ||
+      err?.message ||
+      ''
+    const existingPickupRequestId = getExistingPickupRequestId(providerMessage)
+    if (existingPickupRequestId) {
+      return {
+        apiBase: resolvedApiBase,
+        status: 200,
+        data: {
+          success: true,
+          already_exists: true,
+          pickup_request_id: existingPickupRequestId,
+          message: providerMessage,
+          provider_response: err?.response?.data || null,
+        },
+      }
+    }
+
+    throw err
   }
 }
 
