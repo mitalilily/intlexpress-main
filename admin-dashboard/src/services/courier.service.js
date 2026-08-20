@@ -9,6 +9,24 @@ const normalizeArrayPayload = (payload) => {
   return []
 }
 
+const isDelhiveryCourier = (item) => {
+  if (typeof item === 'string') return item.toLowerCase().includes('delhivery')
+
+  return [
+    item?.serviceProvider,
+    item?.service_provider,
+    item?.integration_type,
+    item?.provider,
+    item?.courier_partner,
+    item?.courier_name,
+    item?.name,
+    item?.displayName,
+  ].some((value) => String(value || '').toLowerCase().includes('delhivery'))
+}
+
+const filterDelhiveryCouriers = (items = []) =>
+  Array.isArray(items) ? items.filter(isDelhiveryCourier) : []
+
 export const fetchShippingRates = async (filters = {}) => {
   const params = {}
   if (filters.courier_name) params.courier_name = filters.courier_name
@@ -19,7 +37,7 @@ export const fetchShippingRates = async (filters = {}) => {
   if (filters.businessType) params.businessType = filters.businessType
   if (filters.planId) params.planId = filters.planId
   const response = await api.get('/admin/couriers/shipping-rates', { params })
-  return normalizeArrayPayload(response.data)
+  return filterDelhiveryCouriers(normalizeArrayPayload(response.data))
 }
 
 export const fetchAvailableCouriers = async (params) => {
@@ -33,7 +51,7 @@ export const fetchAvailableCouriers = async (params) => {
       throw new Error(res.data.error || 'Failed to fetch couriers')
     }
 
-    return res.data.data
+    return filterDelhiveryCouriers(res.data.data || [])
   } catch (error) {
     console.error('fetchAvailableCouriers error:', error.response?.data || error.message)
     throw new Error(error.response?.data?.error || error.message || 'Failed to fetch couriers')
@@ -43,7 +61,7 @@ export const fetchAvailableCouriers = async (params) => {
 export const fetchAllCouriers = async () => {
   const res = await api.get(`/admin/couriers/list`)
   if (!res.data?.success) throw new Error('Failed to fetch couriers')
-  return normalizeArrayPayload(res.data) // returns an array of courier names
+  return filterDelhiveryCouriers(normalizeArrayPayload(res.data)) // returns an array of courier names
 }
 
 export const fetchAllCouriersList = async (filters = {}) => {
@@ -54,7 +72,7 @@ export const fetchAllCouriersList = async (filters = {}) => {
 
   const res = await api.get(`/couriers/full-list`, { params })
   if (!res.data?.success) throw new Error('Failed to fetch couriers')
-  return normalizeArrayPayload(res.data) // returns an array of courier objects
+  return filterDelhiveryCouriers(normalizeArrayPayload(res.data)) // returns an array of courier objects
 }
 
 export const createCourier = async (payload) => {
@@ -80,7 +98,7 @@ export const updateCourierStatus = async ({ id, serviceProvider, isEnabled, busi
 export const fetchServiceProviders = async () => {
   const { data } = await api.get(`/couriers/providers`)
   if (!data?.success) throw new Error('Failed to fetch service providers')
-  return data.data
+  return filterDelhiveryCouriers(data.data || [])
 }
 
 export const updateServiceProviderStatus = async ({ serviceProvider, isEnabled }) => {

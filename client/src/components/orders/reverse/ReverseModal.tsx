@@ -175,7 +175,7 @@ export default function ReverseModal({
         setError(null)
 
         if (!isProviderSupported) {
-          throw new Error('Reverse pickup is available only for Delhivery, Shadowfax, Xpressbees, Ekart, and Amazon.')
+          throw new Error('Reverse pickup is available only for Delhivery.')
         }
 
         const [quoteRes, walletRes] = await Promise.all([

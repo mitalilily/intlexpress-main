@@ -1140,10 +1140,13 @@ const B2COrdersList = () => {
       label: 'Warehouse',
       type: 'select',
       options:
-        warehouses?.pickupAddresses?.map((w) => ({
-          label: w.pickup?.addressNickname,
-          value: w.pickup?.addressNickname,
-        })) ?? [],
+        warehouses?.pickupAddresses
+          ?.map((w) => w.pickup?.addressNickname)
+          .filter((name): name is string => Boolean(name))
+          .map((name) => ({
+            label: name,
+            value: name,
+          })) ?? [],
       isAdvanced: true,
     },
     { name: 'fromDate', label: 'From Date', type: 'date', placeholder: 'From' },

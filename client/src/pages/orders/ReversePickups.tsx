@@ -247,7 +247,7 @@ export default function ReversePickups() {
             Reverse Pickups
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Delhivery, Shadowfax, Xpressbees, Ekart, and Amazon reverse pickups are available.
+            Delhivery reverse pickups are available.
           </Typography>
         </Box>
 

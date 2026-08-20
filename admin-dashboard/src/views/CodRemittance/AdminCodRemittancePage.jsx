@@ -1598,8 +1598,6 @@ export default function AdminCodRemittancePage() {
                 </FormLabel>
                 <Select value={courierPartner} onChange={(e) => setCourierPartner(e.target.value)}>
                   <option value="delhivery">Delhivery</option>
-                  <option value="ekart">Ekart</option>
-                  <option value="xpressbees">Xpressbees</option>
                 </Select>
               </FormControl>
 

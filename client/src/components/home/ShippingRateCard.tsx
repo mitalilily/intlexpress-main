@@ -102,7 +102,7 @@ const ShippingRateCard = () => {
             fontWeight: 500,
           }}
         >
-          Supports top couriers: Delhivery, XpressBees, BlueDart, and more.
+          Supports Delhivery B2B and B2C courier services.
         </Typography>
 
         <Typography

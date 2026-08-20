@@ -4,6 +4,9 @@ import axiosInstance from './axiosInstance'
 export interface Courier {
   id: number
   name: string
+  courier_name?: string | null
+  serviceProvider?: string | null
+  service_provider?: string | null
   displayName?: string | null
   courier_option_key?: string | null
   max_slab_weight?: number | null
@@ -93,7 +96,18 @@ export const getCouriers = async ({
 
   const res = await axiosInstance.get<{ status: string; data: CourierListResponse }>(url)
 
-  return res.data.data
+  const data = res.data.data
+  const couriers = filterDelhiveryCouriers(data?.couriers || [])
+
+  return {
+    ...data,
+    couriers,
+    totalCount: couriers.length,
+    summary: {
+      ...data.summary,
+      totalCourierCount: couriers.length,
+    },
+  }
 }
 
 export const getCourierById = async (id: number): Promise<Courier> => {
@@ -106,6 +120,26 @@ interface FetchCouriersResponse {
   data: Courier[]
   error?: string
 }
+
+const isDelhiveryCourier = (item: any) => {
+  if (typeof item === 'string') return item.toLowerCase().includes('delhivery')
+
+  const values = [
+    item?.serviceProvider,
+    item?.service_provider,
+    item?.integration_type,
+    item?.provider,
+    item?.courier_partner,
+    item?.courier_name,
+    item?.name,
+    item?.displayName,
+  ]
+
+  return values.some((value) => String(value || '').toLowerCase().includes('delhivery'))
+}
+
+const filterDelhiveryCouriers = <T>(items: T[] | null | undefined): T[] =>
+  Array.isArray(items) ? items.filter(isDelhiveryCourier) : []
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -140,7 +174,7 @@ export const fetchAvailableCouriers = async (params: any): Promise<any[]> => {
         throw new Error(res.data.error || 'Failed to fetch couriers')
       }
 
-      return res.data.data
+      return filterDelhiveryCouriers(res.data.data)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('fetchAvailableCouriers error:', error.response?.data || error.message)
@@ -163,7 +197,7 @@ interface ShippingRatesFilters {
   // add more fields if needed
 }
 
-export const fetchShippingRates = async (filters: ShippingRatesFilters = {}) => {
+export const fetchShippingRates = async (filters: ShippingRatesFilters = {}): Promise<any[]> => {
   const params: Record<string, string | number> = {}
 
   if (filters.courier) params.courier_name = filters.courier
@@ -172,19 +206,19 @@ export const fetchShippingRates = async (filters: ShippingRatesFilters = {}) => 
   if (filters.businessType) params.businessType = filters.businessType
 
   const response = await axiosInstance.get('/couriers/shipping-rates', { params })
-  return response.data.data
+  return filterDelhiveryCouriers(response.data.data || [])
 }
 
-export const fetchAllCouriers = async () => {
+export const fetchAllCouriers = async (): Promise<string[]> => {
   const res = await axiosInstance.get(`/couriers/list`)
   if (!res.data?.success) throw new Error('Failed to fetch couriers')
-  return res.data.data // returns an array of courier names
+  return filterDelhiveryCouriers(res.data.data || []) // returns an array of courier names
 }
 
-export const fetchCouriersWithDetails = async () => {
+export const fetchCouriersWithDetails = async (): Promise<any[]> => {
   const res = await axiosInstance.get(`/couriers/full-list`)
   if (!res.data?.success) throw new Error('Failed to fetch couriers')
-  return res.data.data // returns an array of courier names
+  return filterDelhiveryCouriers(res.data.data || []) // returns an array of courier names
 }
 export const getZones = async () => {
   const res = await axiosInstance.get('/admin/zones')
