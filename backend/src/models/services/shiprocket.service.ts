@@ -1653,6 +1653,38 @@ async function fetchPickupWarehouseRecord(
 
 const trimText = (value: unknown) => String(value ?? '').trim()
 
+const GENERIC_PICKUP_WAREHOUSE_NAMES = new Set([
+  'warehouse',
+  'default warehouse',
+  'pickup',
+  'pickup warehouse',
+  'seller',
+])
+
+const isGenericPickupWarehouseName = (value: unknown) => {
+  const normalized = trimText(value).toLowerCase()
+  if (!normalized) return true
+  if (GENERIC_PICKUP_WAREHOUSE_NAMES.has(normalized)) return true
+  return /^warehouse[\s_-]*\d*$/i.test(normalized)
+}
+
+const chooseConcretePickupWarehouseName = ({
+  requested,
+  warehouse,
+  accountPickupNames = [],
+}: {
+  requested?: unknown
+  warehouse?: PickupWarehouseRecord | null
+  accountPickupNames?: unknown[]
+}) => {
+  const requestedName = trimText(requested)
+  const warehouseName = trimText(warehouse?.addressNickname) || trimText(warehouse?.contactName)
+  const configuredAccountName = accountPickupNames.map(trimText).find(Boolean) || ''
+
+  if (requestedName && !isGenericPickupWarehouseName(requestedName)) return requestedName
+  return warehouseName || configuredAccountName || requestedName
+}
+
 const normalizeAmazonGstNumber = (value: unknown) => {
   const normalized = trimText(value).toUpperCase().replace(/\s+/g, '')
   return /^[0-9A-Z]{15}$/.test(normalized) ? normalized : ''
@@ -7656,7 +7688,21 @@ export const createB2CShipmentService = async (
         const warehouseName =
           effectiveIntegrationType === 'ekart'
             ? pickupRow.addressNickname || pickup.warehouse_name || pickupRow.contactName || ''
-            : pickup.warehouse_name || pickupRow.addressNickname || ''
+            : chooseConcretePickupWarehouseName({
+                requested: pickup.warehouse_name,
+                warehouse: {
+                  pickupId: '',
+                  addressNickname: pickupRow.addressNickname,
+                  addressLine1: pickupRow.addressLine1 || '',
+                  addressLine2: pickupRow.addressLine2,
+                  city: pickupRow.city || '',
+                  state: pickupRow.state || '',
+                  pincode: pickupRow.pincode || '',
+                  contactName: pickupRow.contactName,
+                  contactPhone: pickupRow.contactPhone,
+                  gstNumber: pickupRow.gstNumber,
+                },
+              })
         params.pickup = {
           warehouse_name: warehouseName,
           address: pickup.address || pickupRow.addressLine1 || '',
@@ -10536,12 +10582,21 @@ export const createB2BShipmentService = async (
         )
       }
 
+      const selectedPickupWarehouseForDelhivery = params.pickup_location_id
+        ? await fetchPickupWarehouseRecord(userId, params.pickup_location_id)
+        : null
+
       const delhivery = new DelhiveryService({
         preferredAccountCode: selectedDelhiveryB2BAccountCode,
         pickupLocationId: String(params.pickup_location_id || '').trim() || null,
-        pickupLocationName: String(
-          params.pickup?.warehouse_name || params.pickup_location_alias || params.pickup_location_id || '',
-        ).trim(),
+        pickupLocationName: chooseConcretePickupWarehouseName({
+          requested:
+            params.pickup?.warehouse_name ||
+            params.pickup_location_alias ||
+            params.pickup_location_id ||
+            '',
+          warehouse: selectedPickupWarehouseForDelhivery,
+        }),
       })
       const resolvedDelhiveryAccount = await delhivery.getResolvedAccount()
       if (resolvedDelhiveryAccount?.accountCode !== selectedDelhiveryB2BAccountCode) {
@@ -10580,9 +10635,32 @@ export const createB2BShipmentService = async (
             apiBase: resolvedDelhiveryAccount.apiBase,
           })
 
-      const pickupLocationName = String(
-        payload.pickup?.warehouse_name || params.pickup_location_alias || params.pickup_location_id || '',
-      ).trim()
+      const pickupLocationName = chooseConcretePickupWarehouseName({
+        requested:
+          payload.pickup?.warehouse_name ||
+          params.pickup_location_alias ||
+          params.pickup_location_id ||
+          '',
+        warehouse: selectedPickupWarehouseForDelhivery,
+        accountPickupNames: resolvedDelhiveryAccount.pickupLocationNames,
+      })
+      if (!pickupLocationName) {
+        throw new HttpError(
+          400,
+          `${resolvedDelhiveryAccount.accountLabel || selectedDelhiveryB2BAccountCode} has no configured pickup warehouse name. Save the Delhivery B2B warehouse name on the credential card or select a pickup address with a concrete nickname.`,
+        )
+      }
+      payload.pickup = {
+        ...(payload.pickup || {}),
+        warehouse_name: pickupLocationName,
+        name: payload.pickup?.name || pickupLocationName,
+      }
+      params.pickup = {
+        ...(params.pickup || {}),
+        warehouse_name: pickupLocationName,
+        name: params.pickup?.name || pickupLocationName,
+      }
+      params.pickup_location_alias = pickupLocationName
       const b2bManifestPayload = buildDelhiveryB2BManifestPayload({
         payload,
         normalizedOrderNumber,
