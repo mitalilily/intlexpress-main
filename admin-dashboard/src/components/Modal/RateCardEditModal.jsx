@@ -27,6 +27,17 @@ const normalizeMode = (value) => {
 const makeCourierKey = (courierId, serviceProvider) =>
   `${courierId || ''}__${normalizeProvider(serviceProvider)}`
 
+const isDelhiveryCourier = (courier) =>
+  [
+    courier?.serviceProvider,
+    courier?.service_provider,
+    courier?.provider,
+    courier?.integration_type,
+    courier?.name,
+    courier?.courier_name,
+    courier?.displayName,
+  ].some((value) => String(value || '').toLowerCase().includes('delhivery'))
+
 export const RateCardEditModal = ({
   isOpen,
   onClose,
@@ -293,9 +304,11 @@ export const RateCardEditModal = ({
     }),
   )
 
+  const rateCardCouriers = isB2C ? couriers.filter(isDelhiveryCourier) : couriers
+
   const availableCouriers = isEdit
-    ? couriers // show full list when editing
-    : couriers.filter((c) => {
+    ? rateCardCouriers // show full list when editing
+    : rateCardCouriers.filter((c) => {
         if (isB2C) return true
         const courierId = c?.id?.toString()
         const serviceProvider = normalizeProvider(c?.serviceProvider || c?.service_provider || '')
