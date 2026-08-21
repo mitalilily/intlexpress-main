@@ -89,7 +89,7 @@ const downloadCSV = (allCouriers = [], allZones = [], existingData = [], filters
     const headers = [
       'Slab', 'Courier ID', 'Courier', 'Service Provider', 'Mode', 'Weight (KG)', 'Slab Type',
       ...allZones.flatMap((z) => [`${z.name} (Forward)`, `${z.name} (RTO)`]),
-      'COD Rs', 'COD %', 'RTO %',
+      'Additional Applies Till (KG)', 'COD Rs', 'COD %', 'RTO %',
     ]
 
     const rows = []
@@ -130,8 +130,14 @@ const downloadCSV = (allCouriers = [], allZones = [], existingData = [], filters
           return [forwardSlabs[i]?.extra_rate ?? '', rtoSlabs[i]?.extra_rate ?? '']
         })
 
-        rows.push([slab.label, courier.id ?? '', courier.name ?? '', courier.serviceProvider || courier.service_provider || existing.service_provider || '', mode, slab.weight, 'First', ...firstZoneRates, codRs, codPct, rtoPercent])
-        rows.push([slab.label, courier.id ?? '', courier.name ?? '', courier.serviceProvider || courier.service_provider || existing.service_provider || '', mode, slab.weight, 'Additional', ...addZoneRates, '', '', ''])
+        const courierDisplayName = existing.courier_name || courier.name || ''
+        const appliesTillWeight =
+          allZones
+            .map((z) => existing.zone_slabs?.[z.name]?.forward?.[i]?.extra_applies_till_weight)
+            .find((value) => value !== undefined && value !== null && value !== '') ?? ''
+
+        rows.push([slab.label, courier.id ?? '', courierDisplayName, courier.serviceProvider || courier.service_provider || existing.service_provider || '', mode, slab.weight, 'First', ...firstZoneRates, appliesTillWeight, codRs, codPct, rtoPercent])
+        rows.push([slab.label, courier.id ?? '', courierDisplayName, courier.serviceProvider || courier.service_provider || existing.service_provider || '', mode, slab.weight, 'Additional', ...addZoneRates, appliesTillWeight, '', '', ''])
       }
     }
 

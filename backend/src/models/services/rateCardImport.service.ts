@@ -31,7 +31,7 @@ type PreparedSlabRow = {
 }
 
 export const isSlabValidationError = (err: unknown) =>
-  /slab|overlap|extra_rate|extra_weight_unit|zone|header|column/i.test(
+  /slab|overlap|extra_rate|extra_weight_unit|extra_applies_till_weight|zone|header|column/i.test(
     String((err as any)?.message || err || ''),
   )
 
@@ -39,6 +39,14 @@ export const cellToString = (value: RateCardCell) =>
   value === null || value === undefined ? '' : String(value).trim()
 
 export const cell = (row: CSVRow, key: string) => cellToString(row[key])
+
+const firstCell = (row: CSVRow, keys: string[]) => {
+  for (const key of keys) {
+    const value = cell(row, key)
+    if (value) return value
+  }
+  return ''
+}
 
 export const normalizeRateCardRow = (row: Record<string, unknown>): CSVRow => {
   const normalized: CSVRow = {}
@@ -238,7 +246,7 @@ const canonicalizeImportedCourier = (input: {
   return {
     ...input,
     courierId: String(canonicalCourierId),
-    courierName: getDelhiveryCourierDisplayName(shippingMode),
+    courierName: input.courierName || getDelhiveryCourierDisplayName(shippingMode),
     mode: shippingMode === 'Express' ? 'air' : 'surface',
   }
 }
@@ -330,7 +338,9 @@ export const importB2CSlabFormat = async (
 
   for (const row of data) {
     const courierId = options.courierId || cell(row, 'Courier ID')
-    const courierName = options.courierName || cell(row, 'Courier') || cell(row, 'Courier Name')
+    const courierName =
+      options.courierName ||
+      firstCell(row, ['Service Name', 'Rate Card Name', 'Display Name', 'Courier', 'Courier Name'])
     const serviceProvider =
       options.serviceProvider || inferServiceProvider(cell(row, 'Service Provider'), courierName)
     const mode = options.mode || cell(row, 'Mode')
@@ -347,7 +357,7 @@ export const importB2CSlabFormat = async (
       mode,
     })
 
-    const key: GroupKey = `${canonicalCourier.courierId}|${canonicalCourier.serviceProvider}|${canonicalCourier.mode.toLowerCase()}`
+    const key: GroupKey = `${canonicalCourier.courierId}|${canonicalCourier.serviceProvider}|${canonicalCourier.mode.toLowerCase()}|${canonicalCourier.courierName.toLowerCase()}`
     if (!groups.has(key)) groups.set(key, [])
     groups
       .get(key)!
@@ -375,7 +385,8 @@ export const importB2CSlabFormat = async (
     if (!first) continue
 
     const courierId = cell(first, 'Courier ID')
-    const courierName = cell(first, 'Courier') || cell(first, 'Courier Name')
+    const courierName =
+      firstCell(first, ['Service Name', 'Rate Card Name', 'Display Name', 'Courier', 'Courier Name'])
     const serviceProvider = inferServiceProvider(cell(first, 'Service Provider'), courierName)
     const mode = cell(first, 'Mode')
     const codCharges = toRateCardNumber(first['COD Rs'] ?? first['COD Charges'], 0) || null
@@ -415,6 +426,17 @@ export const importB2CSlabFormat = async (
             ) || null
           : null
         const extraWeightUnit = addRow && extraRate ? addRow._weight || null : null
+        const extraAppliesTillWeight =
+          toRateCardNumber(
+            firstCell(addRow || fr, [
+              'Additional Applies Till (KG)',
+              'Additional Till Weight (KG)',
+              'Applies Till (KG)',
+              'Max Weight (KG)',
+              'Applicable Till (KG)',
+            ]),
+            0,
+          ) || null
 
         fwdSlabs.push({
           weight_from: weightFrom,
@@ -422,6 +444,7 @@ export const importB2CSlabFormat = async (
           rate: fwdRate,
           extra_rate: extraRate,
           extra_weight_unit: extraWeightUnit,
+          extra_applies_till_weight: extraAppliesTillWeight,
         })
 
         const explicitRtoRate = toRateCardNumber(
@@ -443,6 +466,7 @@ export const importB2CSlabFormat = async (
                   ? roundMoney(extraRate * rtoMultiplier)
                   : null,
             extra_weight_unit: extraWeightUnit,
+            extra_applies_till_weight: extraAppliesTillWeight,
           })
         }
       }
@@ -503,7 +527,8 @@ export const importFlatFormat = async (
 
   for (const row of data) {
     const courierId = cell(row, 'Courier ID')
-    const courierName = cell(row, 'Courier Name') || cell(row, 'Courier')
+    const courierName =
+      firstCell(row, ['Service Name', 'Rate Card Name', 'Display Name', 'Courier Name', 'Courier'])
     const serviceProvider = inferServiceProvider(cell(row, 'Service Provider'), courierName)
     const minWeight = cell(row, 'Min Weight')
     const mode = cell(row, 'Mode')

@@ -32,6 +32,7 @@ export const shippingRateSlabs = pgTable('shipping_rate_slabs', {
   rate: decimal('rate', { precision: 10, scale: 2 }).notNull(),
   extra_rate: decimal('extra_rate', { precision: 10, scale: 2 }),
   extra_weight_unit: decimal('extra_weight_unit', { precision: 10, scale: 3 }),
+  extra_applies_till_weight: decimal('extra_applies_till_weight', { precision: 10, scale: 3 }),
   created_at: timestamp('created_at').defaultNow(),
   updated_at: timestamp('updated_at').defaultNow(),
 })

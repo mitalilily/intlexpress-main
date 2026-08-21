@@ -5717,6 +5717,7 @@ export const fetchAvailableCouriersWithRates = async (
         ? [
             {
               rate: computed.freight,
+              courier_name: rateCard.courier_name,
               cod_charges: effectiveCodCharge,
               cod_percent: shouldIncludeCodCharges ? rateCard.cod_percent : 0,
               other_charges: rateCard.other_charges,
@@ -5898,8 +5899,11 @@ export const fetchAvailableCouriersWithRates = async (
           }
           const courierOptionName =
             applicableRate.matched_by !== 'legacy'
-              ? formatCourierOptionName(courierDisplayName, applicableRate.max_slab_weight)
-              : courierDisplayName
+              ? formatCourierOptionName(
+                  applicableRate.courier_name || courierDisplayName,
+                  applicableRate.max_slab_weight,
+                )
+              : applicableRate.courier_name || courierDisplayName
 
           return {
             ...courier,

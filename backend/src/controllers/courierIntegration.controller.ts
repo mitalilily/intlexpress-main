@@ -269,7 +269,7 @@ const getB2CFallbackRateMeta = (rate: typeof shippingRates.$inferSelect) => {
       return {
         provider,
         courierId,
-        courierName: getDelhiveryCourierDisplayName(shippingMode),
+        courierName: rate.courier_name || getDelhiveryCourierDisplayName(shippingMode),
         mode: shippingMode === 'Express' ? 'air' : 'surface',
       }
     }
@@ -431,6 +431,8 @@ const buildLastResortB2CCouriersFromRateCards = async (
       extra_rate: slab.extra_rate === null ? null : toNumber(slab.extra_rate),
       extra_weight_unit:
         slab.extra_weight_unit === null ? null : toNumber(slab.extra_weight_unit),
+      extra_applies_till_weight:
+        slab.extra_applies_till_weight === null ? null : toNumber(slab.extra_applies_till_weight),
     }))
     const rateCard = {
       shippingRateId: row.id,

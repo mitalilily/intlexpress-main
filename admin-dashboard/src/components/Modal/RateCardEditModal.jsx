@@ -63,6 +63,7 @@ export const RateCardEditModal = ({
         weight_from: 0,
         weight_to: Number.isFinite(parsedMinWeight) && parsedMinWeight > 0 ? parsedMinWeight : '',
         rate,
+        extra_applies_till_weight: '',
       },
     ]
   }
@@ -132,6 +133,7 @@ export const RateCardEditModal = ({
         rate: '',
         extra_rate: '',
         extra_weight_unit: '',
+        extra_applies_till_weight: '',
       })
       zoneEntry[type] = slabList
       next.zone_slabs[zoneName] = zoneEntry
@@ -207,6 +209,7 @@ export const RateCardEditModal = ({
       previous_mode: data?.mode,
       courier_id: form.courier_id || data?.courier_id, // from form (create) or existing (edit)
       courier_name: form.courier_name || data?.courier_name,
+      previous_courier_name: data?.courier_name,
       service_provider: serviceProviderValue, // Always send the service_provider
       previous_service_provider: data?.service_provider || data?.serviceProvider,
       rates,
@@ -432,6 +435,20 @@ export const RateCardEditModal = ({
         </Text>
         <SimpleGrid columns={2} spacing={4}>
           <FormControl>
+            <FormLabel>{isB2C ? 'Rate Card / Service Name' : 'Courier Name'}</FormLabel>
+            <Input
+              value={form.courier_name}
+              onChange={(e) => handleChange('courier_name', e.target.value)}
+              placeholder={isB2C ? 'Example: Delhivery 500gm, Delhivery 5kg' : 'Courier name'}
+            />
+            {isB2C && (
+              <Text fontSize="xs" color="gray.500" mt={1}>
+                This is the name clients see during booking. Use separate names for separate
+                Delhivery slabs.
+              </Text>
+            )}
+          </FormControl>
+          <FormControl>
             <FormLabel>Mode</FormLabel>
             <Input value={form.mode} onChange={(e) => handleChange('mode', e.target.value)} />
           </FormControl>
@@ -492,9 +509,9 @@ export const RateCardEditModal = ({
             <Text>3. If order weight falls in a gap, this courier will not appear.</Text>
             <Text>
               4. If order weight goes above the last slab, extra charges are added using Extra Rate
-              and Extra Unit of that last slab.
+              and Extra Unit of that last slab, only until Additional Applies Till weight if set.
             </Text>
-            <Text>5. Courier name shown to user will use that matched slab&apos;s max weight.</Text>
+            <Text>5. To create multiple same-courier options, save separate rate cards with names like Delhivery 500gm, Delhivery 5kg, Delhivery 10kg.</Text>
           </Stack>
         </Box>
       )}
@@ -529,7 +546,7 @@ export const RateCardEditModal = ({
                         return (
                         <SimpleGrid
                           key={`${zone.name}-${type}-${index}`}
-                          columns={{ base: 1, md: 2, xl: 6 }}
+                          columns={{ base: 1, md: 2, xl: 7 }}
                           spacing={3}
                         >
                           <FormControl>
@@ -598,6 +615,28 @@ export const RateCardEditModal = ({
                               {isLastSlab
                                 ? 'Example: `1` means add the above charge for every extra 1 kg.'
                                 : 'Non-final slabs do not use extra weight pricing.'}
+                            </Text>
+                          </FormControl>
+                          <FormControl>
+                            <FormLabel>Additional Applies Till (kg)</FormLabel>
+                            <Input
+                              type="number"
+                              value={slab.extra_applies_till_weight ?? ''}
+                              isDisabled={!isLastSlab}
+                              onChange={(e) =>
+                                handleSlabChange(
+                                  zone.name,
+                                  type,
+                                  index,
+                                  'extra_applies_till_weight',
+                                  e.target.value,
+                                )
+                              }
+                            />
+                            <Text fontSize="xs" color="gray.500" mt={1}>
+                              {isLastSlab
+                                ? 'If set, this courier option hides above this kg weight.'
+                                : 'Available only on the final slab.'}
                             </Text>
                           </FormControl>
                           <FormControl>

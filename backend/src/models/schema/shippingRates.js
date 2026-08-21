@@ -33,6 +33,7 @@ exports.shippingRateSlabs = (0, pg_core_1.pgTable)('shipping_rate_slabs', {
     rate: (0, pg_core_1.decimal)('rate', { precision: 10, scale: 2 }).notNull(),
     extra_rate: (0, pg_core_1.decimal)('extra_rate', { precision: 10, scale: 2 }),
     extra_weight_unit: (0, pg_core_1.decimal)('extra_weight_unit', { precision: 10, scale: 3 }),
+    extra_applies_till_weight: (0, pg_core_1.decimal)('extra_applies_till_weight', { precision: 10, scale: 3 }),
     created_at: (0, pg_core_1.timestamp)('created_at').defaultNow(),
     updated_at: (0, pg_core_1.timestamp)('updated_at').defaultNow(),
 });

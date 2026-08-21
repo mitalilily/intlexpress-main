@@ -164,6 +164,8 @@ export const getShippingRates = async (filters: ShippingRateFilters = {}) => {
       extra_rate: slab.extra_rate === null ? null : Number(slab.extra_rate),
       extra_weight_unit:
         slab.extra_weight_unit === null ? null : Number(slab.extra_weight_unit),
+      extra_applies_till_weight:
+        slab.extra_applies_till_weight === null ? null : Number(slab.extra_applies_till_weight),
     })
     slabMap.set(slab.shipping_rate_id, list)
   }
@@ -295,6 +297,7 @@ export interface ShippingRateUpdatePayload {
   other_charges?: string | number
   min_weight?: string | number
   courier_name?: string
+  previous_courier_name?: string
   service_provider?: string
   previous_service_provider?: string
   businessType?: 'b2b' | 'b2c'
@@ -332,7 +335,7 @@ const mergeB2CSlabLists = (current: any[] = [], incoming: any[] = []) => {
 }
 
 const getB2CGroupKey = (rate: any) =>
-  `${rate.courier_id}_${rate.plan_id}_${normalizeB2CServiceProvider(rate.service_provider)}_${normalizeB2CShippingMode(rate.mode)}`
+  `${rate.courier_id}_${rate.plan_id}_${normalizeB2CServiceProvider(rate.service_provider)}_${normalizeB2CShippingMode(rate.mode)}_${String(rate.courier_name || '').trim().toLowerCase()}`
 
 const getB2BGroupKey = (rate: any) =>
   `${rate.courier_id}_${normalizeB2CServiceProvider(rate.service_provider)}_${rate.plan_id}_${normalizeB2CShippingMode(rate.mode)}`
@@ -520,6 +523,7 @@ export const updateShippingRate = async (
 ) => {
   const {
     courier_name,
+    previous_courier_name,
     mode,
     cod_charges,
     cod_percent,
@@ -546,6 +550,10 @@ export const updateShippingRate = async (
     normalizeB2CServiceProvider(previous_service_provider) || normalizedServiceProvider
   const normalizedMode = normalizeB2CShippingMode(mode)
   const previousMode = normalizeB2CShippingMode(previous_mode ?? mode)
+  const previousCourierName =
+    businessType === 'b2c'
+      ? String(previous_courier_name || courier_name).trim().toLowerCase()
+      : ''
 
       console.log(
         `[updateShippingRate] Saving service_provider from frontend: "${normalizedServiceProvider}" for courier_id: ${courierId}, courier_name: "${courier_name}"`,
@@ -591,6 +599,9 @@ export const updateShippingRate = async (
               eq(shippingRates.business_type, businessType),
               eq(shippingRates.zone_id, zn.id),
               eq(shippingRates.type, type),
+              businessType === 'b2c'
+                ? eq(sql`LOWER(${shippingRates.courier_name})`, previousCourierName)
+                : sql`1=1`,
               eq(sql`LOWER(${shippingRates.mode})`, previousMode),
               previousServiceProvider
                 ? eq(sql`LOWER(${shippingRates.service_provider})`, previousServiceProvider)
@@ -814,6 +825,9 @@ export const upsertShippingRate = async (input: RateInput) => {
           eq(shippingRates.business_type, input.business_type),
           eq(shippingRates.zone_id, r.zone_id),
           eq(shippingRates.type, r.type),
+          input.business_type === 'b2c'
+            ? eq(sql`LOWER(${shippingRates.courier_name})`, input.courier_name.trim().toLowerCase())
+            : sql`1=1`,
           eq(sql`LOWER(${shippingRates.mode})`, normalizedMode),
           finalServiceProvider
             ? eq(sql`LOWER(${shippingRates.service_provider})`, finalServiceProvider)
@@ -883,6 +897,9 @@ export const upsertShippingRate = async (input: RateInput) => {
               eq(shippingRates.business_type, input.business_type),
               eq(shippingRates.zone_id, r.zone_id),
               eq(shippingRates.type, r.type),
+              input.business_type === 'b2c'
+                ? eq(sql`LOWER(${shippingRates.courier_name})`, input.courier_name.trim().toLowerCase())
+                : sql`1=1`,
               eq(sql`LOWER(${shippingRates.mode})`, normalizedMode),
               finalServiceProvider
                 ? eq(sql`LOWER(${shippingRates.service_provider})`, finalServiceProvider)

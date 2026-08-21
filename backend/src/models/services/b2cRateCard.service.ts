@@ -14,6 +14,7 @@ export interface RateCardSlabInput {
   rate: number
   extra_rate?: number | null
   extra_weight_unit?: number | null
+  extra_applies_till_weight?: number | null
 }
 
 export interface ResolvedRateCardSlab {
@@ -23,6 +24,7 @@ export interface ResolvedRateCardSlab {
   rate: number
   extra_rate: number | null
   extra_weight_unit: number | null
+  extra_applies_till_weight: number | null
 }
 
 export interface ResolvedB2CRateCard {
@@ -146,6 +148,11 @@ function normaliseSlabInput(slab: RateCardSlabInput): ResolvedRateCardSlab {
     extraWeightUnitRaw !== null && extraWeightUnitRaw > 0 ? extraWeightUnitRaw : null
   const extraRateRaw = isBlankOptionalValue(slab.extra_rate) ? null : toNumber(slab.extra_rate)
   const extraRate = extraRateRaw !== null && extraRateRaw >= 0 ? extraRateRaw : null
+  const extraAppliesTillRaw = isBlankOptionalValue(slab.extra_applies_till_weight)
+    ? null
+    : toNumber(slab.extra_applies_till_weight)
+  const extraAppliesTillWeight =
+    extraAppliesTillRaw !== null && extraAppliesTillRaw > 0 ? extraAppliesTillRaw : null
 
   return {
     weight_from: weightFrom,
@@ -153,6 +160,7 @@ function normaliseSlabInput(slab: RateCardSlabInput): ResolvedRateCardSlab {
     rate: toNumber(slab.rate),
     extra_rate: extraRate,
     extra_weight_unit: extraWeightUnit,
+    extra_applies_till_weight: extraAppliesTillWeight,
   }
 }
 
@@ -205,6 +213,7 @@ const buildLegacyRateRowSlab = (row: typeof shippingRates.$inferSelect): Resolve
       rate,
       extra_rate: null,
       extra_weight_unit: null,
+      extra_applies_till_weight: null,
     },
   ]
 }
@@ -228,6 +237,7 @@ export function mergeResolvedB2CRateCards(
       rateCard.zone_id,
       normalizeB2CShippingMode(rateCard.mode),
       rateCard.type,
+      String(rateCard.courier_name || '').trim().toLowerCase(),
     ].join('|')
     const normalizedCard: ResolvedB2CRateCard = {
       ...rateCard,
@@ -269,6 +279,15 @@ export function validateRateCardSlabs(slabs: ResolvedRateCardSlab[]) {
     }
     if (slab.extra_weight_unit !== null && slab.extra_rate === null) {
       throw new Error(`Invalid slab at row ${index + 1}: extra_rate is required when extra_weight_unit is set`)
+    }
+    if (
+      slab.extra_applies_till_weight !== null &&
+      slab.weight_to !== null &&
+      slab.extra_applies_till_weight < slab.weight_to
+    ) {
+      throw new Error(
+        `Invalid slab at row ${index + 1}: extra_applies_till_weight cannot be less than weight_to`,
+      )
     }
     if (slab.weight_to === null && index !== slabs.length - 1) {
       throw new Error(`Invalid slab configuration: open-ended slab at row ${index + 1} must be the last slab`)
@@ -399,6 +418,8 @@ export async function fetchResolvedB2CRateCards(filters: {
       extra_rate: slab.extra_rate === null ? null : toNumber(slab.extra_rate),
       extra_weight_unit:
         slab.extra_weight_unit === null ? null : toNumber(slab.extra_weight_unit),
+      extra_applies_till_weight:
+        slab.extra_applies_till_weight === null ? null : toNumber(slab.extra_applies_till_weight),
     })
     slabMap.set(slab.shipping_rate_id, list)
   }
@@ -412,6 +433,7 @@ export async function fetchResolvedB2CRateCards(filters: {
       row.zone_id,
       normalizeB2CShippingMode(canonicalDelhivery?.mode ?? row.mode),
       row.type,
+      String(row.courier_name || '').trim().toLowerCase(),
     ].join('|')
   }
 
@@ -438,7 +460,7 @@ export async function fetchResolvedB2CRateCards(filters: {
     const nextCard: ResolvedB2CRateCard = {
       shippingRateId: row.id,
       courier_id: canonicalDelhivery?.courierId ?? row.courier_id,
-      courier_name: canonicalDelhivery?.courierName ?? row.courier_name,
+      courier_name: row.courier_name || canonicalDelhivery?.courierName || '',
       service_provider: row.service_provider || provider || null,
       zone_id: row.zone_id,
       type: row.type,
@@ -616,6 +638,13 @@ function calculateSlabExtraFreight(chargeableWeightKg: number, slab: ResolvedRat
     return null
   }
 
+  if (
+    slab.extra_applies_till_weight !== null &&
+    chargeableWeightKg > slab.extra_applies_till_weight + 0.0001
+  ) {
+    return null
+  }
+
   const extraWeightKg = Math.max(0, chargeableWeightKg - slab.weight_to)
   const extraUnits = Math.ceil(
     Math.max(0, extraWeightKg - 0.0000001) / slab.extra_weight_unit,
@@ -671,11 +700,21 @@ function buildComputedSlabCharge(
   }
 }
 
+const formatWeightSuffix = (kg: number) => {
+  if (kg < 1) return `${Math.round(kg * 1000)}gm`
+  return `${Number.isInteger(kg) ? kg.toFixed(0) : kg}kg`
+}
+
 export function formatCourierSlabDisplayName(courierName: string, slabWeightTo: number | null) {
   if (slabWeightTo === null || slabWeightTo === undefined || !Number.isFinite(Number(slabWeightTo))) {
     return courierName
   }
-  return `${courierName} - (${Number(slabWeightTo)}) kg`
+  const weightSuffix = formatWeightSuffix(Number(slabWeightTo))
+  const normalizedName = String(courierName || '').toLowerCase().replace(/\s+/g, '')
+  if (normalizedName.includes(weightSuffix.toLowerCase())) {
+    return courierName
+  }
+  return `${courierName} ${weightSuffix}`
 }
 
 export function computeB2CRateCardCharge(params: {
@@ -862,6 +901,10 @@ export async function replaceShippingRateSlabs(shippingRateId: string, slabs: Ra
       extra_rate: slab.extra_rate === null ? null : slab.extra_rate.toFixed(2),
       extra_weight_unit:
         slab.extra_weight_unit === null ? null : slab.extra_weight_unit.toFixed(3),
+      extra_applies_till_weight:
+        slab.extra_applies_till_weight === null
+          ? null
+          : slab.extra_applies_till_weight.toFixed(3),
       updated_at: new Date(),
     })),
   )
