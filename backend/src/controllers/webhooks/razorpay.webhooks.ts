@@ -5,10 +5,20 @@ import { isValidSig } from '../../utils/razorpay'
 
 export const razorpayWebhook = async (req: Request, res: Response): Promise<any> => {
   const timestamp = new Date().toISOString()
-  const payload = req.body
-  const event = payload.event
   const sig = req.headers['x-razorpay-signature'] as string
-  const rawBody = JSON.stringify(payload)
+  const rawBody = Buffer.isBuffer(req.body)
+    ? req.body.toString('utf8')
+    : (req as any).rawBody || JSON.stringify(req.body || {})
+  let payload: any
+
+  try {
+    payload = Buffer.isBuffer(req.body) ? JSON.parse(rawBody || '{}') : req.body
+  } catch (error) {
+    console.error('Razorpay webhook rejected: Invalid JSON payload')
+    return res.status(400).send('Invalid JSON payload')
+  }
+
+  const event = payload?.event
 
   console.log('='.repeat(80))
   console.log(`📦 [${timestamp}] Razorpay Webhook Received`)
@@ -18,6 +28,11 @@ export const razorpayWebhook = async (req: Request, res: Response): Promise<any>
   console.log(`   Headers:`, JSON.stringify(req.headers, null, 2))
   console.log(`   Full Payload:`, JSON.stringify(payload, null, 2))
   console.log('='.repeat(80))
+
+  if (!sig) {
+    console.error('Razorpay webhook rejected: Missing signature')
+    return res.status(400).send('Missing signature')
+  }
 
   if (!isValidSig(rawBody, sig)) {
     console.error(`❌ Razorpay webhook rejected: Invalid signature`)

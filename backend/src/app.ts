@@ -19,6 +19,7 @@ import { AMAZON_SHIPPING_WEBHOOK_PATH } from './config/amazonShippingWebhook'
 import { ekartWebhookHandler } from './controllers/webhooks/ekart.webhook'
 import { shadowfaxWebhookHandler } from './controllers/webhooks/shadowfax.webhook'
 import { xpressbeesWebhookHandler } from './controllers/webhooks/xpressbees.webhook'
+import { razorpayWebhook } from './controllers/webhooks/razorpay.webhooks'
 import {
   shopifyComplianceWebhookController,
   shopifyOrderWebhookController,
@@ -171,6 +172,9 @@ app.post('/api/webhooks/shopify/compliance', express.raw({ type: 'application/js
 app.post('/api/webhook/shopify/orders', express.raw({ type: 'application/json' }), shopifyOrderWebhookController)
 app.post('/api/webhook/shopify/compliance', express.raw({ type: 'application/json' }), shopifyComplianceWebhookController)
 app.post('/api/webhook/woocommerce/orders', express.raw({ type: 'application/json' }), wooCommerceOrderWebhookController)
+// Razorpay signs the exact raw request body, so this route must be registered
+// before the global JSON parser below.
+app.post('/api/payments/wallet/webhook', express.raw({ type: 'application/json' }), razorpayWebhook)
 
 app.use(
   express.json({
