@@ -165,7 +165,7 @@ export const b2bAdminService = {
   async getAdditionalCharges(params = {}) {
     const query = buildQuery(params)
     const { data } = await api.get(`${BASE_URL}/additional-charges${query ? `?${query}` : ''}`)
-    return normalizeArrayPayload(data)
+    return data.data ?? data
   },
 
   async upsertAdditionalCharges(payload) {

@@ -198,6 +198,51 @@ export const b2bAdditionalCharges = createTable('b2b_additional_charges', {
   // 7a. Green Tax - condition: "Rs Additional"
   green_tax: decimal('green_tax', { precision: 12, scale: 2 }).default('0'),
 
+  // Advanced CFT-style surcharge configuration.
+  // Kept in JSONB so new CFT sheet formats can be represented without schema churn.
+  oda_config: jsonb('oda_config').$type<{
+    mode?: 'delivery' | 'pickup' | 'both'
+    pickupExemptions?: string[]
+    deliveryExemptions?: string[]
+    slabs?: Array<{
+      lowerKg?: number
+      upperKg?: number | null
+      perKg?: number
+      minCharge?: number
+      maxCharge?: number | null
+    }>
+  }>(),
+  handling_slabs: jsonb('handling_slabs').$type<
+    Array<{
+      lowerKg?: number
+      upperKg?: number | null
+      charge?: number
+      chargeType?: 'flat' | 'per_kg'
+    }>
+  >(),
+  fuel_hike_config: jsonb('fuel_hike_config').$type<{
+    baseRate?: number
+    currentRate?: number
+    threshold?: number
+    thresholdType?: 'amount' | 'percent'
+    duration?: 'current_billing_month' | 'previous_billing_month' | 'first_day_current_month'
+    changeInFuelRate?: number
+    changeInFreight?: number
+    changeInFreightType?: 'amount_per_kg' | 'percent'
+    locationIds?: string[]
+    application?: 'base_freight' | 'base_freight_plus_oda'
+    allowNegative?: boolean
+  }>(),
+  service_charges_config: jsonb('service_charges_config').$type<Record<string, any>>(),
+  billing_config: jsonb('billing_config').$type<{
+    invoiceType?: 'pickup' | 'delivery'
+    billingCycle?: 'weekly' | 'bi-monthly' | 'monthly'
+    billingStartDate?: number
+    roundOff?: boolean
+    weightSlabBasedBilling?: boolean
+    maxDeadWeightPerPackage?: number
+  }>(),
+
   // 8. ODA Charges - condition: "Rs per AWB OR Rs per Kg" (admin-selectable method)
   oda_charges: decimal('oda_charges', { precision: 12, scale: 2 }).default('0'), // Rs per AWB
   oda_per_kg_charge: decimal('oda_per_kg_charge', { precision: 12, scale: 2 }).default('0'), // Rs per Kg

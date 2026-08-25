@@ -18,6 +18,23 @@ export const useB2BChargesForm = (charges) => {
     publicHolidayPickupCharge: '',
     fuelSurchargePercentage: '',
     greenTax: '',
+    odaConfig: {
+      mode: 'delivery',
+      pickupExemptions: [],
+      deliveryExemptions: [],
+      slabs: [],
+    },
+    handlingSlabs: [],
+    fuelHikeConfig: {},
+    serviceChargesConfig: {},
+    billingConfig: {
+      invoiceType: 'delivery',
+      billingCycle: 'monthly',
+      billingStartDate: 1,
+      roundOff: false,
+      weightSlabBasedBilling: false,
+      maxDeadWeightPerPackage: '',
+    },
     odaCharges: '',
     odaPerKgCharge: '',
     odaMethod: 'whichever_is_higher',
@@ -69,6 +86,23 @@ export const useB2BChargesForm = (charges) => {
         publicHolidayPickupCharge: formatValue(charges.public_holiday_pickup_charge),
         fuelSurchargePercentage: formatValue(charges.fuel_surcharge_percentage),
         greenTax: formatValue(charges.green_tax),
+        odaConfig: charges.oda_config || {
+          mode: 'delivery',
+          pickupExemptions: [],
+          deliveryExemptions: [],
+          slabs: [],
+        },
+        handlingSlabs: Array.isArray(charges.handling_slabs) ? charges.handling_slabs : [],
+        fuelHikeConfig: charges.fuel_hike_config || {},
+        serviceChargesConfig: charges.service_charges_config || {},
+        billingConfig: {
+          invoiceType: charges.billing_config?.invoiceType || 'delivery',
+          billingCycle: charges.billing_config?.billingCycle || 'monthly',
+          billingStartDate: charges.billing_config?.billingStartDate ?? 1,
+          roundOff: Boolean(charges.billing_config?.roundOff),
+          weightSlabBasedBilling: Boolean(charges.billing_config?.weightSlabBasedBilling),
+          maxDeadWeightPerPackage: charges.billing_config?.maxDeadWeightPerPackage ?? '',
+        },
         odaCharges: formatValue(charges.oda_charges),
         odaPerKgCharge: formatValue(charges.oda_per_kg_charge),
         odaMethod: charges.oda_method || 'whichever_is_higher',
@@ -113,6 +147,23 @@ export const useB2BChargesForm = (charges) => {
         publicHolidayPickupCharge: '',
         fuelSurchargePercentage: '',
         greenTax: '',
+        odaConfig: {
+          mode: 'delivery',
+          pickupExemptions: [],
+          deliveryExemptions: [],
+          slabs: [],
+        },
+        handlingSlabs: [],
+        fuelHikeConfig: {},
+        serviceChargesConfig: {},
+        billingConfig: {
+          invoiceType: 'delivery',
+          billingCycle: 'monthly',
+          billingStartDate: 1,
+          roundOff: false,
+          weightSlabBasedBilling: false,
+          maxDeadWeightPerPackage: '',
+        },
         odaCharges: '',
         odaPerKgCharge: '',
         odaMethod: 'whichever_is_higher',
@@ -153,6 +204,18 @@ export const useB2BChargesForm = (charges) => {
     // Map all overhead charge fields
     Object.keys(formData).forEach((key) => {
       if (formData[key] !== null && formData[key] !== undefined) {
+        if (
+          [
+            'odaConfig',
+            'handlingSlabs',
+            'fuelHikeConfig',
+            'serviceChargesConfig',
+            'billingConfig',
+          ].includes(key)
+        ) {
+          payload[key] = formData[key]
+          return
+        }
         if (key.endsWith('Method')) {
           // Enum fields: keep as string
           const defaultMethod =

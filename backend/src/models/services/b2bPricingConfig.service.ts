@@ -238,7 +238,7 @@ export const seedDefaultAdditionalCharges = async (params: {
   }
 
   // Default values for B2B overhead charges (with dual-value fields and methods)
-  const defaultCharges = {
+  const defaultCharges: any = {
     awb_charges: '0',
     cft_factor: DEFAULT_B2B_CFT_FACTOR.toString(),
     minimum_chargeable_amount: '0',
@@ -251,6 +251,22 @@ export const seedDefaultAdditionalCharges = async (params: {
     public_holiday_pickup_charge: '0',
     fuel_surcharge_percentage: '0',
     green_tax: '0',
+    oda_config: {
+      mode: 'delivery',
+      pickupExemptions: [],
+      deliveryExemptions: [],
+      slabs: [],
+    },
+    handling_slabs: [],
+    fuel_hike_config: {},
+    service_charges_config: {},
+    billing_config: {
+      invoiceType: 'delivery',
+      billingCycle: 'monthly',
+      billingStartDate: 1,
+      roundOff: false,
+      weightSlabBasedBilling: false,
+    },
     oda_charges: '0',
     oda_per_kg_charge: '0',
     oda_method: 'whichever_is_higher',
@@ -307,6 +323,11 @@ export const upsertAdditionalCharges = async (
     publicHolidayPickupCharge: number
     fuelSurchargePercentage: number
     greenTax: number
+    odaConfig: Record<string, any>
+    handlingSlabs: Array<Record<string, any>>
+    fuelHikeConfig: Record<string, any>
+    serviceChargesConfig: Record<string, any>
+    billingConfig: Record<string, any>
     odaCharges: number
     odaPerKgCharge: number
     odaMethod: 'whichever_is_higher' | 'whichever_is_lower'
@@ -375,6 +396,12 @@ export const upsertAdditionalCharges = async (
   if (payload.fuelSurchargePercentage !== undefined)
     updateData.fuel_surcharge_percentage = payload.fuelSurchargePercentage.toString()
   if (payload.greenTax !== undefined) updateData.green_tax = payload.greenTax.toString()
+  if (payload.odaConfig !== undefined) updateData.oda_config = payload.odaConfig
+  if (payload.handlingSlabs !== undefined) updateData.handling_slabs = payload.handlingSlabs
+  if (payload.fuelHikeConfig !== undefined) updateData.fuel_hike_config = payload.fuelHikeConfig
+  if (payload.serviceChargesConfig !== undefined)
+    updateData.service_charges_config = payload.serviceChargesConfig
+  if (payload.billingConfig !== undefined) updateData.billing_config = payload.billingConfig
   if (payload.odaCharges !== undefined) updateData.oda_charges = payload.odaCharges.toString()
   if (payload.odaPerKgCharge !== undefined)
     updateData.oda_per_kg_charge = payload.odaPerKgCharge.toString()
@@ -492,6 +519,11 @@ type AdditionalChargesCsvRecord = {
   public_holiday_pickup_charge?: string
   fuel_surcharge_percentage?: string
   green_tax?: string
+  oda_config?: string
+  handling_slabs?: string
+  fuel_hike_config?: string
+  service_charges_config?: string
+  billing_config?: string
   oda_charges?: string
   oda_per_kg_charge?: string
   oda_method?: string
@@ -518,6 +550,15 @@ type AdditionalChargesCsvRecord = {
   rov_method?: string
   liability_limit?: string
   liability_method?: string
+}
+
+const parseJsonCsvField = (value?: string) => {
+  if (!value || !String(value).trim()) return undefined
+  try {
+    return JSON.parse(value)
+  } catch {
+    return undefined
+  }
 }
 
 export const importAdditionalChargesFromCsv = async (
@@ -580,6 +621,11 @@ export const importAdditionalChargesFromCsv = async (
           ? Number(row.fuel_surcharge_percentage)
           : undefined,
         greenTax: row.green_tax ? Number(row.green_tax) : undefined,
+        odaConfig: parseJsonCsvField(row.oda_config),
+        handlingSlabs: parseJsonCsvField(row.handling_slabs),
+        fuelHikeConfig: parseJsonCsvField(row.fuel_hike_config),
+        serviceChargesConfig: parseJsonCsvField(row.service_charges_config),
+        billingConfig: parseJsonCsvField(row.billing_config),
         odaCharges: row.oda_charges ? Number(row.oda_charges) : undefined,
         odaPerKgCharge: row.oda_per_kg_charge ? Number(row.oda_per_kg_charge) : undefined,
         odaMethod: row.oda_method || undefined,

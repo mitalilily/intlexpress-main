@@ -17,6 +17,7 @@ import ImportChargesModal from './ImportChargesModal'
 import { useB2BChargesForm } from './hooks/useB2BChargesForm'
 import BaseChargesSection from './sections/BaseChargesSection'
 import CODRovLiabilitySection from './sections/CODRovLiabilitySection'
+import CFTAdvancedConfigSection from './sections/CFTAdvancedConfigSection'
 import HandlingChargesSection from './sections/HandlingChargesSection'
 import ODAAndCSDSection from './sections/ODAAndCSDSection'
 import SpecialDeliverySection from './sections/SpecialDeliverySection'
@@ -236,6 +237,11 @@ const B2BAdditionalCharges = ({
 
               {/* Section 7: COD, ROV, Insurance & Liability */}
               <CODRovLiabilitySection formData={formData} onFieldChange={updateField} />
+
+              <Divider />
+
+              {/* Section 8: CFT Advanced Config */}
+              <CFTAdvancedConfigSection formData={formData} onFieldChange={updateField} />
             </VStack>
           </Box>
         </VStack>

@@ -146,6 +146,11 @@ export const upsertAdditionalChargesController = async (req: Request, res: Respo
       fuelSurchargePercentage:
         req.body.fuelSurchargePercentage ?? req.body.fuel_surcharge_percentage,
       greenTax: req.body.greenTax ?? req.body.green_tax,
+      odaConfig: req.body.odaConfig ?? req.body.oda_config,
+      handlingSlabs: req.body.handlingSlabs ?? req.body.handling_slabs,
+      fuelHikeConfig: req.body.fuelHikeConfig ?? req.body.fuel_hike_config,
+      serviceChargesConfig: req.body.serviceChargesConfig ?? req.body.service_charges_config,
+      billingConfig: req.body.billingConfig ?? req.body.billing_config,
       odaCharges: req.body.odaCharges ?? req.body.oda_charges,
       odaPerKgCharge: req.body.odaPerKgCharge ?? req.body.oda_per_kg_charge,
       odaMethod: req.body.odaMethod ?? req.body.oda_method ?? 'whichever_is_higher',
