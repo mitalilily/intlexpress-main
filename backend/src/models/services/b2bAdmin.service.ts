@@ -10,6 +10,7 @@ import {
   isNull,
   lte,
   or,
+  sql,
   SQLWrapper,
 } from 'drizzle-orm'
 import Papa from 'papaparse'
@@ -540,7 +541,7 @@ export const importPincodesFromCsv = async (
     const [zone] = await db
       .select({ id: zones.id })
       .from(zones)
-      .where(and(eq(zones.code, key), eq(zones.business_type, 'B2B')))
+      .where(and(sql`lower(${zones.code}) = lower(${key})`, eq(zones.business_type, 'B2B')))
       .limit(1)
 
     if (!zone) {
@@ -1162,7 +1163,7 @@ export const importZoneRatesFromCsv = async (
     const [zone] = await db
       .select({ id: zones.id })
       .from(zones)
-      .where(and(eq(zones.code, key), eq(zones.business_type, 'B2B')))
+      .where(and(sql`lower(${zones.code}) = lower(${code.trim()})`, eq(zones.business_type, 'B2B')))
       .limit(1)
 
     if (!zone) throw new Error(`Zone code ${key} not found`)
@@ -1205,7 +1206,13 @@ export const importZoneRatesFromCsv = async (
     )
   }
 
-  return { inserted, skipped }
+  return {
+    inserted,
+    skipped,
+    message: `Imported ${inserted} B2B zone rate${inserted === 1 ? '' : 's'}${
+      skipped.length ? `; skipped ${skipped.length}` : ''
+    }.`,
+  }
 }
 
 // -----------------------------
