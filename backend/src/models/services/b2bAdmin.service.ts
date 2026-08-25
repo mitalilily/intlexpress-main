@@ -1845,6 +1845,10 @@ export const calculateB2BRate = async (params: {
   })
 
   const billingConfig = ((additionalCharges as any).billing_config || {}) as Record<string, any>
+  const serviceChargesConfig = ((additionalCharges as any).service_charges_config || {}) as Record<
+    string,
+    any
+  >
   if (billingConfig.roundOff === true || String(billingConfig.roundOff || '').toLowerCase() === 'yes') {
     billableWeight = Math.ceil(billableWeight)
   }
@@ -1869,7 +1873,12 @@ export const calculateB2BRate = async (params: {
 
   // Calculate base freight using rate per kg only
   if (rate.rate_per_kg) {
-    baseFreight = Number(rate.rate_per_kg) * billableWeight
+    const configuredIntraCityRate = Number(serviceChargesConfig.intraCityRate || 0)
+    const originCity = String(origin.city || '').trim().toLowerCase()
+    const destinationCity = String(destination.city || '').trim().toLowerCase()
+    const isIntraCity =
+      configuredIntraCityRate > 0 && originCity.length > 0 && originCity === destinationCity
+    baseFreight = (isIntraCity ? configuredIntraCityRate : Number(rate.rate_per_kg)) * billableWeight
   } else {
     throw new Error('Rate per kg is required for B2B pricing')
   }
@@ -2115,7 +2124,7 @@ export const calculateB2BRate = async (params: {
     )
       .trim()
       .toLowerCase()
-    const amount = Number(config.amount ?? config.charge ?? config.rate ?? 0)
+    const amount = Number(config.amount ?? config.charge ?? config.rate ?? config.percent ?? 0)
     const minCharge = Number(config.minCharge ?? config.min ?? 0)
     const maxRaw = config.maxCharge ?? config.max
     const maxCharge =
@@ -2190,10 +2199,52 @@ export const calculateB2BRate = async (params: {
       }
     }
 
-    const serviceChargesConfig = ((additionalCharges as any).service_charges_config || {}) as Record<
-      string,
-      any
-    >
+    const normalizeRuleText = (value: unknown) =>
+      String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+
+    const specialDestinationRules = Array.isArray(serviceChargesConfig.specialDestinationRates)
+      ? serviceChargesConfig.specialDestinationRates
+      : []
+    for (const rule of specialDestinationRules) {
+      const originZone = normalizeRuleText(rule.originZone ?? rule.origin_zone)
+      if (originZone && originZone !== normalizeRuleText(origin.zoneCode)) continue
+
+      const startKg = rule.startKg ?? rule.start_kg
+      const endKg = rule.endKg ?? rule.end_kg
+      if (startKg !== null && startKg !== undefined && startKg !== '' && billableWeight < Number(startKg)) {
+        continue
+      }
+      if (endKg !== null && endKg !== undefined && endKg !== '' && billableWeight >= Number(endKg)) {
+        continue
+      }
+
+      const destinationType = normalizeRuleText(rule.destinationType ?? rule.destination_type ?? 'state')
+      const ruleDestination = normalizeRuleText(rule.destination)
+      const destinationMatches =
+        destinationType === 'city'
+          ? ruleDestination === normalizeRuleText(destination.city)
+          : destinationType === 'zone'
+          ? ruleDestination === normalizeRuleText(destination.zoneCode) ||
+            ruleDestination === normalizeRuleText(destination.zoneName)
+          : ruleDestination === normalizeRuleText(destination.state)
+
+      const specialRate = Number(rule.ratePerKg ?? rule.rate_per_kg ?? rule.rate ?? 0)
+      if (!destinationMatches || specialRate <= 0) continue
+
+      addConfiguredCharge(
+        `special_destination_${origin.zoneCode}_${destinationType}_${ruleDestination}`.replace(
+          /[^a-zA-Z0-9_]/g,
+          '_',
+        ),
+        `Special Destination Add-on (${origin.zoneCode} → ${rule.destination})`,
+        specialRate * billableWeight,
+        'SPECIAL_DESTINATION',
+        `₹${specialRate}/kg for ${destinationType} ${rule.destination}`,
+      )
+    }
 
     // Green Tax - flat legacy field, or advanced per-kg/min config when provided.
     {
@@ -2238,7 +2289,38 @@ export const calculateB2BRate = async (params: {
     const threshold = Number(fuelHikeConfig.threshold || 0)
     const changeInFuelRate = Number(fuelHikeConfig.changeInFuelRate || 0)
     const changeInFreight = Number(fuelHikeConfig.changeInFreight || 0)
-    if (baseFuelRate > 0 && currentFuelRate > 0 && changeInFuelRate > 0 && changeInFreight !== 0) {
+    const normalizeLocation = (value: unknown) =>
+      String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+    const configuredFuelLocations = Array.isArray(fuelHikeConfig.locationNames)
+      ? fuelHikeConfig.locationNames.map(normalizeLocation).filter(Boolean)
+      : String(fuelHikeConfig.locationNames || '')
+          .split(/[,\n\r]+/)
+          .map(normalizeLocation)
+          .filter(Boolean)
+    const shipmentLocations = [
+      origin.city,
+      origin.state,
+      origin.zoneCode,
+      origin.zoneName,
+      destination.city,
+      destination.state,
+      destination.zoneCode,
+      destination.zoneName,
+    ].map(normalizeLocation)
+    const fuelLocationMatches =
+      configuredFuelLocations.length === 0 ||
+      configuredFuelLocations.some((location) => shipmentLocations.includes(location))
+
+    if (
+      fuelLocationMatches &&
+      baseFuelRate > 0 &&
+      currentFuelRate > 0 &&
+      changeInFuelRate > 0 &&
+      changeInFreight !== 0
+    ) {
       const diff = currentFuelRate - baseFuelRate
       const thresholdType = String(fuelHikeConfig.thresholdType || 'amount').toLowerCase()
       const thresholdAmount =
@@ -2522,6 +2604,18 @@ export const calculateB2BRate = async (params: {
     }
 
     addConfiguredCharge(
+      'floor_delivery',
+      'Floor Delivery Charge',
+      serviceChargesConfig.floorDelivery?.enabled
+        ? calculateConfiguredServiceCharge(serviceChargesConfig.floorDelivery, {
+            defaultType: 'per_kg',
+            weight: billableWeight,
+          })
+        : 0,
+      'FLOOR_DELIVERY',
+    )
+
+    addConfiguredCharge(
       'fm_cost',
       'First Mile Cost',
       serviceChargesConfig.fmCost?.enabled
@@ -2558,12 +2652,24 @@ export const calculateB2BRate = async (params: {
       )
     }
 
+    addConfiguredCharge(
+      'cheque_handling',
+      'Cheque Handling Charge',
+      serviceChargesConfig.chequeHandling?.enabled
+        ? calculateConfiguredServiceCharge(serviceChargesConfig.chequeHandling, {
+            defaultType: 'flat',
+          })
+        : 0,
+      'CHEQUE_HANDLING',
+    )
+
     if (context.paymentMode === 'COD') {
       addConfiguredCharge(
         'cash_handling',
         'Cash Handling Charge',
         calculateConfiguredServiceCharge(serviceChargesConfig.cashHandling, {
           defaultType: 'percent',
+          base: params.invoiceValue ?? 0,
           invoiceValue: params.invoiceValue ?? 0,
         }),
         'CASH_HANDLING',
@@ -3030,6 +3136,8 @@ export type ZoneLookupResult = {
   zoneId: string
   zoneCode: string
   zoneName: string
+  city?: string | null
+  state?: string | null
   isOda: boolean
   isRemote: boolean
   isMall: boolean
@@ -3067,6 +3175,8 @@ export const findZoneForPincode = async (
         isAirport: b2bPincodes.is_airport,
         isHighSecurity: b2bPincodes.is_high_security,
         isCsd: b2bPincodes.is_csd,
+        city: b2bPincodes.city,
+        state: b2bPincodes.state,
         zoneCode: zones.code,
         zoneName: zones.name,
       })
@@ -3089,6 +3199,8 @@ export const findZoneForPincode = async (
         zoneId: row.zoneId,
         zoneCode: row.zoneCode,
         zoneName: row.zoneName,
+        city: row.city,
+        state: row.state,
         isOda: row.isOda,
         isRemote: row.isRemote,
         isMall: row.isMall,
@@ -3113,6 +3225,8 @@ export const findZoneForPincode = async (
         isAirport: b2bPincodes.is_airport,
         isHighSecurity: b2bPincodes.is_high_security,
         isCsd: b2bPincodes.is_csd,
+        city: b2bPincodes.city,
+        state: b2bPincodes.state,
         zoneCode: zones.code,
         zoneName: zones.name,
       })
@@ -3126,6 +3240,8 @@ export const findZoneForPincode = async (
         zoneId: row.zoneId,
         zoneCode: row.zoneCode,
         zoneName: row.zoneName,
+        city: row.city,
+        state: row.state,
         isOda: row.isOda,
         isRemote: row.isRemote,
         isMall: row.isMall,
