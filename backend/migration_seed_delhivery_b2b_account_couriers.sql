@@ -5,8 +5,8 @@ begin;
 
 with delhivery_b2b_account_couriers(id, name) as (
   values
-    (21002, 'Delhivery B2B Account 1'),
-    (21003, 'Delhivery B2B Account 2')
+    (21002, 'Delhivery - Household'),
+    (21003, 'Delhivery - B2B')
 ),
 updated_existing as (
   update couriers c
@@ -59,7 +59,7 @@ where id in (99, 100)
 update shipping_rates
 set
   courier_id = 21002,
-  courier_name = 'Delhivery B2B Account 1',
+  courier_name = 'Delhivery - Household',
   service_provider = 'delhivery',
   mode = 'Surface',
   last_updated = now()

@@ -30,7 +30,7 @@ const DEFAULT_DELHIVERY_ACCOUNT = {
 
 const DEFAULT_DELHIVERY_B2B_ACCOUNT = {
   accountCode: 'account_2',
-  accountLabel: 'Delhivery B2B Account',
+  accountLabel: 'Delhivery - Household',
   apiBase:
     String(process.env.DELHIVERY_B2B_API_BASE || process.env.DELHIVERY_LTL_API_BASE || '').trim() ||
     DEFAULT_DELHIVERY_B2B_API_BASE,
@@ -104,7 +104,7 @@ async function upsertHardcodedDelhiveryCredentials() {
     ...DEFAULT_DELHIVERY_B2B_ACCOUNT,
     ...existingB2BAccount,
     accountCode: 'account_2',
-    accountLabel: String(existingB2BAccount.accountLabel || 'Delhivery B2B Account').trim(),
+    accountLabel: String(existingB2BAccount.accountLabel || 'Delhivery - Household').trim(),
     apiBase:
       String(
         process.env.DELHIVERY_B2B_API_BASE ||

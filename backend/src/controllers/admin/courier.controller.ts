@@ -530,14 +530,18 @@ const buildDelhiveryCredentialResponse = (accounts: DelhiveryAccountConfig[]) =>
 
 const getDefaultDelhiveryAccountLabel = (index: number) => {
   if (index === 0) return 'Delhivery B2C Account'
-  if (index === 1) return 'Delhivery B2B Account 1'
-  if (index === 2) return 'Delhivery B2B Account 2'
+  if (index === 1) return 'Delhivery - Household'
+  if (index === 2) return 'Delhivery - B2B'
   return `Delhivery Account ${index + 1}`
 }
 
 const LEGACY_DELHIVERY_ACCOUNT_LABELS_BY_INDEX: Record<number, Set<string>> = {
-  1: new Set(['delhivery b2b account']),
-  2: new Set(['delhivery backup account', 'delhivery backup credentials']),
+  1: new Set(['delhivery b2b account', 'delhivery b2b account 1']),
+  2: new Set([
+    'delhivery b2b account 2',
+    'delhivery backup account',
+    'delhivery backup credentials',
+  ]),
 }
 
 const normalizeDelhiveryAccountLabel = (value: unknown, index: number) => {

@@ -11,12 +11,16 @@ const LEGACY_DELHIVERY_B2C_CLIENT_NAMES = new Set(['INTLEXPRESS'])
 const DELHIVERY_ACCOUNT_CODES = ['account_1', 'account_2', 'account_3'] as const
 const DELHIVERY_ACCOUNT_LABELS = [
   'Delhivery B2C Account',
-  'Delhivery B2B Account 1',
-  'Delhivery B2B Account 2',
+  'Delhivery - Household',
+  'Delhivery - B2B',
 ] as const
 const LEGACY_DELHIVERY_ACCOUNT_LABELS_BY_INDEX: Record<number, Set<string>> = {
-  1: new Set(['delhivery b2b account']),
-  2: new Set(['delhivery backup account', 'delhivery backup credentials']),
+  1: new Set(['delhivery b2b account', 'delhivery b2b account 1']),
+  2: new Set([
+    'delhivery b2b account 2',
+    'delhivery backup account',
+    'delhivery backup credentials',
+  ]),
 }
 export const HARDCODED_DELHIVERY_API_KEY =
   '7ebb0a19e281620bc670053bcde0c31746bc5f7f'

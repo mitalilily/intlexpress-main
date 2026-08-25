@@ -33,6 +33,14 @@ const isDelhiveryB2BAccountCourier = (item) => {
   const id = Number(item?.id ?? item?.courier_id)
   if ([21002, 21003].includes(id)) return true
 
+  const accountCode = String(
+    item?.delhivery_account_code ||
+      item?.provider_serviceability?.delhivery_account_code ||
+      item?.delhivery_account?.accountCode ||
+      '',
+  ).trim()
+  if (['account_2', 'account_3'].includes(accountCode)) return true
+
   const label = [
     item?.name,
     item?.displayName,
@@ -43,7 +51,7 @@ const isDelhiveryB2BAccountCourier = (item) => {
     .map((value) => String(value || '').toLowerCase())
     .join(' ')
 
-  return label.includes('delhivery') && label.includes('b2b') && label.includes('account')
+  return label.includes('delhivery') && label.includes('b2b')
 }
 
 const filterCouriersForBusinessType = (items = [], businessType) => {

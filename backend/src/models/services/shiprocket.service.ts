@@ -6627,8 +6627,8 @@ export const fetchAvailableCouriersWithRatesB2B = async (
 
       return accountsForCourier.map((account) => ({
         ...courier,
-        name: courier.name || account.accountLabel || 'Delhivery B2B',
-        displayName: courier.displayName || courier.name || account.accountLabel || 'Delhivery B2B',
+        name: 'Delhivery B2B',
+        displayName: 'Delhivery B2B',
         courier_option_key: makeDelhiveryB2BAccountOptionKey(courier, account.accountCode),
         delhivery_account_code: account.accountCode,
         delhivery_account_label: account.accountLabel,

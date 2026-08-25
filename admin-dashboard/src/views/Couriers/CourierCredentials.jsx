@@ -38,14 +38,14 @@ const ACCOUNT_PRESETS = [
     description: 'Token auth used by Delhivery B2C shipment APIs.',
   },
   {
-    title: 'B2B API Authentication 1',
-    defaultLabel: 'Delhivery B2B Account 1',
-    description: 'First independent Delhivery B2B account shown as its own courier option.',
+    title: 'Delhivery - Household',
+    defaultLabel: 'Delhivery - Household',
+    description: 'Household Delhivery B2B account used for B2B shipment booking.',
   },
   {
-    title: 'B2B API Authentication 2',
-    defaultLabel: 'Delhivery B2B Account 2',
-    description: 'Second independent Delhivery B2B account shown as its own courier option.',
+    title: 'Delhivery - B2B',
+    defaultLabel: 'Delhivery - B2B',
+    description: 'Independent Delhivery B2B account used for B2B shipment booking.',
   },
 ]
 
@@ -300,7 +300,7 @@ const CourierCredentials = () => {
           Courier Credentials
         </Text>
         <Text color="gray.500">
-          Manage Delhivery B2C plus two independent Delhivery B2B accounts.
+          Manage Delhivery B2C plus independent Delhivery B2B and Household accounts.
         </Text>
       </Stack>
 
