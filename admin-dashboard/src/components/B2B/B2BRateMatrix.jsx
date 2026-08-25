@@ -209,8 +209,8 @@ const B2BRateMatrix = ({ planId }) => {
       zoneMap.set(zone.id, zone.name)
     })
 
-    // Build headers: Origin Zone, Destination Zone, Rate Per Kg
-    const headers = ['Origin Zone', 'Destination Zone', 'Rate Per Kg']
+    // Build headers matching backend import.
+    const headers = ['origin_zone_code', 'destination_zone_code', 'rate_per_kg']
 
     let rows = []
 
@@ -277,9 +277,9 @@ const B2BRateMatrix = ({ planId }) => {
   const firstZoneName = zones.length > 0 ? zones[0].name : 'N1'
   const sampleCSVHeaders = [
     {
-      'Origin Zone': firstZoneName,
-      'Destination Zone': firstZoneName,
-      'Rate Per Kg': '100',
+      origin_zone_code: firstZoneName,
+      destination_zone_code: firstZoneName,
+      rate_per_kg: '100',
     },
   ]
 
@@ -576,7 +576,7 @@ const B2BRateMatrix = ({ planId }) => {
               CSV Format Requirements:
             </Text>
             <VStack align="stretch" spacing={1} fontSize="xs" color="blue.600">
-              <Text>• Columns: Origin Zone, Destination Zone, Rate Per Kg</Text>
+              <Text>• Columns: origin_zone_code, destination_zone_code, rate_per_kg</Text>
               <Text>• Zone names must match existing zone names exactly</Text>
               <Text>• Rate Per Kg should be a number only (no currency symbols)</Text>
               <Text>• Empty cells will be treated as null/not set</Text>

@@ -1096,8 +1096,17 @@ type ZoneRateCsvRecord = {
   origin_zone_code: string
   destination_zone_code: string
   rate_per_kg: string
+  [key: string]: string | undefined
   min_charge?: string
   max_weight_limit?: string
+}
+
+const firstCsvValue = (row: ZoneRateCsvRecord, keys: string[]) => {
+  for (const key of keys) {
+    const value = row[key]
+    if (value !== undefined && value !== null && String(value).trim() !== '') return String(value)
+  }
+  return ''
 }
 
 export const importZoneRatesFromCsv = async (
@@ -1118,7 +1127,32 @@ export const importZoneRatesFromCsv = async (
     throw new Error(`CSV parse error: ${parsed.errors[0].message}`)
   }
 
-  const rows = parsed.data.filter((row) => row.origin_zone_code && row.destination_zone_code)
+  const rows = parsed.data
+    .map((row) => ({
+      ...row,
+      origin_zone_code: firstCsvValue(row, [
+        'origin_zone_code',
+        'Origin Zone',
+        'origin zone',
+        'originZoneCode',
+        'originZone',
+      ]),
+      destination_zone_code: firstCsvValue(row, [
+        'destination_zone_code',
+        'Destination Zone',
+        'destination zone',
+        'destinationZoneCode',
+        'destinationZone',
+      ]),
+      rate_per_kg: firstCsvValue(row, [
+        'rate_per_kg',
+        'Rate Per Kg',
+        'Rate per Kg',
+        'rate per kg',
+        'ratePerKg',
+      ]),
+    }))
+    .filter((row) => row.origin_zone_code && row.destination_zone_code)
   const zoneCache = new Map<string, string>()
 
   const resolveZoneId = async (code: string) => {
@@ -1162,6 +1196,13 @@ export const importZoneRatesFromCsv = async (
     } catch (err: any) {
       skipped.push({ row, error: err.message })
     }
+  }
+
+  if (inserted === 0) {
+    const skippedReason = skipped[0]?.error ? ` First skipped reason: ${skipped[0].error}` : ''
+    throw new Error(
+      `No B2B zone rates were imported. Check CSV headers and values.${skippedReason}`,
+    )
   }
 
   return { inserted, skipped }
