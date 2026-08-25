@@ -208,6 +208,12 @@ export const upsertAdditionalChargesController = async (req: Request, res: Respo
 
     res.json({ success: true, data: charges })
   } catch (error: any) {
+    console.error('[upsertAdditionalChargesController] Failed to save B2B charges:', {
+      message: error?.message,
+      code: error?.code,
+      detail: error?.detail,
+      cause: error?.cause?.message,
+    })
     res
       .status(400)
       .json({ success: false, error: error?.message || 'Failed to save overhead charges' })

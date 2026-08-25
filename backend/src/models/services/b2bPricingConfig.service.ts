@@ -55,6 +55,29 @@ const normalizeVolumetricRulesRecord = <T extends { cft_factor?: unknown } | nul
   }
 }
 
+const sanitizeJsonConfig = (value: any): any => {
+  if (value === undefined) return undefined
+  if (value === null) return null
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (trimmed === '') return ''
+    return /^-?\d+(\.\d+)?$/.test(trimmed) ? Number(trimmed) : trimmed
+  }
+  if (typeof value === 'boolean') return value
+  if (Array.isArray(value)) {
+    return value.map(sanitizeJsonConfig).filter((item) => item !== undefined)
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value).reduce((acc: Record<string, any>, [key, entryValue]) => {
+      const sanitized = sanitizeJsonConfig(entryValue)
+      if (sanitized !== undefined) acc[key] = sanitized
+      return acc
+    }, {})
+  }
+  return value
+}
+
 // -----------------------------
 // Zone States Management
 // -----------------------------
@@ -401,12 +424,15 @@ export const upsertAdditionalCharges = async (
   if (payload.fuelSurchargePercentage !== undefined)
     updateData.fuel_surcharge_percentage = payload.fuelSurchargePercentage.toString()
   if (payload.greenTax !== undefined) updateData.green_tax = payload.greenTax.toString()
-  if (payload.odaConfig !== undefined) updateData.oda_config = payload.odaConfig
-  if (payload.handlingSlabs !== undefined) updateData.handling_slabs = payload.handlingSlabs
-  if (payload.fuelHikeConfig !== undefined) updateData.fuel_hike_config = payload.fuelHikeConfig
+  if (payload.odaConfig !== undefined) updateData.oda_config = sanitizeJsonConfig(payload.odaConfig)
+  if (payload.handlingSlabs !== undefined)
+    updateData.handling_slabs = sanitizeJsonConfig(payload.handlingSlabs)
+  if (payload.fuelHikeConfig !== undefined)
+    updateData.fuel_hike_config = sanitizeJsonConfig(payload.fuelHikeConfig)
   if (payload.serviceChargesConfig !== undefined)
-    updateData.service_charges_config = payload.serviceChargesConfig
-  if (payload.billingConfig !== undefined) updateData.billing_config = payload.billingConfig
+    updateData.service_charges_config = sanitizeJsonConfig(payload.serviceChargesConfig)
+  if (payload.billingConfig !== undefined)
+    updateData.billing_config = sanitizeJsonConfig(payload.billingConfig)
   if (payload.odaCharges !== undefined) updateData.oda_charges = payload.odaCharges.toString()
   if (payload.odaPerKgCharge !== undefined)
     updateData.oda_per_kg_charge = payload.odaPerKgCharge.toString()

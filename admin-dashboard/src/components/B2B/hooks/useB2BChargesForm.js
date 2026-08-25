@@ -70,6 +70,32 @@ export const useB2BChargesForm = (charges) => {
     return isNaN(num) ? '' : num.toString()
   }
 
+  const normalizeJsonValue = (value) => {
+    if (value === undefined) return undefined
+    if (value === null) return null
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null
+    if (typeof value === 'boolean') return value
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed === '') return ''
+      const numericPattern = /^-?\d+(\.\d+)?$/
+      return numericPattern.test(trimmed) ? Number(trimmed) : trimmed
+    }
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => normalizeJsonValue(item))
+        .filter((item) => item !== undefined)
+    }
+    if (typeof value === 'object') {
+      return Object.entries(value).reduce((acc, [entryKey, entryValue]) => {
+        const normalized = normalizeJsonValue(entryValue)
+        if (normalized !== undefined) acc[entryKey] = normalized
+        return acc
+      }, {})
+    }
+    return value
+  }
+
   useEffect(() => {
     if (charges) {
       // Prefill form with existing database values (with dual-value fields)
@@ -108,26 +134,26 @@ export const useB2BChargesForm = (charges) => {
         odaMethod: charges.oda_method || 'whichever_is_higher',
         csdDeliveryCharge: formatValue(charges.csd_delivery_charge),
         timeSpecificPerKg: formatValue(charges.time_specific_per_kg),
-        timeSpecificPerAwb: formatValue(charges.time_specific_per_awb || 500),
+        timeSpecificPerAwb: formatValue(charges.time_specific_per_awb),
         timeSpecificMethod: charges.time_specific_method || 'whichever_is_higher',
         mallDeliveryPerKg: formatValue(charges.mall_delivery_per_kg),
-        mallDeliveryPerAwb: formatValue(charges.mall_delivery_per_awb || 500),
+        mallDeliveryPerAwb: formatValue(charges.mall_delivery_per_awb),
         mallDeliveryMethod: charges.mall_delivery_method || 'whichever_is_higher',
         deliveryReattemptPerKg: formatValue(charges.delivery_reattempt_per_kg),
-        deliveryReattemptPerAwb: formatValue(charges.delivery_reattempt_per_awb || 500),
+        deliveryReattemptPerAwb: formatValue(charges.delivery_reattempt_per_awb),
         deliveryReattemptMethod: charges.delivery_reattempt_method || 'whichever_is_higher',
         handlingSinglePiece: formatValue(charges.handling_single_piece),
         handlingBelow100Kg: formatValue(charges.handling_below_100_kg),
         handling100To200Kg: formatValue(charges.handling_100_to_200_kg),
         handlingAbove200Kg: formatValue(charges.handling_above_200_kg),
         insuranceCharge: formatValue(charges.insurance_charge),
-        codFixedAmount: formatValue(charges.cod_fixed_amount || 50),
-        codPercentage: formatValue(charges.cod_percentage || 1),
+        codFixedAmount: formatValue(charges.cod_fixed_amount),
+        codPercentage: formatValue(charges.cod_percentage),
         codMethod: charges.cod_method || 'whichever_is_higher',
-        rovFixedAmount: formatValue(charges.rov_fixed_amount || 100),
-        rovPercentage: formatValue(charges.rov_percentage || 0.5),
+        rovFixedAmount: formatValue(charges.rov_fixed_amount),
+        rovPercentage: formatValue(charges.rov_percentage),
         rovMethod: charges.rov_method || 'whichever_is_higher',
-        liabilityLimit: formatValue(charges.liability_limit || 5000),
+        liabilityLimit: formatValue(charges.liability_limit),
         liabilityMethod: charges.liability_method || 'whichever_is_lower',
       }
 
@@ -213,7 +239,7 @@ export const useB2BChargesForm = (charges) => {
             'billingConfig',
           ].includes(key)
         ) {
-          payload[key] = formData[key]
+          payload[key] = normalizeJsonValue(formData[key])
           return
         }
         if (key.endsWith('Method')) {
