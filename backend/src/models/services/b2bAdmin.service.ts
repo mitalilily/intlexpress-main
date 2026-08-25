@@ -21,6 +21,7 @@ import { tracking_events } from '../schema/trackingEvents'
 import * as zonesModule from '../schema/zones'
 import { getAdditionalCharges } from './b2bPricingConfig.service'
 const { b2bOverheadRules, b2bPincodes, b2bZoneToZoneRates, b2bZoneRegions, zones } = zonesModule
+const { b2bZoneStates } = zonesModule
 
 // Debug: Check import at module load time
 console.log('[b2bAdmin.service] Module load - zonesModule check:', {
@@ -364,9 +365,13 @@ export const bulkUpdatePincodeFlags = async (ids: string[], flags: PincodeFlags)
 
 type PincodeCsvRecord = {
   pincode: string
+  Pin?: string
+  PIN?: string
   zone_code?: string
+  zone?: string
   zone_id?: string
   is_oda?: string
+  ODA?: string
   is_remote?: string
   is_mall?: string
   is_sez?: string
@@ -374,12 +379,55 @@ type PincodeCsvRecord = {
   is_high_security?: string
   // city and state are optional - will use existing values from DB if not provided
   city?: string
+  City?: string
+  'Facility City'?: string
   state?: string
+  State?: string
+  'Facility State'?: string
+  'Dispatch Center'?: string
+  'Origin Center'?: string
+  'Return Center'?: string
+  [key: string]: any
 }
 
-const truthy = (value?: string) => {
-  if (!value) return false
-  return ['1', 'true', 'yes', 'y'].includes(value.toLowerCase())
+const normalizeCsvValue = (...values: unknown[]) => {
+  for (const value of values) {
+    const normalized = String(value ?? '').trim()
+    if (normalized) return normalized
+  }
+  return ''
+}
+
+const normalizeStateName = (value: unknown) =>
+  normalizeCsvValue(value)
+    .replace(/&/g, ' and ')
+    .replace(/\bislands?\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+
+const extractStateFromCenterName = (...values: unknown[]) => {
+  const centerName = normalizeCsvValue(...values)
+  const match = centerName.match(/\(([^)]+)\)\s*$/)
+  return normalizeCsvValue(match?.[1])
+}
+
+const normalizeRowState = (row: PincodeCsvRecord) =>
+  normalizeCsvValue(
+    row.state,
+    row.State,
+    row['Facility State'],
+    extractStateFromCenterName(row['Dispatch Center'], row['Origin Center'], row['Return Center']),
+  )
+
+const b2bSpecialStateZoneAliases: Record<string, string> = {
+  'andaman and nicobar': 'NE',
+}
+
+const truthy = (value?: unknown) => {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  if (!normalized) return false
+  return ['1', 'true', 'yes', 'y'].includes(normalized)
 }
 
 export const importPincodesFromCsv = async (
@@ -403,19 +451,89 @@ export const importPincodesFromCsv = async (
     throw new Error(`CSV parse error: ${parsed.errors[0].message}`)
   }
 
-  const rows = parsed.data.filter(
-    (row) => row.pincode && row.pincode.trim(), // Only require pincode
-  )
+  const rows = parsed.data.filter((row) => normalizeCsvValue(row.pincode, row.Pin, row.PIN))
 
   const zoneCache = new Map<string, string>()
+  const stateZoneCache = new Map<string, string | null>()
+
+  const resolveZoneIdFromState = async (state: string) => {
+    const normalizedState = normalizeStateName(state)
+    if (!normalizedState) return null
+    if (stateZoneCache.has(normalizedState)) return stateZoneCache.get(normalizedState) || null
+
+    const scopedStateConditions: any[] = [
+      eq(zones.business_type, 'B2B'),
+      eq(b2bZoneStates.state_name, state),
+    ]
+    if (courierId) {
+      scopedStateConditions.push(eq(b2bZoneStates.courier_id, courierId))
+    } else {
+      scopedStateConditions.push(isNull(b2bZoneStates.courier_id))
+    }
+    if (serviceProvider) {
+      scopedStateConditions.push(eq(b2bZoneStates.service_provider, serviceProvider))
+    } else {
+      scopedStateConditions.push(isNull(b2bZoneStates.service_provider))
+    }
+
+    const [mappedZone] = await db
+      .select({ id: zones.id })
+      .from(b2bZoneStates)
+      .innerJoin(zones, eq(zones.id, b2bZoneStates.zone_id))
+      .where(and(...scopedStateConditions))
+      .limit(1)
+
+    if (mappedZone?.id) {
+      stateZoneCache.set(normalizedState, mappedZone.id)
+      return mappedZone.id
+    }
+
+    const allB2BZones = await db
+      .select({ id: zones.id, states: zones.states })
+      .from(zones)
+      .where(eq(zones.business_type, 'B2B'))
+
+    const zoneByState = allB2BZones.find((zone) =>
+      Array.isArray(zone.states)
+        ? zone.states.some((entry) => normalizeStateName(entry) === normalizedState)
+        : false,
+    )
+
+    if (zoneByState?.id) {
+      stateZoneCache.set(normalizedState, zoneByState.id)
+      return zoneByState.id
+    }
+
+    const specialZoneCode = b2bSpecialStateZoneAliases[normalizedState]
+    if (specialZoneCode) {
+      const [specialZone] = await db
+        .select({ id: zones.id })
+        .from(zones)
+        .where(and(eq(zones.code, specialZoneCode), eq(zones.business_type, 'B2B')))
+        .limit(1)
+
+      if (specialZone?.id) {
+        stateZoneCache.set(normalizedState, specialZone.id)
+        return specialZone.id
+      }
+    }
+
+    stateZoneCache.set(normalizedState, null)
+    return null
+  }
 
   const resolveZoneId = async (row: PincodeCsvRecord) => {
     if (row.zone_id) return row.zone_id
 
-    const key = (row.zone_code ?? '').trim().toUpperCase()
+    const key = normalizeCsvValue(row.zone_code, row.zone).toUpperCase()
     if (!key && options.defaultZoneId) return options.defaultZoneId
 
-    if (!key) throw new Error('Zone code missing for pincode row')
+    if (!key) {
+      const state = normalizeRowState(row)
+      const zoneIdFromState = await resolveZoneIdFromState(state)
+      if (zoneIdFromState) return zoneIdFromState
+      throw new Error('Zone code/state mapping missing for pincode row')
+    }
 
     if (zoneCache.has(key)) return zoneCache.get(key) as string
 
@@ -434,13 +552,18 @@ export const importPincodesFromCsv = async (
 
   let inserted = 0
   let updated = 0
+  let sampleOdaPincode: string | null = null
   const skipped: any[] = []
 
   for (const row of rows) {
     // For B2B, we need zoneId - use defaultZoneId from options if available
     // Since we're only updating existing pincodes, they already have a zone_id
     // We'll find the pincode first and use its zone_id
-    const pincode = row.pincode.trim()
+    const pincode = normalizeCsvValue(row.pincode, row.Pin, row.PIN)
+    const city = normalizeCsvValue(row.city, row.City, row['Facility City'])
+    const state = normalizeRowState(row)
+    const isOda = truthy(row.is_oda ?? row.ODA)
+    if (isOda && !sampleOdaPincode) sampleOdaPincode = pincode
 
     try {
       // Find existing pincode by pincode only (since we're updating attributes)
@@ -479,7 +602,7 @@ export const importPincodesFromCsv = async (
         // Update existing pincode attributes
         // Only update city/state if provided in CSV, otherwise keep existing values
         const updateData: any = {
-          is_oda: truthy(row.is_oda),
+          is_oda: isOda,
           is_remote: truthy(row.is_remote),
           is_mall: truthy(row.is_mall),
           is_sez: truthy(row.is_sez),
@@ -489,28 +612,44 @@ export const importPincodesFromCsv = async (
         }
 
         // Only update city/state if provided in CSV
-        if (row.city?.trim()) {
-          updateData.city = row.city.trim()
+        if (city) {
+          updateData.city = city
         }
-        if (row.state?.trim()) {
-          updateData.state = row.state.trim()
+        if (state) {
+          updateData.state = state
         }
 
         await db.update(b2bPincodes).set(updateData).where(eq(b2bPincodes.id, existing.id))
         updated += 1
       } else {
-        // Skip new pincodes - only update existing ones
-        skipped.push({
-          row,
-          error: `Pincode ${pincode} not found. Only existing pincodes can be updated.`,
+        const zoneId = await resolveZoneId(row)
+        await db.insert(b2bPincodes).values({
+          pincode,
+          city: city || 'Unknown',
+          state: state || 'Unknown',
+          zone_id: zoneId,
+          courier_id: courierId || null,
+          service_provider: serviceProvider || null,
+          is_oda: isOda,
+          is_remote: truthy(row.is_remote),
+          is_mall: truthy(row.is_mall),
+          is_sez: truthy(row.is_sez),
+          is_airport: truthy(row.is_airport),
+          is_high_security: truthy(row.is_high_security),
+          metadata: {
+            source: 'pincode_csv_import',
+            csv_headers: Object.keys(row),
+            imported_at: new Date().toISOString(),
+          },
         })
+        inserted += 1
       }
     } catch (err: any) {
       skipped.push({ row, error: err.message })
     }
   }
 
-  return { inserted, updated, skipped, total: inserted + updated }
+  return { inserted, updated, skipped, total: inserted + updated, sampleOdaPincode }
 }
 
 // -----------------------------
