@@ -160,30 +160,36 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
               <FormLabel fontSize="xs">Base Fuel Rate</FormLabel>
               <NumberInput
                 size="sm"
+                step={0.01}
+                precision={2}
                 value={fuelHikeConfig.baseRate ?? ''}
-                onChange={(_, value) => updateFuel('baseRate', value || '')}
+                onChange={(value) => updateFuel('baseRate', value || '')}
               >
-                <NumberInputField />
+                <NumberInputField inputMode="decimal" />
               </NumberInput>
             </FormControl>
             <FormControl>
               <FormLabel fontSize="xs">Current Fuel Rate</FormLabel>
               <NumberInput
                 size="sm"
+                step={0.01}
+                precision={2}
                 value={fuelHikeConfig.currentRate ?? ''}
-                onChange={(_, value) => updateFuel('currentRate', value || '')}
+                onChange={(value) => updateFuel('currentRate', value || '')}
               >
-                <NumberInputField />
+                <NumberInputField inputMode="decimal" />
               </NumberInput>
             </FormControl>
             <FormControl>
               <FormLabel fontSize="xs">Threshold</FormLabel>
               <NumberInput
                 size="sm"
+                step={0.01}
+                precision={2}
                 value={fuelHikeConfig.threshold ?? ''}
-                onChange={(_, value) => updateFuel('threshold', value || '')}
+                onChange={(value) => updateFuel('threshold', value || '')}
               >
-                <NumberInputField />
+                <NumberInputField inputMode="decimal" />
               </NumberInput>
             </FormControl>
             <FormControl>
@@ -201,20 +207,24 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
               <FormLabel fontSize="xs">Change in Fuel Rate</FormLabel>
               <NumberInput
                 size="sm"
+                step={0.01}
+                precision={2}
                 value={fuelHikeConfig.changeInFuelRate ?? ''}
-                onChange={(_, value) => updateFuel('changeInFuelRate', value || '')}
+                onChange={(value) => updateFuel('changeInFuelRate', value || '')}
               >
-                <NumberInputField />
+                <NumberInputField inputMode="decimal" />
               </NumberInput>
             </FormControl>
             <FormControl>
               <FormLabel fontSize="xs">Change in Freight</FormLabel>
               <NumberInput
                 size="sm"
+                step={0.01}
+                precision={2}
                 value={fuelHikeConfig.changeInFreight ?? ''}
-                onChange={(_, value) => updateFuel('changeInFreight', value || '')}
+                onChange={(value) => updateFuel('changeInFreight', value || '')}
               >
-                <NumberInputField />
+                <NumberInputField inputMode="decimal" />
               </NumberInput>
             </FormControl>
             <FormControl>
