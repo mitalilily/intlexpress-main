@@ -18,7 +18,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useCouriers } from '../../hooks/useCouriers'
 import { b2bAdminService } from '../../services/b2bAdmin.service'
 import Card from '../Card/Card'
@@ -46,11 +46,21 @@ const B2BQuoteCalculator = ({ planId }) => {
 
   const { data: couriers = [] } = useCouriers({ businessType: 'b2b' })
 
+  useEffect(() => {
+    if (formData.courierId || !couriers.length) return
+    const firstCourier = couriers[0]
+    setFormData((prev) => ({
+      ...prev,
+      courierId: String(firstCourier.id),
+      serviceProvider: firstCourier.serviceProvider || firstCourier.service_provider || '',
+    }))
+  }, [couriers, formData.courierId])
+
   const handleCalculate = async () => {
-    if (!formData.originPincode || !formData.destinationPincode || !formData.weightKg) {
+    if (!formData.originPincode || !formData.destinationPincode || !formData.weightKg || !formData.courierId) {
       toast({
         title: 'Missing required fields',
-        description: 'Please fill in origin, destination, and weight',
+        description: 'Please fill in origin, destination, weight, and courier',
         status: 'error',
         duration: 3000,
       })
@@ -211,9 +221,21 @@ const B2BQuoteCalculator = ({ planId }) => {
               <FormControl>
                 <FormLabel>Courier</FormLabel>
                 <Select
-                  placeholder="All Couriers"
+                  placeholder="Select courier"
                   value={formData.courierId}
-                  onChange={(e) => setFormData({ ...formData, courierId: e.target.value })}
+                  onChange={(e) => {
+                    const selectedCourier = couriers.find(
+                      (courier) => String(courier.id) === e.target.value,
+                    )
+                    setFormData({
+                      ...formData,
+                      courierId: e.target.value,
+                      serviceProvider:
+                        selectedCourier?.serviceProvider ||
+                        selectedCourier?.service_provider ||
+                        formData.serviceProvider,
+                    })
+                  }}
                 >
                   {couriers.map((c) => (
                     <option key={c.id} value={c.id}>

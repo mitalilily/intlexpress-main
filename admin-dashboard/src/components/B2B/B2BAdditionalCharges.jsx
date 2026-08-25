@@ -9,7 +9,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { memo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { useCouriers } from '../../hooks/useCouriers'
 import { b2bAdminService } from '../../services/b2bAdmin.service'
 import B2BAdditionalChargesFilters from './B2BAdditionalChargesFilters'
@@ -26,7 +26,7 @@ import SurchargesSection from './sections/SurchargesSection'
 
 const B2BAdditionalCharges = ({
   planId,
-  courierId: propCourierId = '',
+  courierId: propCourierId,
   serviceProvider: propServiceProvider = '',
 }) => {
   const toast = useToast()
@@ -45,6 +45,14 @@ const B2BAdditionalCharges = ({
   const serviceProvider = propServiceProvider || localServiceProvider
 
   const { data: couriers = [] } = useCouriers({ businessType: 'b2b' })
+
+  useEffect(() => {
+    if (propCourierId !== undefined) return
+    if (localCourierId || !couriers.length) return
+    const firstCourier = couriers[0]
+    setLocalCourierId(String(firstCourier.id))
+    setLocalServiceProvider(firstCourier.serviceProvider || firstCourier.service_provider || '')
+  }, [couriers, localCourierId, propCourierId])
 
   // Handle combined courier-service provider selection
   const handleCourierServiceChange = (value) => {
@@ -69,11 +77,12 @@ const B2BAdditionalCharges = ({
     queryKey: ['b2b-additional-charges', courierId, serviceProvider, planId],
     queryFn: () =>
       b2bAdminService.getAdditionalCharges({
-        courier_id: courierId || undefined,
+        courier_id: courierId,
         service_provider: serviceProvider || undefined,
+        include_global: false,
         plan_id: planId,
       }),
-    enabled: !!planId,
+    enabled: !!planId && !!courierId,
   })
 
   // Use custom hook for form state management
@@ -167,6 +176,15 @@ const B2BAdditionalCharges = ({
 
   const handleSave = () => {
     const payload = buildPayload()
+    if (!courierId) {
+      toast({
+        title: 'Select a courier',
+        description: 'B2B charges must be saved against a courier, not global scope.',
+        status: 'warning',
+        duration: 3000,
+      })
+      return
+    }
     saveMutation.mutate(payload)
   }
 

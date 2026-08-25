@@ -63,6 +63,13 @@ const B2BRateMatrix = ({ planId }) => {
 
   const { data: couriers = [] } = useCouriers({ businessType: 'b2b' })
 
+  useEffect(() => {
+    if (courierId || !couriers.length) return
+    const firstCourier = couriers[0]
+    setCourierId(String(firstCourier.id))
+    setServiceProvider(firstCourier.serviceProvider || firstCourier.service_provider || '')
+  }, [couriers, courierId])
+
   // Handle combined courier-service provider selection
   const handleCourierServiceChange = (value) => {
     if (!value) {
@@ -100,7 +107,7 @@ const B2BRateMatrix = ({ planId }) => {
         service_provider: serviceProvider || undefined,
         plan_id: planId, // Always send planId (will be first plan by default)
       }),
-    enabled: !!planId, // Only fetch when planId is available and component is mounted (tab is active)
+    enabled: !!planId && !!courierId, // B2B rates must be courier-specific
   })
 
   // Create a map for quick lookup
@@ -157,6 +164,15 @@ const B2BRateMatrix = ({ planId }) => {
   })
 
   const handleImportCSV = () => {
+    if (!courierId) {
+      toast({
+        title: 'Select a courier',
+        description: 'B2B rates must be imported against a courier, not global scope.',
+        status: 'warning',
+        duration: 3000,
+      })
+      return
+    }
     if (!importFile) {
       toast({
         title: 'No file selected',
@@ -284,6 +300,17 @@ const B2BRateMatrix = ({ planId }) => {
   }
 
   const handleSave = (formData) => {
+    const scopedCourierId = formData.courier_id || courierId
+    const scopedServiceProvider = formData.service_provider || serviceProvider
+    if (!scopedCourierId) {
+      toast({
+        title: 'Select a courier',
+        description: 'B2B rates must be saved against a courier, not global scope.',
+        status: 'warning',
+        duration: 3000,
+      })
+      return
+    }
     // Handle both edit (from cell click) and add (from add modal) scenarios
     const payload = {
       id: selectedCell?.rate?.id,
@@ -292,8 +319,8 @@ const B2BRateMatrix = ({ planId }) => {
       ratePerKg: formData.ratePerKg, // Only rate per kg needed
       planId: planId || undefined,
       plan_id: planId || undefined,
-      courier_id: formData.courier_id || courierId || undefined,
-      service_provider: formData.service_provider || serviceProvider || undefined,
+      courier_id: scopedCourierId,
+      service_provider: scopedServiceProvider || undefined,
     }
 
     updateRateMutation.mutate(payload)
@@ -309,7 +336,7 @@ const B2BRateMatrix = ({ planId }) => {
           const courier = couriers.find((c) => c.id?.toString() === courierId?.toString())
           return `${courier?.name || 'Unknown'}${serviceProvider ? ` (${serviceProvider})` : ''}`
         })()
-      : 'Global (All Couriers)'
+      : 'Select courier'
 
   if (isLoadingZones || isLoadingRates) {
     return (
@@ -326,7 +353,7 @@ const B2BRateMatrix = ({ planId }) => {
           <FormControl width="300px">
             <FormLabel fontSize="sm">Courier - Service Provider</FormLabel>
             <Select
-              placeholder="All Couriers (Global)"
+              placeholder="Select courier"
               value={getCombinedCourierValue()}
               onChange={(e) => handleCourierServiceChange(e.target.value)}
             >
@@ -535,7 +562,7 @@ const B2BRateMatrix = ({ planId }) => {
               colorScheme="blue"
               onClick={handleImportCSV}
               isLoading={importRatesMutation.isPending}
-              isDisabled={!importFile}
+              isDisabled={!importFile || !courierId}
               leftIcon={<BiUpload />}
             >
               Import CSV
@@ -603,7 +630,7 @@ const B2BRateMatrix = ({ planId }) => {
           <Box p={3} bg="orange.50" borderRadius="md" borderWidth="1px" borderColor="orange.200">
             <Text fontSize="xs" color="orange.700">
               <strong>Note:</strong> Imported rates will be applied to the current plan (
-              {planDisplayName}){courierId && ` and courier scope (${scopeLabel})`}.
+              {planDisplayName}) and courier scope ({scopeLabel}).
             </Text>
           </Box>
         </VStack>
@@ -633,7 +660,7 @@ const RateCellModal = ({
   const courierScope =
     courierId || serviceProvider
       ? `${selectedCourier?.name || 'Unknown'}${serviceProvider ? ` (${serviceProvider})` : ''}`
-      : 'Global (All Couriers)'
+      : 'Select courier'
 
   useEffect(() => {
     if (selectedCell?.rate) {
@@ -773,7 +800,7 @@ const AddRateModal = ({ isOpen, onClose, zones, couriers, onSave, isLoading }) =
       ? `${selectedCourier?.name || 'Unknown'}${
           formData.serviceProvider ? ` (${formData.serviceProvider})` : ''
         }`
-      : 'Global (All Couriers)'
+      : 'Select courier'
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">

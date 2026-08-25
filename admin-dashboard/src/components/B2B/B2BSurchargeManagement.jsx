@@ -50,7 +50,7 @@ import CardHeader from '../Card/CardHeader'
 
 const B2BSurchargeManagement = ({
   planId,
-  courierId: propCourierId = '',
+  courierId: propCourierId,
   serviceProvider: propServiceProvider = '',
 }) => {
   const toast = useToast()
@@ -70,15 +70,24 @@ const B2BSurchargeManagement = ({
   const hoverBg = useColorModeValue('gray.50', 'gray.700')
   const cardBg = useColorModeValue('white', 'gray.800')
 
+  useEffect(() => {
+    if (propCourierId !== undefined) return
+    if (localCourierId || !couriers.length) return
+    const firstCourier = couriers[0]
+    setLocalCourierId(String(firstCourier.id))
+    setLocalServiceProvider(firstCourier.serviceProvider || firstCourier.service_provider || '')
+  }, [couriers, localCourierId, propCourierId])
+
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ['b2b-overheads', courierId, serviceProvider, planId],
     queryFn: () =>
       b2bAdminService.getOverheads({
-        courier_id: courierId || undefined,
+        courier_id: courierId,
         service_provider: serviceProvider || undefined,
+        include_global: false,
         plan_id: planId,
       }),
-    enabled: !!planId,
+    enabled: !!planId && !!courierId,
   })
 
   // Handle combined courier-service provider selection
@@ -193,10 +202,9 @@ const B2BSurchargeManagement = ({
                 <Select
                   value={getCombinedCourierValue()}
                   onChange={(e) => handleCourierServiceChange(e.target.value)}
-                  placeholder="All Couriers"
+                  placeholder="Select courier"
                   size="md"
                 >
-                  <option value="">All Couriers</option>
                   {couriers.map((courier) => (
                     <option
                       key={courier.id}
@@ -624,6 +632,16 @@ const SurchargeModal = ({ isOpen, onClose, rule, courierId, serviceProvider, pla
   const handleSubmit = () => {
     const code = generateCode(formData.name)
     const condition = buildCondition()
+
+    if (!courierId) {
+      toast({
+        title: 'Select a courier',
+        description: 'B2B surcharge rules must be saved against a courier, not global scope.',
+        status: 'warning',
+        duration: 3000,
+      })
+      return
+    }
 
     if (!formData.name.trim()) {
       toast({
@@ -1053,9 +1071,8 @@ const SurchargeModal = ({ isOpen, onClose, rule, courierId, serviceProvider, pla
                         setFormData({ ...formData, conditionCourierId: e.target.value })
                       }
                       size="md"
-                      placeholder="All Couriers"
+                      placeholder="Select courier"
                     >
-                      <option value="">All Couriers</option>
                       {couriers.map((courier) => (
                         <option key={courier.id} value={courier.id}>
                           {courier.name} - {courier.serviceProvider || 'N/A'}
@@ -1063,8 +1080,7 @@ const SurchargeModal = ({ isOpen, onClose, rule, courierId, serviceProvider, pla
                       ))}
                     </Select>
                     <FormHelperText fontSize="xs">
-                      Leave empty to apply to all couriers. Select a specific courier if this charge
-                      only applies to that courier.
+                      Select the courier this surcharge condition applies to.
                     </FormHelperText>
                   </FormControl>
                 </VStack>

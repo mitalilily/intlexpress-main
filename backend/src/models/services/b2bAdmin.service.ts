@@ -907,6 +907,9 @@ export const upsertZoneToZoneRate = async (payload: {
   }
 
   const { courierId, serviceProvider } = normalizeCourierScope(payload.courierScope)
+  if (!courierId) {
+    throw new Error('Courier is required for B2B zone rates. Global B2B rates are disabled.')
+  }
 
   try {
     // If an explicit ID is provided, prefer a direct update on that record.
@@ -1504,6 +1507,9 @@ export const upsertOverheadRule = async (payload: {
   }
 
   const { courierId, serviceProvider } = normalizeCourierScope(payload.courierScope)
+  if (!courierId) {
+    throw new Error('Courier is required for B2B surcharge rules. Global B2B surcharges are disabled.')
+  }
 
   const conditionValue =
     typeof payload.condition === 'string'
@@ -1800,6 +1806,7 @@ export const calculateB2BRate = async (params: {
     serviceProvider,
     planId: params.planId,
     effectiveDate,
+    includeGlobal: false,
   })
 
   if (!rate) {
@@ -1811,7 +1818,7 @@ export const calculateB2BRate = async (params: {
   // Fetch charges according to plan_id if provided (charges are saved for specific plans)
   const additionalCharges = await getAdditionalCharges({
     courierScope: { courierId, serviceProvider },
-    includeGlobal: true,
+    includeGlobal: false,
     planId: params.planId,
   })
 
@@ -1911,7 +1918,7 @@ export const calculateB2BRate = async (params: {
       courierId: courierId ?? undefined,
       serviceProvider: serviceProvider ?? undefined,
     },
-    includeGlobal: true,
+    includeGlobal: false,
     onlyActive: true,
     effectiveDate,
   })
@@ -3140,16 +3147,21 @@ export const findZoneRate = async (params: {
   serviceProvider: string | null
   planId?: string | null
   effectiveDate?: Date
+  includeGlobal?: boolean
 }) => {
   const effectiveDate = params.effectiveDate ?? new Date()
-  const scopes: (CourierScope | null)[] = [
-    {
-      courierId: params.courierId ?? undefined,
-      serviceProvider: params.serviceProvider ?? undefined,
-    },
-    { courierId: undefined, serviceProvider: params.serviceProvider ?? undefined },
-    null,
-  ]
+  const scopedCourier: CourierScope = {
+    courierId: params.courierId ?? undefined,
+    serviceProvider: params.serviceProvider ?? undefined,
+  }
+  const scopes: (CourierScope | null)[] =
+    params.includeGlobal === false
+      ? [scopedCourier]
+      : [
+          scopedCourier,
+          { courierId: undefined, serviceProvider: params.serviceProvider ?? undefined },
+          null,
+        ]
   const planIdsToTry = params.planId ? [params.planId, null] : [null]
 
   for (const scope of scopes) {

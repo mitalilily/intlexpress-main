@@ -287,6 +287,16 @@ const HolidayCalendar = () => {
   }
 
   const handleSubmit = () => {
+    if (formData.type === 'courier' && !formData.courierId) {
+      toast({
+        title: 'Select a courier',
+        description: 'Courier holidays must be assigned to a courier.',
+        status: 'warning',
+        duration: 3000,
+      })
+      return
+    }
+
     const payload = {
       name: formData.name,
       date: formData.date,
@@ -436,8 +446,8 @@ const HolidayCalendar = () => {
                       value={filters.courierId}
                       onChange={(e) => setFilters({ ...filters, courierId: e.target.value })}
                       size="sm"
+                      placeholder="Select courier"
                     >
-                      <option value="">All Couriers</option>
                       {couriers.map((courier) => (
                         <option key={courier.id} value={courier.id}>
                           {courier.name}
@@ -670,8 +680,8 @@ const HolidayCalendar = () => {
                     <Select
                       value={formData.courierId}
                       onChange={(e) => setFormData({ ...formData, courierId: e.target.value })}
+                      placeholder="Select courier"
                     >
-                      <option value="">All Couriers</option>
                       {couriers.map((courier) => (
                         <option key={courier.id} value={courier.id}>
                           {courier.name}

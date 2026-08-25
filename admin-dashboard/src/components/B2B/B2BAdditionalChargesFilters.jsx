@@ -44,7 +44,7 @@ const B2BAdditionalChargesFilters = ({
             Courier Scope
           </FormLabel>
           <Select
-            placeholder="Global (All Couriers)"
+            placeholder="Select courier"
             value={getCombinedCourierValue()}
             onChange={(e) => onCourierChange(e.target.value)}
             size="sm"

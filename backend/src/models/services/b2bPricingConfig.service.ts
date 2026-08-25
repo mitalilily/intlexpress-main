@@ -175,12 +175,14 @@ export const getAdditionalCharges = async (params: {
   const { courierId, serviceProvider } = normalizeCourierScope(params.courierScope)
   const includeGlobal = params.includeGlobal ?? true
 
-  // Try to find plan-specific first, then courier-specific, then global
-  const scopes: (CourierScope | null)[] = [
-    { courierId: courierId ?? undefined, serviceProvider: serviceProvider ?? undefined },
-    { courierId: undefined, serviceProvider: serviceProvider ?? undefined },
-    null,
-  ]
+  // Try selected courier scope first. Global fallback is only used when explicitly requested.
+  const scopedCourier: CourierScope = {
+    courierId: courierId ?? undefined,
+    serviceProvider: serviceProvider ?? undefined,
+  }
+  const scopes: (CourierScope | null)[] = includeGlobal
+    ? [scopedCourier, { courierId: undefined, serviceProvider: serviceProvider ?? undefined }, null]
+    : [scopedCourier]
   const planIdsToTry = params.planId ? [params.planId, null] : [null]
 
   for (const scope of scopes) {
@@ -370,6 +372,9 @@ export const upsertAdditionalCharges = async (
   }> & { courierScope?: CourierScope },
 ) => {
   const { courierId, serviceProvider } = normalizeCourierScope(payload.courierScope)
+  if (!courierId) {
+    throw new Error('Courier is required for B2B additional charges. Global B2B charges are disabled.')
+  }
 
   const updateData: any = {
     updated_at: new Date(),

@@ -330,8 +330,9 @@ export const importPincodesController = async (req: Request, res: Response) => {
 
 export const listZoneRatesController = async (req: Request, res: Response) => {
   try {
+    const courierScope = parseCourierScope(req)
     const rates = await listZoneToZoneRates({
-      courierScope: parseCourierScope(req),
+      courierScope,
       originZoneId: (req.query.origin_zone_id as string) ?? undefined,
       destinationZoneId: (req.query.destination_zone_id as string) ?? undefined,
       planId: (req.query.plan_id as string) ?? (req.query.planId as string) ?? undefined,
@@ -346,12 +347,20 @@ export const listZoneRatesController = async (req: Request, res: Response) => {
 export const upsertZoneRateController = async (req: Request, res: Response) => {
   try {
     const body = req.body
+    const courierScope = parseCourierScope(req)
+    if (!courierScope.courierId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Courier is required for B2B zone rates. Global B2B rates are disabled.',
+      })
+    }
+
     const rate = await upsertZoneToZoneRate({
       id: body.id ?? req.params.id,
       originZoneId: body.originZoneId ?? body.origin_zone_id,
       destinationZoneId: body.destinationZoneId ?? body.destination_zone_id,
       ratePerKg: Number(body.ratePerKg ?? body.rate_per_kg ?? 0),
-      courierScope: parseCourierScope(req),
+      courierScope,
       planId: body.planId ?? body.plan_id ?? req.query.planId ?? req.query.plan_id ?? null,
     })
 
@@ -405,8 +414,16 @@ export const importZoneRatesController = async (req: Request, res: Response) => 
       return res.status(400).json({ success: false, error: 'CSV file is required' })
     }
 
+    const courierScope = parseCourierScope(req)
+    if (!courierScope.courierId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Courier is required for B2B zone rate import. Global B2B rates are disabled.',
+      })
+    }
+
     const result = await importZoneRatesFromCsv(req.file.buffer, {
-      courierScope: parseCourierScope(req),
+      courierScope,
       planId:
         (req.body.plan_id as string) ??
         (req.body.planId as string) ??
@@ -429,7 +446,7 @@ export const listOverheadsController = async (req: Request, res: Response) => {
   try {
     const rules = await listOverheadRules({
       courierScope: parseCourierScope(req),
-      includeGlobal: req.query.include_global !== 'false',
+      includeGlobal: req.query.include_global === 'true',
       onlyActive: req.query.only_active === 'true',
       planId: (req.query.plan_id as string) ?? (req.query.planId as string) ?? undefined,
     })
@@ -442,6 +459,14 @@ export const listOverheadsController = async (req: Request, res: Response) => {
 
 export const upsertOverheadController = async (req: Request, res: Response) => {
   try {
+    const courierScope = parseCourierScope(req)
+    if (!courierScope.courierId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Courier is required for B2B surcharge rules. Global B2B surcharges are disabled.',
+      })
+    }
+
     const rule = await upsertOverheadRule({
       id: req.body.id,
       code: req.body.code,
@@ -456,7 +481,7 @@ export const upsertOverheadController = async (req: Request, res: Response) => {
       effectiveFrom: req.body.effectiveFrom ? new Date(req.body.effectiveFrom) : undefined,
       effectiveTo: req.body.effectiveTo ? new Date(req.body.effectiveTo) : undefined,
       isActive: req.body.isActive ?? req.body.is_active,
-      courierScope: parseCourierScope(req),
+      courierScope,
       planId: (req.body.plan_id as string) ?? (req.body.planId as string) ?? undefined,
     })
 

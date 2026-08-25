@@ -25,7 +25,7 @@ import FileUploader from 'components/upload/FileUploader'
 import { useCouriers } from 'hooks/useCouriers'
 import { useZones } from 'hooks/useZones'
 import Papa from 'papaparse'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GenericTable } from 'views/Dashboard/Tables/components/GenericTable'
 import { useB2BZoneRates } from '../../hooks/useB2BZoneRates'
 
@@ -64,6 +64,11 @@ export const ZoneRateMatrix = ({ embedded = false } = {}) => {
 
   const { data: couriers = [] } = useCouriers({ businessType: 'b2b' })
   const { zones: b2bZones = [] } = useZones('B2B', { include_global: true })
+
+  useEffect(() => {
+    if (filters.courierId || !couriers.length) return
+    setFilters((prev) => ({ ...prev, courierId: String(couriers[0].id) }))
+  }, [couriers, filters.courierId])
 
   const courierScope = buildCourierScope(filters.courierId, couriers)
 
@@ -106,6 +111,15 @@ export const ZoneRateMatrix = ({ embedded = false } = {}) => {
   }
 
   const handleSaveRate = () => {
+    if (!courierScope.courierId) {
+      toast({
+        title: 'Select a courier',
+        description: 'B2B rates must be saved against a courier, not global scope.',
+        status: 'warning',
+      })
+      return
+    }
+
     if (!rateForm.originZoneId || !rateForm.destinationZoneId || !rateForm.ratePerKg) {
       toast({ title: 'Please fill origin, destination and rate', status: 'warning' })
       return
@@ -138,6 +152,15 @@ export const ZoneRateMatrix = ({ embedded = false } = {}) => {
 
   const handleImport = async (files) => {
     if (!files?.length) return
+    if (!courierScope.courierId) {
+      toast({
+        title: 'Select a courier',
+        description: 'B2B rates must be imported against a courier, not global scope.',
+        status: 'warning',
+      })
+      return
+    }
+
     const file = files[0]
     const formData = new FormData()
     formData.append('file', file.file)
@@ -216,7 +239,7 @@ export const ZoneRateMatrix = ({ embedded = false } = {}) => {
         <FormControl maxW={{ base: '100%', md: '250px' }}>
           <FormLabel>Courier</FormLabel>
           <Select
-            placeholder="Global Rates"
+            placeholder="Select courier"
             value={filters.courierId}
             onChange={(e) => setFilters((prev) => ({ ...prev, courierId: e.target.value }))}
           >
@@ -260,7 +283,7 @@ export const ZoneRateMatrix = ({ embedded = false } = {}) => {
       {sortedZones.length > 0 && (
         <Box>
           <Text fontWeight="semibold" mb={3}>
-            Zone-to-Zone Matrix ({filters.courierId ? 'Courier specific' : 'Global'})
+            Zone-to-Zone Matrix (Courier specific)
           </Text>
           <TableContainer borderWidth="1px" borderRadius="md" overflow="auto">
             <Table size="sm" variant="simple">
@@ -478,8 +501,7 @@ export const ZoneRateMatrix = ({ embedded = false } = {}) => {
       >
         <Text fontSize="sm" mb={3}>
           Upload a CSV file with columns: <b>origin_zone_code, destination_zone_code, rate_per_kg</b>.
-          Select a courier above to import courier-specific B2B rates; leave courier as Global
-          Rates for global rates.
+          Select a courier above before importing. B2B rates are courier-specific only.
         </Text>
         <FileUploader
           maxSizeMb={5}

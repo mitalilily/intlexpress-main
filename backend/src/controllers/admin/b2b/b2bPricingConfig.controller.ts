@@ -100,16 +100,24 @@ export const deleteZoneStateController = async (req: Request, res: Response) => 
 export const getAdditionalChargesController = async (req: Request, res: Response) => {
   try {
     const planId = (req.query.plan_id as string) ?? (req.query.planId as string) ?? undefined
+    const courierScope = parseCourierScope(req)
+    if (!courierScope.courierId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Courier is required for B2B additional charges. Global B2B charges are disabled.',
+      })
+    }
+
     let charges = await getAdditionalCharges({
-      courierScope: parseCourierScope(req),
-      includeGlobal: req.query.include_global !== 'false',
+      courierScope,
+      includeGlobal: req.query.include_global === 'true',
       planId,
     })
 
     // If no charges exist, seed default values
     if (!charges) {
       charges = await seedDefaultAdditionalCharges({
-        courierScope: parseCourierScope(req),
+        courierScope,
         planId,
       })
     }
@@ -124,6 +132,14 @@ export const getAdditionalChargesController = async (req: Request, res: Response
 
 export const upsertAdditionalChargesController = async (req: Request, res: Response) => {
   try {
+    const courierScope = parseCourierScope(req)
+    if (!courierScope.courierId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Courier is required for B2B additional charges. Global B2B charges are disabled.',
+      })
+    }
+
     const charges = await upsertAdditionalCharges({
       // Exact 20 overhead charge fields
       awbCharges: req.body.awbCharges ?? req.body.awb_charges,
@@ -187,7 +203,7 @@ export const upsertAdditionalChargesController = async (req: Request, res: Respo
       customFields: req.body.customFields ?? req.body.custom_fields,
       fieldDefinitions: req.body.fieldDefinitions ?? req.body.field_definitions,
       planId: (req.body.plan_id as string) ?? (req.body.planId as string) ?? undefined,
-      courierScope: parseCourierScope(req),
+      courierScope,
     })
 
     res.json({ success: true, data: charges })
@@ -211,6 +227,12 @@ export const importAdditionalChargesController = async (req: Request, res: Respo
       : undefined
     const serviceProvider = req.body.service_provider || req.body.serviceProvider || undefined
     const planId = req.body.plan_id || req.body.planId || undefined
+    if (!courierId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Courier is required for B2B additional charges import. Global B2B charges are disabled.',
+      })
+    }
 
     const result = await importAdditionalChargesFromCsv(req.file.buffer, {
       courierScope: {
