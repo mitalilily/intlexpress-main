@@ -203,7 +203,7 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
   return (
     <Box>
       <Text fontSize="md" fontWeight="bold" color="cyan.700" mb={4}>
-        8. CFT Sheet Charge Setup
+        8. Advanced B2B Charge Setup
       </Text>
 
       <Box mb={4} p={4} bg={cardBg} borderRadius="md" borderWidth="1px" borderColor={cardBorder}>
@@ -211,7 +211,7 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
           ODA pincode logic and ODA slabs
         </Text>
         <Text fontSize="xs" color="gray.600" mb={3}>
-          Sheet remark: 1 = destination pincode, 2 = pickup pincode, 3 = pickup and destination pincode.
+          ODA mode: 1 = destination pincode, 2 = pickup pincode, 3 = pickup or destination pincode.
         </Text>
         <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
           <SelectField label="ODA Apply Mode" value={odaConfig.mode || 'delivery'} onChange={(value) => updateOda('mode', value)}>
@@ -227,7 +227,7 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
               value={listToText(odaConfig.pickupExemptions)}
               onChange={(event) => updateOda('pickupExemptions', toList(event.target.value))}
             />
-            <FormHelperText fontSize="xs">Sheet row pickup_oda_list. One pincode per line.</FormHelperText>
+            <FormHelperText fontSize="xs">Pickup ODA exemption pincodes. One pincode per line.</FormHelperText>
           </FormControl>
           <FormControl>
             <FormLabel fontSize="xs">Delivery ODA Exemptions</FormLabel>
@@ -237,7 +237,7 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
               value={listToText(odaConfig.deliveryExemptions)}
               onChange={(event) => updateOda('deliveryExemptions', toList(event.target.value))}
             />
-            <FormHelperText fontSize="xs">Sheet row dlv_oda_list. One pincode per line.</FormHelperText>
+            <FormHelperText fontSize="xs">Delivery ODA exemption pincodes. One pincode per line.</FormHelperText>
           </FormControl>
         </SimpleGrid>
         <SimpleGrid mt={4} columns={{ base: 1, md: 2 }} spacing={4}>
@@ -271,7 +271,7 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
           Handling slabs
         </Text>
         <Text fontSize="xs" color="gray.600" mb={3}>
-          Sheet remark: Package Handling Charges by chargeable weight.
+          Package handling charges by chargeable weight.
         </Text>
         <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
           {[0, 1, 2].map((index) => {
@@ -308,7 +308,7 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
           Fuel hike / DPH
         </Text>
         <Text fontSize="xs" color="gray.600" mb={3}>
-          Sheet remarks: base rate is contract fuel rate; threshold can be Rs/litre or %; freight changes for every fuel-rate step.
+          Fuel base rate is the agreed contract fuel rate; threshold can be Rs/litre or percentage; freight changes for every fuel-rate step.
         </Text>
         <SimpleGrid columns={{ base: 1, md: 3 }} spacing={3}>
           <NumberField label="Fuel Base Rate" value={fuelHikeConfig.baseRate ?? ''} onChange={(value) => updateFuel('baseRate', value)} />
@@ -343,7 +343,7 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
               value={Array.isArray(fuelHikeConfig.locationIds) ? fuelHikeConfig.locationIds.join(',') : fuelHikeConfig.locationIds || ''}
               onChange={(event) => updateFuel('locationIds', toList(event.target.value))}
             />
-            <FormHelperText fontSize="xs">Sheet row Fuel Hike Location, e.g. 1,2,3,4.</FormHelperText>
+            <FormHelperText fontSize="xs">Use location IDs from your fuel-location mapping, e.g. 1,2,3,4.</FormHelperText>
           </FormControl>
           <FormControl>
             <FormLabel fontSize="xs">Fuel Hike Location Names</FormLabel>
@@ -367,7 +367,7 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
 
       <Box mb={4} p={4} bg={cardBg} borderRadius="md" borderWidth="1px" borderColor={cardBorder}>
         <Text fontSize="sm" fontWeight="semibold" color="cyan.700" mb={3}>
-          Sheet charge rows 41, 42, 51-62, 65-67
+          Additional delivery and service charges
         </Text>
         <SimpleGrid columns={{ base: 1, xl: 2 }} spacing={4}>
           <ConfigChargeCard title="floor_delivery" remark="Per kg or Min. per LR - whichever is higher" config={getChargeConfig(serviceChargesConfig, 'floorDelivery', { enabled: false, type: 'per_kg' })} onChange={(patch) => updateServiceCharge('floorDelivery', patch)} defaultType="per_kg" />
@@ -397,7 +397,7 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
 
       <Box mb={4} p={4} bg={cardBg} borderRadius="md" borderWidth="1px" borderColor={cardBorder}>
         <Text fontSize="sm" fontWeight="semibold" color="cyan.700" mb={3}>
-          ROV owner / carrier risk from Sheet
+          ROV owner / carrier risk
         </Text>
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
           <ConfigChargeCard title="rov_owner" remark="Risk as %age of DCN and minimum price per LR. Keep zero if carrier risk is used." config={getChargeConfig(serviceChargesConfig, 'rovOwner', { enabled: true, type: 'percent' })} onChange={(patch) => updateServiceCharge('rovOwner', patch)} defaultType="percent" showPercent />
@@ -410,7 +410,7 @@ const CFTAdvancedConfigSection = memo(({ formData, onFieldChange }) => {
           Special destination add-on rates
         </Text>
         <Text fontSize="xs" color="gray.600" mb={3}>
-          Sheet rows 100 onward. One line per rule: origin zone, destination type, destination name, rate per kg, start kg, end kg. Example: N1,state,Himachal Pradesh,10.2,,
+          One line per special destination rule: origin zone, destination type, destination name, rate per kg, start kg, end kg. Example: N1,state,Himachal Pradesh,10.2,,
         </Text>
         <Textarea
           size="sm"

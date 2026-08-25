@@ -199,7 +199,7 @@ export const b2bAdditionalCharges = createTable('b2b_additional_charges', {
   green_tax: decimal('green_tax', { precision: 12, scale: 2 }).default('0'),
 
   // Advanced CFT-style surcharge configuration.
-  // Kept in JSONB so new CFT sheet formats can be represented without schema churn.
+  // Kept in JSONB so advanced CFT charge formats can be represented without schema churn.
   oda_config: jsonb('oda_config').$type<{
     mode?: 'delivery' | 'pickup' | 'both'
     pickupExemptions?: string[]
