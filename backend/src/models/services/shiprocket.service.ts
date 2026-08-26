@@ -3675,7 +3675,7 @@ const waitForDelhiveryB2BManifestStatus = async ({
   apiBase,
   jobId,
   rejectedValues,
-  attempts = 10,
+  attempts = 20,
   delayMs = 3000,
 }: {
   token: string

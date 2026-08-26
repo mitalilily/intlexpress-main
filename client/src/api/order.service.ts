@@ -295,7 +295,10 @@ export type CreateB2BShipmentParams = {
 
 export const createB2BShipment = async (data: CreateB2BShipmentParams) => {
   try {
-    const res = await axiosInstance.post('/orders/b2b/create', data)
+    // Delhivery B2B manifestation is asynchronous: the initial request may
+    // return an accepted job id while the LRN/AWB is generated shortly after.
+    // Do not inherit axiosInstance's 10-second default timeout.
+    const res = await axiosInstance.post('/orders/b2b/create', data, { timeout: 180000 })
     return res.data
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
