@@ -2,7 +2,11 @@
 import axios from 'axios'
 import { clearAuthTokens, getAuthTokens, setAuthTokens } from './tokenVault'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.intlexpress.in/api'
+// Never let a developer's .env.local override the production seller panel.
+// This prevents production builds from accidentally calling an old Render API.
+const API_BASE_URL = import.meta.env.PROD
+  ? 'https://api.intlexpress.in/api'
+  : import.meta.env.VITE_API_URL || 'https://api.intlexpress.in/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
