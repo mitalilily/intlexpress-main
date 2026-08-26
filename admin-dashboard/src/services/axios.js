@@ -2,10 +2,6 @@ import axios from 'axios'
 import brand from '../branding/brand'
 
 const getDefaultApiBaseUrl = () => {
-  if (typeof window !== 'undefined' && window.location.hostname === 'intlexpress-admin.onrender.com') {
-    return brand.apiBaseUrl
-  }
-
   return brand.apiBaseUrl
 }
 

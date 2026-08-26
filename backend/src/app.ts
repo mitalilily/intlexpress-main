@@ -121,8 +121,6 @@ const configuredAllowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || '')
   .map(normalizeOrigin)
 
 const allowedOrigins = new Set([
-  'https://intlexpress-client.onrender.com',
-  'https://intlexpress-admin.onrender.com',
   'https://intlexpress.com',
   'https://www.intlexpress.com',
   'https://app.intlexpress.com',

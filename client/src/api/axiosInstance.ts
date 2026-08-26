@@ -3,7 +3,6 @@ import axios from 'axios'
 import { clearAuthTokens, getAuthTokens, setAuthTokens } from './tokenVault'
 
 // Never let a developer's .env.local override the production seller panel.
-// This prevents production builds from accidentally calling an old Render API.
 const API_BASE_URL = import.meta.env.PROD
   ? 'https://api.intlexpress.in/api'
   : import.meta.env.VITE_API_URL || 'https://api.intlexpress.in/api'
