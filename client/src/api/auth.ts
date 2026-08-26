@@ -8,7 +8,10 @@ export interface RequestOtpResponse {
 }
 
 export const requestOtpApi = async (email: string) => {
-  const { data } = await axiosInstance.post("/auth/request-otp", { email });
+  // SMTP delivery can take longer than the normal API timeout. Keep the
+  // request open long enough for the backend to finish sending the OTP;
+  // otherwise the email arrives while the UI incorrectly shows an error.
+  const { data } = await axiosInstance.post("/auth/request-otp", { email }, { timeout: 30000 });
   return data as RequestOtpResponse;
 };
 

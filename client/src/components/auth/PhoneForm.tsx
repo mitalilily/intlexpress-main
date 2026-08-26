@@ -76,7 +76,10 @@ export default function PhoneForm() {
 
           if (data?.otp) {
             toast.open({
-              message: 'Console OTP is now visible on screen.',
+              message:
+                data?.deliveryMode === 'console'
+                  ? 'Console OTP is now visible on screen.'
+                  : 'Verification OTP sent to your email.',
               severity: 'success',
               position: { vertical: 'top', horizontal: 'center' },
             })
@@ -84,7 +87,10 @@ export default function PhoneForm() {
         },
         onError: (err: any) => {
           const msg =
-            err?.response?.data?.error || 'Failed to generate on-screen demo OTP. Please try again.'
+            err?.response?.data?.error ||
+            err?.response?.data?.message ||
+            err?.message ||
+            'Unable to send verification OTP. Please try again.'
           toast.open({
             message: msg,
             severity: 'error',
@@ -139,7 +145,7 @@ export default function PhoneForm() {
             </Typography>
 
             <Typography sx={{ color: '#6E6763', fontSize: '0.88rem', lineHeight: 1.6 }}>
-              Request a sign-in code and surface it directly on screen for a fast console-style login.
+              Request a secure sign-in code sent to your account email.
             </Typography>
           </Box>
 
@@ -178,7 +184,7 @@ export default function PhoneForm() {
             styles={primaryButtonStyles}
             textColor="#ffffff"
             disabled={!email || !termsChecked || isPending || !isValidEmail}
-            text="Generate Console OTP"
+            text="Send verification OTP"
             loading={isPending}
             loadingText="Generating..."
           />
@@ -219,7 +225,7 @@ export default function PhoneForm() {
             textAlign: 'center',
           }}
         >
-          Sign in with on-screen demo OTP
+          Sign in with email OTP
         </Typography>
       </Stack>
 
