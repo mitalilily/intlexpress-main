@@ -3,6 +3,49 @@
 -- remain editable through the Delhivery B2B Additional Charges panel.
 BEGIN;
 
+-- Create the courier-scoped record if this B2B courier has not been
+-- configured yet, while leaving the Household account untouched.
+INSERT INTO shiplifi_b2b_additional_charges (
+  courier_id, service_provider, plan_id, awb_charges, cft_factor,
+  minimum_chargeable_amount, minimum_chargeable_weight, minimum_chargeable_method,
+  free_storage_days, demurrage_per_awb_day, demurrage_per_kg_day, demurrage_method,
+  public_holiday_pickup_charge, fuel_surcharge_percentage, green_tax, oda_config,
+  handling_slabs, fuel_hike_config, service_charges_config, billing_config,
+  oda_charges, oda_per_kg_charge, oda_method, csd_delivery_charge,
+  time_specific_per_kg, time_specific_per_awb, time_specific_method,
+  mall_delivery_per_kg, mall_delivery_per_awb, mall_delivery_method,
+  delivery_reattempt_per_kg, delivery_reattempt_per_awb, delivery_reattempt_method,
+  handling_single_piece, handling_below_100_kg, handling_100_to_200_kg,
+  handling_above_200_kg, insurance_charge, cod_fixed_amount, cod_percentage,
+  cod_method, rov_fixed_amount, rov_percentage, rov_method, liability_limit,
+  liability_method, custom_fields, field_definitions
+)
+SELECT
+  target.id, 'delhivery', h.plan_id, h.awb_charges, h.cft_factor,
+  h.minimum_chargeable_amount, h.minimum_chargeable_weight, h.minimum_chargeable_method,
+  h.free_storage_days, h.demurrage_per_awb_day, h.demurrage_per_kg_day, h.demurrage_method,
+  h.public_holiday_pickup_charge, h.fuel_surcharge_percentage, h.green_tax, h.oda_config,
+  h.handling_slabs, h.fuel_hike_config, h.service_charges_config, h.billing_config,
+  h.oda_charges, h.oda_per_kg_charge, h.oda_method, h.csd_delivery_charge,
+  h.time_specific_per_kg, h.time_specific_per_awb, h.time_specific_method,
+  h.mall_delivery_per_kg, h.mall_delivery_per_awb, h.mall_delivery_method,
+  h.delivery_reattempt_per_kg, h.delivery_reattempt_per_awb, h.delivery_reattempt_method,
+  h.handling_single_piece, h.handling_below_100_kg, h.handling_100_to_200_kg,
+  h.handling_above_200_kg, h.insurance_charge, h.cod_fixed_amount, h.cod_percentage,
+  h.cod_method, h.rov_fixed_amount, h.rov_percentage, h.rov_method, h.liability_limit,
+  h.liability_method, h.custom_fields, h.field_definitions
+FROM couriers target
+LEFT JOIN shiplifi_b2b_additional_charges existing ON existing.courier_id = target.id
+LEFT JOIN LATERAL (
+  SELECT * FROM shiplifi_b2b_additional_charges
+  WHERE courier_id = (SELECT id FROM couriers WHERE name = 'Delhivery - Household' LIMIT 1)
+  LIMIT 1
+) h ON true
+WHERE target.name = 'Delhivery - B2B'
+  AND target."serviceProvider" = 'delhivery'
+  AND existing.id IS NULL
+  AND h.id IS NOT NULL;
+
 UPDATE shiplifi_b2b_additional_charges AS c
 SET
   awb_charges = 200,
