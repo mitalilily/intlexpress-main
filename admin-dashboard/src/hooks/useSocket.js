@@ -11,7 +11,11 @@ export const useSocket = () => {
   useEffect(() => {
     if (!userId) return
 
-    const socket = io(process.env.REACT_APP_SOCKET_URL || brand.socketUrl)
+    const socket = io(
+      process.env.NODE_ENV === 'production'
+        ? brand.socketUrl
+        : process.env.REACT_APP_SOCKET_URL || brand.socketUrl,
+    )
 
     socket.emit('register', userId)
 

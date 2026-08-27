@@ -5,7 +5,11 @@ const getDefaultApiBaseUrl = () => {
   return brand.apiBaseUrl
 }
 
-const apiBaseURL = (process.env.REACT_APP_API_BASE_URL || getDefaultApiBaseUrl()).replace(/\/+$/, '')
+const apiBaseURL =
+  (process.env.NODE_ENV === 'production'
+    ? brand.apiBaseUrl
+    : process.env.REACT_APP_API_BASE_URL || getDefaultApiBaseUrl()
+  ).replace(/\/+$/, '')
 
 const api = axios.create({
   baseURL: apiBaseURL,
