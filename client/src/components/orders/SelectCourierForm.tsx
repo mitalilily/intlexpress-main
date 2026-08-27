@@ -304,7 +304,16 @@ export const SelectCourierForm = ({
   const getActiveLocalRate = (courier: any) =>
     courier?.localRates?.[activeRateKey] ?? courier?.localRates?.forward ?? {}
   const getZoneDisplayName = (courier: any) => {
-    const zone = courier?.approxZone || getActiveLocalRate(courier)
+    const activeRate = getActiveLocalRate(courier)
+    const breakdown = activeRate?.charge_breakdown ?? courier?.charge_breakdown
+    const origin = breakdown?.origin
+    const destination = breakdown?.destination
+    const zoneLabel = (zone: any) => String(zone?.code || zone?.name || '').trim()
+    const originLabel = zoneLabel(origin)
+    const destinationLabel = zoneLabel(destination)
+    if (originLabel && destinationLabel) return `${originLabel} → ${destinationLabel}`
+
+    const zone = courier?.approxZone || activeRate
     const zoneName = String(zone?.name || '').trim()
     const zoneCode = String(zone?.code || '').trim()
     return (
