@@ -375,11 +375,16 @@ export const SelectCourierForm = ({
     }
 
     const overheads = Array.isArray((breakdown as any).overheads) ? (breakdown as any).overheads : []
+    const hiddenChargeIds = new Set(['billing_start_date', 'reattempt_free_attempts', 'round_off'])
     overheads.forEach((overhead: any) => {
+      if (hiddenChargeIds.has(String(overhead?.id || '').toLowerCase())) return
       const amount = Number(overhead?.amount ?? 0)
       if (amount > 0) {
+        const rawLabel = String(overhead?.name || overhead?.code || 'Additional Charge')
+        const label = /cash|cheque/i.test(rawLabel) ? 'Cash / Cheque Handling Charge' : rawLabel
+        if (label === 'Cash / Cheque Handling Charge' && lines.some((line) => line.label === label)) return
         lines.push({
-          label: String(overhead?.name || overhead?.code || 'Additional Charge'),
+          label,
           amount,
         })
       }
@@ -390,10 +395,23 @@ export const SelectCourierForm = ({
       lines.push({ label: 'Demurrage', amount: demurrage })
     }
 
-    const total = Number((breakdown as any).total ?? 0)
-    if (total > 0) {
-      lines.push({ label: 'Total Booking Charge', amount: total, isTotal: true })
+    const ensureRow = (label: string, amount: number) => {
+      if (!lines.some((line) => line.label === label)) lines.push({ label, amount: Math.max(0, amount) })
     }
+    ensureRow(
+      'ODA Charges',
+      Number((breakdown as any).odaAmount ?? overheads.find((o: any) => String(o?.id) === 'oda_charge')?.amount ?? 0),
+    )
+    ensureRow(
+      'Insurance Charge',
+      Number(overheads.find((o: any) => String(o?.id) === 'rov_charge' || String(o?.id) === 'insurance_charge')?.amount ?? 0),
+    )
+    ensureRow(
+      `GST (${Number((breakdown as any).gstPercent ?? 18).toFixed(2)}%)`,
+      Number((breakdown as any).gstAmount ?? 0),
+    )
+    const total = Number((breakdown as any).totalWithGst ?? breakdown.total ?? 0)
+    if (total >= 0) lines.push({ label: 'Total Booking Charge', amount: total, isTotal: true })
 
     return lines
   }

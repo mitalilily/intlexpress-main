@@ -34,6 +34,11 @@ type ForwardRate = {
     }>
     demurrage?: number | string | null
     total?: number | string | null
+    gstPercent?: number | string | null
+    gstAmount?: number | string | null
+    totalWithGst?: number | string | null
+    origin?: { code?: string | null; name?: string | null } | null
+    destination?: { code?: string | null; name?: string | null } | null
     calculation?: {
       actualWeight?: number | string | null
       volumetricWeight?: number | string | null
@@ -111,11 +116,16 @@ const getB2BChargeLines = (breakdown: ForwardRate['charge_breakdown']) => {
   if (baseFreight > 0) lines.push({ label: 'Base Freight', amount: baseFreight })
 
   const overheads = Array.isArray(breakdown.overheads) ? breakdown.overheads : []
+  const hiddenChargeIds = new Set(['billing_start_date', 'reattempt_free_attempts', 'round_off'])
   overheads.forEach((overhead) => {
+    if (hiddenChargeIds.has(String(overhead?.id || '').toLowerCase())) return
     const amount = Number(overhead?.amount ?? 0)
     if (amount > 0) {
+      const rawLabel = String(overhead?.name || overhead?.code || 'Additional Charge')
+      const label = /cash|cheque/i.test(rawLabel) ? 'Cash / Cheque Handling Charge' : rawLabel
+      if (label === 'Cash / Cheque Handling Charge' && lines.some((line) => line.label === label)) return
       lines.push({
-        label: String(overhead?.name || overhead?.code || 'Additional Charge'),
+        label,
         amount,
       })
     }
@@ -126,8 +136,15 @@ const getB2BChargeLines = (breakdown: ForwardRate['charge_breakdown']) => {
     lines.push({ label: 'Demurrage', amount: demurrage })
   }
 
-  const total = Number(breakdown.total ?? 0)
-  if (total > 0) lines.push({ label: 'Total Booking Charge', amount: total, isTotal: true })
+  const ensureRow = (label: string, amount: number) => {
+    if (!lines.some((line) => line.label === label)) lines.push({ label, amount: Math.max(0, amount) })
+  }
+  ensureRow('ODA Charges', Number((breakdown as any).odaAmount ?? overheads.find((o) => String(o?.id) === 'oda_charge')?.amount ?? 0))
+  ensureRow('Insurance Charge', Number(overheads.find((o) => String(o?.id) === 'rov_charge' || String(o?.id) === 'insurance_charge')?.amount ?? 0))
+  ensureRow(`GST (${Number((breakdown as any).gstPercent ?? 18).toFixed(2)}%)`, Number((breakdown as any).gstAmount ?? 0))
+
+  const total = Number((breakdown as any).totalWithGst ?? breakdown.total ?? 0)
+  if (total >= 0) lines.push({ label: 'Total Booking Charge', amount: total, isTotal: true })
 
   return lines
 }
@@ -210,6 +227,9 @@ export default function CourierRateList({
           const b2bChargeLines = getB2BChargeLines(chargeBreakdown)
           const shouldShowB2BBreakdown = shipmentCategory === 'b2b' && b2bChargeLines.length > 0
           const zoneDisplay =
+            (forward?.charge_breakdown?.origin?.code && forward?.charge_breakdown?.destination?.code
+              ? `${forward.charge_breakdown.origin.code} → ${forward.charge_breakdown.destination.code}`
+              : '') ||
             String(courier?.approxZone?.name || '').trim() ||
             String(courier?.approxZone?.code || '').trim() ||
             String(

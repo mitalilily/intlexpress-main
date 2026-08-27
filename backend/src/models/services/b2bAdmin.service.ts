@@ -16,6 +16,7 @@ import {
 import Papa from 'papaparse'
 
 import { db } from '../client'
+import { getDelhiveryB2BMinimumChargeableWeight } from '../../utils/delhiveryCourier'
 // Try importing the entire module first to debug
 import { checkHolidayCharge } from '../../utils/holidayChecker'
 import { tracking_events } from '../schema/trackingEvents'
@@ -1892,6 +1893,13 @@ export const calculateB2BRate = async (params: {
     boxes: params.boxes,
   })
 
+  // Apply the selected Delhivery B2B account's contractual minimum before
+  // calculating freight and every weight-based surcharge.
+  const courierMinimumWeight = getDelhiveryB2BMinimumChargeableWeight(courierId)
+  if (courierMinimumWeight > 0) {
+    billableWeight = Math.max(billableWeight, courierMinimumWeight)
+  }
+
   const billingConfig = ((additionalCharges as any).billing_config || {}) as Record<string, any>
   const serviceChargesConfig = ((additionalCharges as any).service_charges_config || {}) as Record<
     string,
@@ -1940,7 +1948,8 @@ export const calculateB2BRate = async (params: {
   //   minimumCharge = min(minChargeByAmount, minChargeByWeight) if method is "whichever_is_lower"
   //   baseFreight = max(baseFreight, minimumCharge)
   const minChargeAmount = Number(additionalCharges.minimum_chargeable_amount || 0)
-  const minChargeWeight = Number(additionalCharges.minimum_chargeable_weight || 0)
+  const configuredMinimumWeight = Number(additionalCharges.minimum_chargeable_weight || 0)
+  const minChargeWeight = courierMinimumWeight > 0 ? courierMinimumWeight : configuredMinimumWeight
   const minChargeMethod = additionalCharges.minimum_chargeable_method || 'whichever_is_higher'
 
   // Calculate both values

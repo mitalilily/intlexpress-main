@@ -8,6 +8,14 @@ export const DELHIVERY_B2B_ACCOUNT_COURIER_IDS = {
   account_3: 21003,
 } as const
 
+// Delhivery's two B2B contracts have different contractual minimum billable
+// weights. Keep these values in the courier configuration module so every
+// rate/booking path applies the same rule.
+export const DELHIVERY_B2B_MINIMUM_CHARGEABLE_WEIGHT_KG = {
+  account_2: 30,
+  account_3: 20,
+} as const
+
 export type DelhiveryShippingMode = 'Express' | 'Surface'
 export type DelhiveryB2BAccountCode = keyof typeof DELHIVERY_B2B_ACCOUNT_COURIER_IDS
 
@@ -62,6 +70,12 @@ export const getDelhiveryB2BAccountCodeByCourierId = (
   if (id === DELHIVERY_B2B_ACCOUNT_COURIER_IDS.account_2) return 'account_2'
   if (id === DELHIVERY_B2B_ACCOUNT_COURIER_IDS.account_3) return 'account_3'
   return null
+}
+
+export const getDelhiveryB2BMinimumChargeableWeight = (value: unknown): number => {
+  const accountCode = getDelhiveryB2BAccountCodeByCourierId(value)
+  if (!accountCode) return 0
+  return DELHIVERY_B2B_MINIMUM_CHARGEABLE_WEIGHT_KG[accountCode]
 }
 
 export const getDelhiveryB2BAccountCourierId = (

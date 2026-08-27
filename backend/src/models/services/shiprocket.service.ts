@@ -6519,6 +6519,8 @@ export const fetchAvailableCouriersWithRatesB2B = async (
             billableWeightKg !== null ? Math.round(billableWeightKg * 1000) : null
           const volumetricWeightGrams =
             volumetricWeightKg !== null ? Math.round(volumetricWeightKg * 1000) : null
+          const b2bTotalBeforeTax = Number(rateResult?.charges?.total ?? 0)
+          const b2bTaxBreakup = calculateGstBreakup(b2bTotalBeforeTax, WALLET_TRANSACTION_GST_PERCENT)
 
           return {
             ...courier,
@@ -6539,6 +6541,9 @@ export const fetchAvailableCouriersWithRatesB2B = async (
                       overheads: rateResult.charges.overheads,
                       demurrage: rateResult.charges.demurrage,
                       total: rateResult.charges.total,
+                      gstPercent: b2bTaxBreakup.gstPercent,
+                      gstAmount: b2bTaxBreakup.gstAmount,
+                      totalWithGst: b2bTaxBreakup.totalAmount,
                       calculation: rateResult.calculation,
                       origin: rateResult.origin,
                       destination: rateResult.destination,
@@ -6627,8 +6632,14 @@ export const fetchAvailableCouriersWithRatesB2B = async (
 
       return accountsForCourier.map((account) => ({
         ...courier,
-        name: 'Delhivery B2B',
-        displayName: 'Delhivery B2B',
+        name:
+          String(account.accountLabel || '').toLowerCase().includes('household')
+            ? 'Delhivery Household'
+            : 'Delhivery B2B',
+        displayName:
+          String(account.accountLabel || '').toLowerCase().includes('household')
+            ? 'Delhivery Household'
+            : 'Delhivery B2B',
         courier_option_key: makeDelhiveryB2BAccountOptionKey(courier, account.accountCode),
         delhivery_account_code: account.accountCode,
         delhivery_account_label: account.accountLabel,
@@ -11085,6 +11096,54 @@ export const createB2BShipmentService = async (
         : providerResponse?.packages || null
 
       if (!delhiveryAwb) {
+        // Delhivery may accept the manifest asynchronously and return only a
+        // job/request UUID. Do not turn an accepted provider request into a
+        // failed local order merely because the LRN is not ready yet.
+        const providerAccepted =
+          providerResponse?.success === true ||
+          providerResponse?.status === true ||
+          (Boolean(initialProviderRequestId) && isUuidLikeValue(initialProviderRequestId))
+        if (providerAccepted) {
+          const pendingMessage =
+            'Delhivery accepted the manifest; LRN/AWB is still being generated.'
+          await db
+            .update(b2b_orders)
+            .set({
+              order_status: 'manifest_pending',
+              provider_last_status: 'manifest_pending',
+              provider_request_id: initialProviderRequestId,
+              provider_meta: {
+                ...shipmentData,
+                courier_name: 'Delhivery',
+                courier_id: courierId ?? null,
+                provider_request_id: initialProviderRequestId,
+                delhivery_account_code: resolvedDelhiveryAccount.accountCode,
+                delhivery_account_label: resolvedDelhiveryAccount.accountLabel,
+                manifest_pending: true,
+                accepted_at: new Date().toISOString(),
+              },
+              delivery_message: truncateColumnValue(pendingMessage, 100),
+              updated_at: new Date(),
+            } as any)
+            .where(eq(b2b_orders.id, pendingOrder.id))
+
+          console.warn('⚠️ Delhivery B2B manifest accepted without LRN/AWB yet', {
+            order_number: normalizedOrderNumber,
+            provider_request_id: initialProviderRequestId,
+          })
+          return {
+            order: {
+              id: pendingOrder.id,
+              order_number: normalizedOrderNumber,
+              awb_number: null,
+              provider_reference: null,
+              provider_request_id: initialProviderRequestId,
+              status: 'manifest_pending',
+            },
+            shipment: shipmentData,
+          }
+        }
+
         const providerMessage = getUserFacingManifestError(
           { response: { data: providerResponse } },
           'Delhivery B2B manifest did not return an LRN/AWB yet.',
