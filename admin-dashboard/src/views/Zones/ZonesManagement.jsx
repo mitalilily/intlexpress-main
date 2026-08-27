@@ -39,6 +39,15 @@ import { useHistory } from 'react-router-dom/cjs/react-router-dom.min'
 import { b2bAdminService } from 'services/b2bAdmin.service'
 import { GenericTable } from 'views/Dashboard/Tables/components/GenericTable'
 
+const normalizeStateKey = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
 const ZonesManagement = ({ defaultBusinessType = null }) => {
   const history = useHistory()
   const { isOpen, onOpen, onClose } = useDisclosure()
@@ -73,11 +82,18 @@ const ZonesManagement = ({ defaultBusinessType = null }) => {
   })
 
   const [stateSearch, setStateSearch] = useState('')
-  const filteredStateOptions = isB2B
-    ? stateOptions.filter((state) =>
-        state?.toLowerCase().includes(stateSearch.trim().toLowerCase()),
+  const canonicalStateOptions = isB2B
+    ? Array.from(
+        new Map(
+          stateOptions
+            .filter(Boolean)
+            .map((state) => [normalizeStateKey(state), String(state).trim()]),
+        ).values(),
       )
     : []
+  const filteredStateOptions = canonicalStateOptions.filter((state) =>
+    state.toLowerCase().includes(stateSearch.trim().toLowerCase()),
+  )
 
   // Zones are always global - no courier filtering needed
   const zoneFilters = []
@@ -118,15 +134,34 @@ const ZonesManagement = ({ defaultBusinessType = null }) => {
 
   const openEditModal = (zone) => {
     setIsEdit(true)
+    const optionByKey = new Map(canonicalStateOptions.map((state) => [normalizeStateKey(state), state]))
     setZoneForm({
       ...zone,
-      states: Array.isArray(zone.states) ? zone.states : zone.states ? [zone.states] : [],
+      states: (Array.isArray(zone.states) ? zone.states : zone.states ? [zone.states] : [])
+        .map((state) => optionByKey.get(normalizeStateKey(state)) || String(state).trim())
+        .filter(Boolean),
     })
     // Zones are always global - no courier selection needed
     setErrors({ code: '', name: '', states: '' })
     setStateSearch('')
     onOpen()
   }
+
+  // Zone records created by older versions may have different casing from
+  // the locations list. Align selections once the canonical list is loaded
+  // so existing states render checked and can be toggled reliably.
+  useEffect(() => {
+    if (!isB2B || !isEdit || !isOpen || !canonicalStateOptions.length) return
+    const optionByKey = new Map(canonicalStateOptions.map((state) => [normalizeStateKey(state), state]))
+    setZoneForm((current) => {
+      const normalized = (current.states || [])
+        .map((state) => optionByKey.get(normalizeStateKey(state)) || state)
+        .filter(Boolean)
+      return JSON.stringify(normalized) === JSON.stringify(current.states)
+        ? current
+        : { ...current, states: normalized }
+    })
+  }, [canonicalStateOptions, isB2B, isEdit, isOpen])
 
   const validateForm = () => {
     const newErrors = { code: '', name: '', states: '' }
