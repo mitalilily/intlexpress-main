@@ -375,9 +375,18 @@ export const SelectCourierForm = ({
     }
 
     const overheads = Array.isArray((breakdown as any).overheads) ? (breakdown as any).overheads : []
+    const ensureRow = (label: string, amount: number) => {
+      if (!lines.some((line) => line.label === label)) lines.push({ label, amount: Math.max(0, amount) })
+    }
     const hiddenChargeIds = new Set(['billing_start_date', 'reattempt_free_attempts', 'round_off'])
     overheads.forEach((overhead: any) => {
-      if (hiddenChargeIds.has(String(overhead?.id || '').toLowerCase())) return
+      const overheadId = String(overhead?.id || '').toLowerCase()
+      const overheadName = String(overhead?.name || '').toLowerCase()
+      if (
+        hiddenChargeIds.has(overheadId) ||
+        /billing\s*start|re[- ]?attempt\s*free|round\s*off/.test(overheadId) ||
+        /billing\s*start|re[- ]?attempt\s*free|round\s*off/.test(overheadName)
+      ) return
       const amount = Number(overhead?.amount ?? 0)
       if (amount > 0) {
         const rawLabel = String(overhead?.name || overhead?.code || 'Additional Charge')
@@ -389,15 +398,16 @@ export const SelectCourierForm = ({
         })
       }
     })
+    ensureRow(
+      'Fuel Hike / DPH',
+      Number(overheads.find((o: any) => String(o?.id) === 'fuel_hike_dph')?.amount ?? 0),
+    )
 
     const demurrage = Number((breakdown as any).demurrage ?? 0)
     if (demurrage > 0 && !overheads.some((overhead: any) => String(overhead?.id) === 'demurrage_charge')) {
       lines.push({ label: 'Demurrage', amount: demurrage })
     }
 
-    const ensureRow = (label: string, amount: number) => {
-      if (!lines.some((line) => line.label === label)) lines.push({ label, amount: Math.max(0, amount) })
-    }
     ensureRow(
       'ODA Charges',
       Number((breakdown as any).odaAmount ?? overheads.find((o: any) => String(o?.id) === 'oda_charge')?.amount ?? 0),

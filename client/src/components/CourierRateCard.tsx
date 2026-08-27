@@ -116,9 +116,18 @@ const getB2BChargeLines = (breakdown: ForwardRate['charge_breakdown']) => {
   if (baseFreight > 0) lines.push({ label: 'Base Freight', amount: baseFreight })
 
   const overheads = Array.isArray(breakdown.overheads) ? breakdown.overheads : []
+  const ensureRow = (label: string, amount: number) => {
+    if (!lines.some((line) => line.label === label)) lines.push({ label, amount: Math.max(0, amount) })
+  }
   const hiddenChargeIds = new Set(['billing_start_date', 'reattempt_free_attempts', 'round_off'])
   overheads.forEach((overhead) => {
-    if (hiddenChargeIds.has(String(overhead?.id || '').toLowerCase())) return
+    const overheadId = String(overhead?.id || '').toLowerCase()
+    const overheadName = String(overhead?.name || '').toLowerCase()
+    if (
+      hiddenChargeIds.has(overheadId) ||
+      /billing\s*start|re[- ]?attempt\s*free|round\s*off/.test(overheadId) ||
+      /billing\s*start|re[- ]?attempt\s*free|round\s*off/.test(overheadName)
+    ) return
     const amount = Number(overhead?.amount ?? 0)
     if (amount > 0) {
       const rawLabel = String(overhead?.name || overhead?.code || 'Additional Charge')
@@ -130,15 +139,13 @@ const getB2BChargeLines = (breakdown: ForwardRate['charge_breakdown']) => {
       })
     }
   })
+  ensureRow('Fuel Hike / DPH', Number(overheads.find((o) => String(o?.id) === 'fuel_hike_dph')?.amount ?? 0))
 
   const demurrage = Number(breakdown.demurrage ?? 0)
   if (demurrage > 0 && !overheads.some((overhead) => String(overhead?.id) === 'demurrage_charge')) {
     lines.push({ label: 'Demurrage', amount: demurrage })
   }
 
-  const ensureRow = (label: string, amount: number) => {
-    if (!lines.some((line) => line.label === label)) lines.push({ label, amount: Math.max(0, amount) })
-  }
   ensureRow('ODA Charges', Number((breakdown as any).odaAmount ?? overheads.find((o) => String(o?.id) === 'oda_charge')?.amount ?? 0))
   ensureRow('Insurance Charge', Number(overheads.find((o) => String(o?.id) === 'rov_charge' || String(o?.id) === 'insurance_charge')?.amount ?? 0))
   ensureRow(`GST (${Number((breakdown as any).gstPercent ?? 18).toFixed(2)}%)`, Number((breakdown as any).gstAmount ?? 0))
