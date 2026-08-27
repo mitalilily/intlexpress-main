@@ -2700,27 +2700,31 @@ export const calculateB2BRate = async (params: {
       )
     }
 
-    addConfiguredCharge(
-      'cheque_handling',
-      'Cheque Handling Charge',
-      serviceChargesConfig.chequeHandling?.enabled
-        ? calculateConfiguredServiceCharge(serviceChargesConfig.chequeHandling, {
-            defaultType: 'flat',
-          })
-        : 0,
-      'CHEQUE_HANDLING',
-    )
-
+    // Cash and cheque handling represent the same physical collection
+    // service. Apply exactly one rule per shipment: COD uses cash handling;
+    // non-COD shipments use cheque handling. This prevents both charges from
+    // being added separately to one booking.
     if (context.paymentMode === 'COD') {
       addConfiguredCharge(
-        'cash_handling',
-        'Cash Handling Charge',
+        'cash_cheque_handling',
+        'Cash / Cheque Handling Charge',
         calculateConfiguredServiceCharge(serviceChargesConfig.cashHandling, {
           defaultType: 'percent',
           base: params.invoiceValue ?? 0,
           invoiceValue: params.invoiceValue ?? 0,
         }),
-        'CASH_HANDLING',
+        'CASH_CHEQUE_HANDLING',
+      )
+    } else {
+      addConfiguredCharge(
+        'cash_cheque_handling',
+        'Cash / Cheque Handling Charge',
+        serviceChargesConfig.chequeHandling?.enabled
+          ? calculateConfiguredServiceCharge(serviceChargesConfig.chequeHandling, {
+              defaultType: 'flat',
+            })
+          : 0,
+        'CASH_CHEQUE_HANDLING',
       )
     }
 
